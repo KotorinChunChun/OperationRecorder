@@ -6,6 +6,7 @@ OperationRecorderは、PCの操作と操作前後の画面を記録し、画像�
 ## コレクションから使う
 
 KotorinToysの一覧でOperationRecorderを選び、「起動」でタスクトレイへ常駐させ、「画面を表示」で記録対象や出力の設定を開きます。
+未導入の場合は、先に公開カタログを更新し、「インストール」を選びます。正式インストーラーには.NETランタイムを同梱しています。
 引数なしでEXEを直接起動した場合も画面を開きます。起動済みなら既存の画面を表示します。
 画面の×を押しても常駐は続きます。記録は「記録を開始」ボタン、トレイのメニュー、開始キーから行います。
 
@@ -25,11 +26,11 @@ KotorinToysの一覧でOperationRecorderを選び、「起動」でタスクト�
 ## 自動起動と配布状態
 
 新規の自動起動はOFFです。単体からスタートアップへの新しいショートカットを作成せず、KotorinToysの「本体設定・自動起動」で管理します。
-現段階ではKotorinToys向けの正式インストーラーが未公開のため、自動起動の追加はできません。
+正式インストーラーで導入後、本体の「本体設定・自動起動」から設定できます。開発EXEやzipの展開先は正式導入として扱いません。
 旧版のスタートアップ登録が見つかった場合は案内を表示し、アプリはその登録を上書き・削除しません。
 
 製品版は1.3.2、識別子は `operation-recorder` / `KotorinToys.OperationRecorder` です。
-公開リポジトリURLとKotorinToys用インストーラーは未登録です。コレクション登録・開発版のビルドと、インストーラーの作成・外部公開は別工程です。
+公開リポジトリは[OperationRecorder](https://github.com/KotorinChunChun/OperationRecorder)、正式インストーラーは[Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)から入手できます。公開カタログにはインストーラーの版・サイズ・SHA-256を登録します。
 
 ## 開発版のビルドと起動
 

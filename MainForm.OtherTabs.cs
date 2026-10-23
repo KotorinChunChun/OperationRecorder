@@ -103,7 +103,7 @@ namespace OperationRecorderApp
             p.Controls.Add(Row(btnInstall, btnUninstall));
 
             p.Controls.Add(Caption("Windows の起動時", true));
-            p.Controls.Add(WideNote("自動起動は KotorinToys 本体で管理します。現在の開発配置では登録できません。対応インストーラーで正式導入した後、本体から設定してください。\n" +
+            p.Controls.Add(WideNote("自動起動は KotorinToys 本体で管理します。対応インストーラーで正式導入した後、本体の「本体設定・自動起動」から設定してください。新規の自動起動はOFFです。\n" +
                 (StartupRegistration.IsEnabled()
                     ? "以前のスタートアップ登録があります。重複を避けるため、本体で有効にする前に Windows のスタートアップフォルダーで確認してください。このアプリは既存登録を変更しません。"
                     : "このアプリからスタートアップへの新規登録は行いません。")));
@@ -145,7 +145,9 @@ namespace OperationRecorderApp
         void UpdateShortcutStatus()
         {
             if (lblShortcut == null) return;
-            lblShortcut.Text = ShortcutInstaller.IsInstalled
+            lblShortcut.Text = ShortcutInstaller.InstallerShortcutPointsToThisExe()
+                ? "インストーラーのショートカットが登録されています。追加の登録は不要です。"
+                : ShortcutInstaller.IsInstalled
                 ? (ShortcutInstaller.PointsToThisExe() ? "登録済みです。" : "登録済みですが、別の場所のツールを指しています。登録し直してください。")
                 : "登録されていません。";
         }

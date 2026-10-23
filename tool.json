@@ -11,8 +11,8 @@
   "manual": "docs/kotorintoys-integration.md",
   "readme": "README.md",
   "shortcuts": "config/shortcuts.json",
-  "distributionStatus": "unpublished",
-  "repositoryUrl": "",
+  "distributionStatus": "published",
+  "repositoryUrl": "https://github.com/KotorinChunChun/OperationRecorder",
   "supportedEnvironment": "windows11-x64",
   "investigationStatus": "confirmed",
   "icon": "Assets/app.ico",
@@ -23,7 +23,7 @@
       "name": ".NET Desktop Runtime 10 (x64)",
       "kind": "dotnet-desktop",
       "major": 10,
-      "guide": "開発実行には.NET 10 SDK、フレームワーク依存EXEには.NET Desktop Runtime 10 x64が必要です。"
+      "guide": "正式インストーラーには.NET 10を同梱しています。開発実行には.NET 10 SDK、フレームワーク依存EXEには.NET Desktop Runtime 10 x64が必要です。"
     }
   ]
 }
