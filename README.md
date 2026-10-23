@@ -2,12 +2,12 @@
 
 PC の操作を記録して、スクリーンショット付きの操作手順書(md)を作るデスクトップアプリ。
 このリポジトリ内の `operation-recorder/` にある記録エンジンとテンプレートを使用する。
-KotorinToysのコレクションから正式版のインストール・起動・表示・停止ができる。製品版は1.3.2。
+KotorinToysのコレクションからインストール・起動・表示・停止ができる。製品版は1.3.2、未署名の開発版（prerelease）として提供する。
 
 - KotorinToysからの起動と管理: [連携ガイド](docs/kotorintoys-integration.md)
 - 使い方(利用者向け): [操作記録マニュアル](operation-recorder/MANUAL.md)
 - 開発用のショートカット一覧: [config/shortcuts.json](config/shortcuts.json)（既定値。実際のキーはアプリ内で変更可能）
-- 正式版の入手: [GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)。KotorinToysからは公開カタログを更新し、「インストール」を選ぶ。
+- 本体対応インストーラーの入手: [GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)。KotorinToysからは公開カタログを更新し、「インストール」を選ぶ。
 - 配布に含む第三者ソフトウェア: [配布通知](THIRD-PARTY-NOTICES.md)
 - インストーラー作成・公開の手順: [リリース手順](docs/release.md)
 
