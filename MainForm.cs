@@ -159,7 +159,7 @@ namespace OperationRecorderApp
         // 初回起動時(または exe を別の場所へ移した後)に、スタートメニューへの登録を勧める
         void MaybeOfferShortcut()
         {
-            if (AppSettings.Passive || AppSettings.SettingsDirectoryOverride != null) return;
+            if (AppSettings.Passive || AppSettings.SettingsDirectoryOverride != null || ShortcutInstaller.InstallerShortcutPointsToThisExe()) return;
             bool moved = ShortcutInstaller.IsInstalled && !ShortcutInstaller.PointsToThisExe();
             if (settings.AskedShortcut && !moved) return;
             string msg = moved

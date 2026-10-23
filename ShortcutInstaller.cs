@@ -18,6 +18,18 @@ namespace OperationRecorderApp
 
         public static bool IsInstalled => File.Exists(AppLink);
 
+        // 正式インストーラーが作成したショートカットがあれば、初回の重複登録提案を出さない。
+        // 古い単体版の日本語フォルダー内の登録は、ここでは変更しない。
+        public static bool InstallerShortcutPointsToThisExe(string programsFolder = null, string exePath = null)
+        {
+            string link = Path.Combine(programsFolder ?? Environment.GetFolderPath(Environment.SpecialFolder.Programs), "OperationRecorder.lnk");
+            try
+            {
+                return File.Exists(link) && string.Equals(TargetOf(link), exePath ?? Environment.ProcessPath, StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
+        }
+
         // 登録済みのショートカットが、今動いている exe を指しているか(exe を別の場所へ移した後の確認用)
         public static bool PointsToThisExe()
         {

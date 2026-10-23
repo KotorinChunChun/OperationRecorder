@@ -80,6 +80,33 @@ namespace OperationRecorderApp.Tests
             Assert.False(InstanceSignal.Send(LaunchOptions.RunningAction.ShowMain, UniquePrefix()));
 
         [Fact]
+        public void 正式版のショートカットは現在の実行パスと一致するときだけ初回提案を抑止する()
+        {
+            string folder = Path.Combine(Path.GetTempPath(), "oprec-menu-" + Guid.NewGuid().ToString("N"));
+            string exe = typeof(LaunchOptions).Assembly.Location;
+            string link = Path.Combine(folder, "OperationRecorder.lnk");
+            try
+            {
+                Assert.False(ShortcutInstaller.InstallerShortcutPointsToThisExe(folder, exe));
+                Assert.False(Directory.Exists(folder));
+                Directory.CreateDirectory(folder);
+                dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
+                try
+                {
+                    dynamic shortcut = shell.CreateShortcut(link);
+                    shortcut.TargetPath = exe;
+                    shortcut.Save();
+                    byte[] before = File.ReadAllBytes(link);
+                    Assert.True(ShortcutInstaller.InstallerShortcutPointsToThisExe(folder, exe));
+                    Assert.False(ShortcutInstaller.InstallerShortcutPointsToThisExe(folder, Path.Combine(folder, "other.exe")));
+                    Assert.Equal(before, File.ReadAllBytes(link));
+                }
+                finally { System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell); }
+            }
+            finally { if (Directory.Exists(folder)) Directory.Delete(folder, true); }
+        }
+
+        [Fact]
         public void 旧スタートアップ登録を読み取っても書き換えない()
         {
             string folder = Path.Combine(Path.GetTempPath(), "oprec-startup-" + Guid.NewGuid().ToString("N"));

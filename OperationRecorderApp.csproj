@@ -24,6 +24,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- 自己完結配布に同梱する.NETを固定する。WinFormsとWPFの両方を使用するため全Desktopを対象にする -->
+    <FrameworkReference Update="Microsoft.NETCore.App;Microsoft.WindowsDesktop.App" RuntimeFrameworkVersion="10.0.13" Condition="'$(SelfContained)' == 'true'" />
     <!-- md → HTML の変換(表・画像・コードブロック) -->
     <PackageReference Include="Markdig" Version="0.38.0" />
   </ItemGroup>
@@ -31,7 +33,8 @@
   <ItemGroup>
     <Compile Remove="OperationRecorderApp.Tests\**\*.cs;operation-recorder\**\*.cs" />
     <Compile Include="$(SkillDir)\scripts\src\*.cs" Link="Engine\%(Filename)%(Extension)" />
-    <None Include="tool.json;config\shortcuts.json;docs\**\*.md;README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="tool.json;config\shortcuts.json;docs\**\*.md;README.md;THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(SkillDir)\templates\*.md" Link="templates\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(SkillDir)\MANUAL.md" Link="MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('$(SkillDir)\MANUAL.md')" />
     <None Update="operation-recorder\MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
