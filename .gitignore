@@ -1,0 +1,10 @@
+bin/
+obj/
+artifacts/
+dist/
+TestResults/
+*.log
+/dev/history/*/logs/
+*.user
+*.suo
+.vs/

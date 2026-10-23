@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- UI は WinForms。UI Automation(UIAutomationClient / WindowsBase)を使うために WPF の参照も有効にする -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>OperationRecorder</AssemblyName>
+    <RootNamespace>OperationRecorderApp</RootNamespace>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <Version>1.3.2</Version>
+    <Product>OperationRecorder</Product>
+    <Company>OperationRecorder</Company>
+    <Description>PC の操作を記録して、スクリーンショット付きの操作手順書(md)を作るツール</Description>
+    <SatelliteResourceLanguages>ja</SatelliteResourceLanguages>
+    <DefaultItemExcludes>$(DefaultItemExcludes);artifacts/**;bin/**;obj/**;dist/**;dev/**</DefaultItemExcludes>
+
+    <!-- 記録エンジン・報告書作成・テンプレート・マニュアルは、子内の operation-recorder を正本として取り込む -->
+    <SkillDir Condition="'$(SkillDir)' == ''">$(MSBuildThisFileDirectory)operation-recorder</SkillDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- md → HTML の変換(表・画像・コードブロック) -->
+    <PackageReference Include="Markdig" Version="0.38.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="OperationRecorderApp.Tests\**\*.cs;operation-recorder\**\*.cs" />
+    <Compile Include="$(SkillDir)\scripts\src\*.cs" Link="Engine\%(Filename)%(Extension)" />
+    <None Include="tool.json;config\shortcuts.json;docs\**\*.md;README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(SkillDir)\templates\*.md" Link="templates\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(SkillDir)\MANUAL.md" Link="MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('$(SkillDir)\MANUAL.md')" />
+    <None Update="operation-recorder\MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="CheckRecordingEngine" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(SkillDir)\scripts\src\Recorder.cs')" Text="記録エンジンがありません。operation-recorder フォルダーを配置するか SkillDir を指定してください。" />
+  </Target>
+
+</Project>

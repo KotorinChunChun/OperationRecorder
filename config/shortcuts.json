@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "shortcuts": [
+    {
+      "id": "start",
+      "description": "記録を開始・再開する",
+      "keys": "Ctrl+Shift+F9",
+      "scope": "global",
+      "configurable": true,
+      "changeLocation": "OperationRecorderの「ショートカットキー」タブ"
+    },
+    {
+      "id": "undo",
+      "description": "記録中に直前の1手を取り消す",
+      "keys": "Ctrl+Shift+F10",
+      "scope": "recording",
+      "configurable": true,
+      "changeLocation": "OperationRecorderの「ショートカットキー」タブ"
+    },
+    {
+      "id": "restart",
+      "description": "記録中に最初から取り直す",
+      "keys": "Ctrl+Shift+F11",
+      "scope": "recording",
+      "configurable": true,
+      "changeLocation": "OperationRecorderの「ショートカットキー」タブ"
+    },
+    {
+      "id": "stop",
+      "description": "記録を保存して記録を終了する（アプリは常駐を継続）",
+      "keys": "Ctrl+Shift+F12",
+      "scope": "recording",
+      "configurable": true,
+      "changeLocation": "OperationRecorderの「ショートカットキー」タブ"
+    },
+    {
+      "id": "capture",
+      "description": "記録中にCtrlとShiftだけを押して離し、画面を手動撮影する",
+      "keys": "Ctrl+Shift",
+      "scope": "recording",
+      "configurable": false,
+      "changeLocation": "固定。ほかのキーやクリックを挟まず押して離す"
+    }
+  ]
+}
