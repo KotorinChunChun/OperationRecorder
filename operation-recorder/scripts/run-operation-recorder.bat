@@ -1,0 +1,1 @@
+pwsh -File "%USERPROFILE%\.claude\skills\operation-recorder\scripts\Start-OperationRecording.ps1"
