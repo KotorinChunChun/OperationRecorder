@@ -5,6 +5,8 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Threading;
+using System.Threading.Tasks;
 using OpRec;
 using Xunit;
 
@@ -266,6 +268,28 @@ namespace OperationRecorderApp.Tests
             Assert.Equal("2026-10-23T18:00:00+09:00", (string)completed["end"]);
             Assert.True(DateTimeOffset.TryParse((string)completed["composedAt"], out _));
             Assert.Throws<IOException>(() => project.AddSource(a.Dir + Path.DirectorySeparatorChar));
+        }
+
+        [Fact]
+        public async Task 複数記録の画像を同時生成してもPNGとして保存できる()
+        {
+            const int workers = 16;
+            using var ready = new CountdownEvent(workers);
+            using var start = new ManualResetEventSlim();
+            var tasks = Enumerable.Range(0, workers).Select(_ => Task.Factory.StartNew(() =>
+            {
+                ready.Signal(); start.Wait();
+                using var session = new TestSession();
+                var files = Directory.GetFiles(session.Dir, "*.png", SearchOption.AllDirectories);
+                Assert.Equal(8, files.Length);
+                foreach (var file in files)
+                {
+                    using var image = System.Drawing.Image.FromFile(file);
+                    Assert.Equal(320, image.Width); Assert.Equal(200, image.Height);
+                }
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)).ToArray();
+            ready.Wait(); start.Set();
+            await Task.WhenAll(tasks);
         }
     }
 }

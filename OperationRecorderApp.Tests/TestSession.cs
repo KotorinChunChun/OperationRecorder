@@ -17,6 +17,14 @@ namespace OperationRecorderApp.Tests
     //   手順 4: 「閉じる」ボタンをクリック    … 同じ画面だが imagesSame が無い(古い版の記録。ファイルを比べて判定する)
     public sealed class TestSession : IDisposable
     {
+        static TestSession()
+        {
+            // .NET 10のPNG encoderキャッシュは配列を公開してから要素を埋める。
+            // 型初期化のロック内で一度確定し、並列のfixture生成が未充填の配列を読まないようにする。
+            using (var image = new Bitmap(1, 1))
+            using (var stream = new MemoryStream()) image.Save(stream, ImageFormat.Png);
+        }
+
         public readonly string Root;        // 一時フォルダ(テストの後に消す)
         public readonly string Dir;         // 記録フォルダ
         public const string Name = "session-20261021-100000_テスト";
