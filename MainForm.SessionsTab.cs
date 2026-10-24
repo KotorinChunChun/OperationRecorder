@@ -401,7 +401,7 @@ namespace OperationRecorderApp
             try
             {
                 SetPictures(null, null);   // 表示中の画像を手放してから消す
-                SessionEditor.DeleteStep(it.Dir, st.Seq, RecycleBin.SendFile);
+                SessionEditor.DeleteStep(it.Dir, st.Seq, interaction.RecycleFile);
                 RefreshSessions(it.Dir);
                 ReloadSteps(index);
                 statusLabel.Text = "手順 " + st.Number + " を削除しました。「出力する」で md / HTML に反映されます。";
@@ -418,7 +418,7 @@ namespace OperationRecorderApp
                 .Select(item => item.Dir).ToArray();
             if (sources.Length == 0) return;
             if (HasUnsavedSessionEdits) { ShowInfo("未保存の名前・解説・手順文章があります。先に記録へ保存してから合成してください。"); return; }
-            try { using (var form = new MergeForm(sources, Path.GetFullPath(txtRecordsDir.Text.Trim()))) ShowComposition(form); }
+            try { using (var form = new MergeForm(sources, Path.GetFullPath(txtRecordsDir.Text.Trim()), null, interaction)) ShowComposition(form); }
             catch (Exception ex) { ShowWarning("合成を開けませんでした: " + ex.Message); }
         }
 
@@ -428,13 +428,10 @@ namespace OperationRecorderApp
             try
             {
                 string root = Path.GetFullPath(txtRecordsDir.Text.Trim());
-                using (var dialog = new OpenFileDialog { Title = "保存した合成作業を選択", Filter = "合成作業 (draft.json)|draft.json", CheckFileExists = true })
-                {
-                    string drafts = Path.Combine(root, ".compositions");
-                    dialog.InitialDirectory = Directory.Exists(drafts) ? drafts : root;
-                    if (dialog.ShowDialog(this) != DialogResult.OK) return;
-                    using (var form = MergeForm.Resume(dialog.FileName, root)) ShowComposition(form);
-                }
+                string drafts = Path.Combine(root, ".compositions");
+                string path = interaction.OpenFile(this, "保存した合成作業を選択", "合成作業 (draft.json)|draft.json", Directory.Exists(drafts) ? drafts : root);
+                if (path == null) return;
+                using (var form = MergeForm.Resume(path, root, null, interaction)) ShowComposition(form);
             }
             catch (Exception ex) { ShowWarning("合成作業を再開できませんでした: " + ex.Message); }
         }
@@ -451,7 +448,7 @@ namespace OperationRecorderApp
 
         void OpenTemplateEditor()
         {
-            using (var f = new TemplateEditorForm(settings.EffectiveTemplateDir, SelectedSession?.Dir))
+            using (var f = new TemplateEditorForm(settings.EffectiveTemplateDir, SelectedSession?.Dir, interaction))
                 f.ShowDialog(this);
             var items = LoadTemplates();
             var keep = CheckedTemplates(clbSesTemplates);
@@ -511,7 +508,7 @@ namespace OperationRecorderApp
             try
             {
                 SetPictures(null, null);
-                RecycleBin.SendDirectory(it.Dir);
+                interaction.RecycleDirectory(it.Dir);
                 displayedSession = null;
                 foreach (ListViewItem item in lvSessions.SelectedItems.Cast<ListViewItem>().ToArray()) item.Selected = false;
                 ClearSessionDetail();

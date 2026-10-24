@@ -17,8 +17,12 @@ namespace OperationRecorderApp
         [STAThread]
         static int Main(string[] args)
         {
+            if (AutomationCommand.IsAutomation(args)) return AutomationCommand.Execute(args);
             // 出力だけならホットキーもフックも使わないので、起動中のアプリがあっても動かしてよい
             if (ExportCommand.IsExport(args)) return ExportCommand.Execute(args);
+            AutomationInstance isolation;
+            try { isolation = AutomationInstance.Parse(args); }
+            catch (ArgumentException error) { CommandConsole.Prepare(); Console.Error.WriteLine(error.Message); return 2; }
             int settingsIndex = Array.IndexOf(args, "--settings-dir");
             if (settingsIndex >= 0)
             {
@@ -27,25 +31,25 @@ namespace OperationRecorderApp
             }
             AppSettings.Passive = args.Contains("--passive");
             // ホットキーとキーボードフックを 2 つのプロセスで取り合わないよう、同時に 1 つだけ動かす
-            using (var mutex = new Mutex(true, @"Local\OperationRecorderApp", out bool first))
+            using (var mutex = new Mutex(true, isolation.MutexName, out bool first))
             {
                 var launch = LaunchOptions.Parse(args);
                 if (!first)
                 {
                     // 起動中のアプリに頼む(合図を受け取れない古い版が動いているときだけ、知らせて終わる)
                     bool shown = launch.ForRunningInstance() == LaunchOptions.RunningAction.ShowMain &&
-                        KotorinToys.Integration.ManagementEndpoint.ShowExisting("operation-recorder");
-                    if (!shown && !InstanceSignal.Send(launch.ForRunningInstance()))
+                        KotorinToys.Integration.ManagementEndpoint.ShowExisting(isolation.ManagementId);
+                    if (!shown && !InstanceSignal.Send(launch.ForRunningInstance(), isolation.SignalPrefix))
                         MessageBox.Show("操作記録ツールはすでに起動しています。タスクトレイのアイコンから開いてください。",
                             "操作記録ツール", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return 0;
                 }
                 ApplicationConfiguration.Initialize();
-                using (var window = new MainForm(launch.Record, launch.StartHidden))
+                using (var window = new MainForm(launch.Record, launch.StartHidden, signalPrefix: isolation.SignalPrefix))
                 {
                     _ = window.Handle;
                     using (var management = new KotorinToys.Integration.ManagementEndpoint(
-                        "operation-recorder", window, window.ShowManaged, window.StopManaged,
+                        isolation.ManagementId, window, window.ShowManaged, window.StopManaged,
                         () => window.ManagementStopBlockReason))
                         Application.Run(window);
                 }

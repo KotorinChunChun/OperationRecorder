@@ -14,8 +14,9 @@ namespace OperationRecorderApp
         readonly CompositionProject project;
         readonly string outputRoot;
         readonly Action<Exception> errorReporter;
-        readonly Stack<string> undo = new Stack<string>(), redo = new Stack<string>();
-        string savedState, editorRowId;
+        readonly AppInteraction interaction;
+        readonly CompositionEditingSession editing;
+        string editorRowId;
         bool filling, busy, finished, editorDirty, disposing, refreshingNumbers, numberRefreshQueued;
 
         readonly ComboBox sources = Combo("compositionSources");
@@ -42,23 +43,26 @@ namespace OperationRecorderApp
 
         public string MergedDir { get; private set; }
         public string DraftFile => project.DraftFile;
-        public bool HasUnsavedChanges => editorDirty || project.CaptureState() != savedState;
+        public CompositionEditingSession EditingSession => editing;
+        public bool HasUnsavedChanges => editing.IsDirty;
 
         // 旧2記録の入口を維持する。未編集で閉じるだけなら保存確認を出さない。
         public MergeForm(string sessionDirA, IEnumerable<(string Dir, string Text)> others)
             : this(new[] { sessionDirA }.Concat((others ?? Enumerable.Empty<(string Dir, string Text)>()).Take(1).Select(item => item.Dir)),
                 Path.GetDirectoryName(sessionDirA.TrimEnd('\\', '/'))) { }
 
-        public MergeForm(IEnumerable<string> sessionDirectories, string outputRoot, Action<Exception> errorReporter = null)
-            : this(CompositionProject.Create(sessionDirectories, Path.Combine(Path.GetFullPath(outputRoot), ".compositions")), outputRoot, errorReporter) { }
+        public MergeForm(IEnumerable<string> sessionDirectories, string outputRoot, Action<Exception> errorReporter = null, AppInteraction interaction = null)
+            : this(CompositionProject.Create(sessionDirectories, Path.Combine(Path.GetFullPath(outputRoot), ".compositions")), outputRoot, errorReporter, interaction) { }
 
-        public static MergeForm Resume(string draftFile, string outputRoot, Action<Exception> errorReporter = null) => new MergeForm(CompositionProject.Open(draftFile), outputRoot, errorReporter);
+        public static MergeForm Resume(string draftFile, string outputRoot, Action<Exception> errorReporter = null, AppInteraction interaction = null) => new MergeForm(CompositionProject.Open(draftFile), outputRoot, errorReporter, interaction);
 
-        MergeForm(CompositionProject project, string outputRoot, Action<Exception> errorReporter = null)
+        MergeForm(CompositionProject project, string outputRoot, Action<Exception> errorReporter = null, AppInteraction interaction = null)
         {
             this.project = project;
             this.outputRoot = Path.GetFullPath(outputRoot);
             this.errorReporter = errorReporter;
+            this.interaction = interaction ?? new AppInteraction();
+            editing = new CompositionEditingSession(project);
             Text = WindowTitle.Create("記録の合成");
             Icon = (Icon)AppIcons.Idle.Clone();
             Font = new Font("Yu Gothic UI", 9.5f);
@@ -69,7 +73,6 @@ namespace OperationRecorderApp
             StartPosition = FormStartPosition.CenterParent;
             BuildLayout();
             WireEvents();
-            savedState = project.CaptureState();
             FillAll();
         }
 
@@ -129,10 +132,15 @@ namespace OperationRecorderApp
         void WireEvents()
         {
             sources.SelectedIndexChanged += (s, e) => { if (!filling) FillSourceSteps(); };
+            sourceSteps.SelectedIndexChanged += (s, e) =>
+            {
+                if (!filling && !disposing && !((CompositionListView)sourceSteps).SynchronizingNativeState) SyncSourceSelection();
+            };
             rows.SelectedIndexChanged += (s, e) =>
             {
                 if (filling) return;
                 CommitEditors();
+                editing.SelectRows(SelectedRowIds());
                 ShowEditor();
             };
             rows.ItemChecked += (s, e) =>
@@ -141,8 +149,7 @@ namespace OperationRecorderApp
                     ((CompositionListView)rows).SynchronizingNativeState || !(e.Item?.Tag is string id)) return;
                 var row = project.Rows.FirstOrDefault(item => item.Id == id);
                 if (row == null || row.Included == e.Item.Checked) return;
-                Remember();
-                row.Included = e.Item.Checked;
+                editing.SetIncluded(new[] { id }, e.Item.Checked);
                 e.Item.ForeColor = row.Included ? SystemColors.WindowText : Color.Gray;
                 QueueNumbers(); UpdateStatus();
             };
@@ -150,7 +157,7 @@ namespace OperationRecorderApp
             {
                 if (filling || busy || SelectedRow == null || !(candidate.SelectedItem is Choice choice)) return;
                 var row = SelectedRow;
-                if (row.SelectedCandidate != choice.Index) Change(() => project.Choose(row.Id, choice.Index));
+                if (row.SelectedCandidate != choice.Index) Change(() => editing.Choose(row.Id, choice.Index));
             };
             comparison.SelectedIndexChanged += (s, e) => { if (!filling) ShowComparison(); };
             headline.TextChanged += (s, e) => MarkEditorDirty();
@@ -176,6 +183,7 @@ namespace OperationRecorderApp
         {
             if (filling) return;
             editorDirty = true;
+            editing.StageText(editorRowId, caption.Text, description.Text, headline.Text, body.Text);
             UpdateStatus();
         }
 

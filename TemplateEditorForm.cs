@@ -13,6 +13,7 @@ namespace OperationRecorderApp
     public sealed class TemplateEditorForm : Form
     {
         readonly string dir, sessionDir;
+        readonly AppInteraction interaction;
         readonly ListBox lbTemplates = new ListBox { Dock = DockStyle.Fill, IntegralHeight = false };
         readonly TextBox txtNewName = new TextBox { Width = 200, PlaceholderText = "新しいテンプレートの名前" };
         readonly TextBox txtBody = new TextBox
@@ -27,9 +28,15 @@ namespace OperationRecorderApp
         string current;          // 開いているテンプレートの名前
         bool dirty, loading;
 
-        public TemplateEditorForm(string templateDir, string sessionDir)
+        public TemplateEditorForm(string templateDir, string sessionDir, AppInteraction interaction = null)
         {
             dir = templateDir; this.sessionDir = sessionDir;
+            this.interaction = interaction ?? new AppInteraction();
+            lbTemplates.Name = "templateList";
+            txtNewName.Name = "newTemplateName";
+            txtBody.Name = "templateBody";
+            lblResult.Name = "templateResult";
+            preview.Name = "templatePreview";
             Text = WindowTitle.Create("テンプレートのエディタ");
             Font = new Font("Yu Gothic UI", 9.5f);
             Size = new Size(1400, 860);
@@ -44,17 +51,17 @@ namespace OperationRecorderApp
             left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             left.Controls.Add(new Label { Text = "テンプレート", AutoSize = true, Font = new Font("Yu Gothic UI", 9.5f, FontStyle.Bold) }, 0, 0);
             left.Controls.Add(lbTemplates, 0, 1);
-            var btnCreate = new Button { Text = "今のテンプレートをもとに追加", AutoSize = true };
-            var btnDelete = new Button { Text = "このテンプレートを削除", AutoSize = true, ForeColor = Color.DarkRed };
+            var btnCreate = new Button { Name = "createTemplate", Text = "今のテンプレートをもとに追加", AutoSize = true };
+            var btnDelete = new Button { Name = "deleteTemplate", Text = "このテンプレートを削除", AutoSize = true, ForeColor = Color.DarkRed };
             var leftBtns = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Dock = DockStyle.Fill, WrapContents = false };
             leftBtns.Controls.AddRange(new Control[] { txtNewName, btnCreate, btnDelete });
             left.Controls.Add(leftBtns, 0, 2);
 
             // 中: 編集
             var mid = new Panel { Dock = DockStyle.Fill, Padding = new Padding(6) };
-            var btnSave = new Button { Text = "保存", AutoSize = true, Font = new Font("Yu Gothic UI", 9.5f, FontStyle.Bold) };
-            var btnRevert = new Button { Text = "保存した内容に戻す", AutoSize = true };
-            var btnPreview = new Button { Text = "プレビューを更新", AutoSize = true };
+            var btnSave = new Button { Name = "saveTemplate", Text = "保存", AutoSize = true, Font = new Font("Yu Gothic UI", 9.5f, FontStyle.Bold) };
+            var btnRevert = new Button { Name = "revertTemplate", Text = "保存した内容に戻す", AutoSize = true };
+            var btnPreview = new Button { Name = "refreshTemplatePreview", Text = "プレビューを更新", AutoSize = true };
             var midBtns = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, WrapContents = true };
             midBtns.Controls.AddRange(new Control[] { btnSave, btnRevert, btnPreview, lblResult });
             mid.Controls.Add(txtBody);
@@ -111,21 +118,32 @@ namespace OperationRecorderApp
 
         void Open(string name)
         {
-            current = name;
-            loading = true;
-            txtBody.Text = TemplateStore.Read(dir, name).Replace("\r\n", "\n").Replace("\n", "\r\n");
-            loading = false;
-            dirty = false;
-            lblPath.Text = TemplateStore.PathOf(dir, name);
-            ShowResult(null, false);
-            UpdatePreview();
+            try
+            {
+                string text = TemplateStore.Read(dir, name).Replace("\r\n", "\n").Replace("\n", "\r\n");
+                current = name;
+                loading = true;
+                txtBody.Text = text;
+                loading = false;
+                dirty = false;
+                lblPath.Text = TemplateStore.PathOf(dir, name);
+                ShowResult(null, false);
+                UpdatePreview();
+            }
+            catch (Exception ex)
+            {
+                loading = true;
+                lbTemplates.SelectedItem = lbTemplates.Items.Cast<OutputChoices.TemplateItem>().FirstOrDefault(item => item.Name == current);
+                loading = false;
+                ShowResult("開けません: " + ex.Message, true);
+            }
         }
 
         // 保存していない変更があれば、保存するか聞く。続けてよければ true
         bool ConfirmLeave()
         {
             if (!dirty || current == null) return true;
-            var r = MessageBox.Show(this, "「" + current + "」の変更を保存しますか?", Text, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            var r = interaction.Message(this, "「" + current + "」の変更を保存しますか?", Text, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
             if (r == DialogResult.Cancel) return false;
             if (r == DialogResult.Yes) return SaveCurrent();
             dirty = false;
@@ -167,10 +185,10 @@ namespace OperationRecorderApp
         void DeleteCurrent()
         {
             if (current == null) return;
-            if (MessageBox.Show(this, "テンプレート「" + current + "」をごみ箱へ移します。よろしいですか?", Text, MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+            if (interaction.Message(this, "テンプレート「" + current + "」をごみ箱へ移します。よろしいですか?", Text, MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
             try
             {
-                TemplateStore.Delete(dir, current, true);
+                interaction.RecycleFile(TemplateStore.PathOf(dir, current));
                 dirty = false;
                 current = null;
                 ReloadList(null);
@@ -180,14 +198,13 @@ namespace OperationRecorderApp
 
         void UpdatePreview()
         {
-            if (sessionDir == null) { preview.DocumentText = "<html><body></body></html>"; return; }
+            if (sessionDir == null) { PreviewHtml = "<html><body></body></html>"; preview.DocumentText = PreviewHtml; return; }
             try
             {
                 Cursor = Cursors.WaitCursor;
                 string md = TemplateStore.Preview(sessionDir, BodyText);
-                string html = Path.Combine(Path.GetTempPath(), "OperationRecorder-template-preview", "preview.html");
-                File.WriteAllText(html, HtmlExporter.ToHtml(md), new UTF8Encoding(false));
-                preview.Navigate(html);
+                PreviewHtml = HtmlExporter.ToHtml(md);
+                preview.DocumentText = PreviewHtml;
             }
             catch (Exception ex)
             {
@@ -202,5 +219,8 @@ namespace OperationRecorderApp
             lblResult.Text = text ?? (dirty ? "(保存していない変更があります)" : "");
             if (text == null && dirty) lblResult.ForeColor = Color.DarkOrange;
         }
+
+        // 描画の完了待ちに依存せず、CLI試験から生成したHTMLを確認できる。
+        public string PreviewHtml { get; private set; }
     }
 }

@@ -21,13 +21,13 @@ namespace OperationRecorderApp
         void BuildHelpTab()
         {
             var bar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true };
-            var btnOpenManual = new Button { Text = "マニュアルを別のアプリで開く", AutoSize = true };
+            var btnOpenManual = new Button { Name = "openManual", Text = "マニュアルを別のアプリで開く", AutoSize = true };
             btnOpenManual.Click += (s, e) => OpenPath(ManualPath);
             bar.Controls.Add(btnOpenManual);
             var box = new RichTextBox
             {
                 Dock = DockStyle.Fill, ReadOnly = true, BackColor = Color.White, BorderStyle = BorderStyle.None,
-                Font = new Font("Yu Gothic UI", 10f), DetectUrls = false,
+                Name = "manualText", Font = new Font("Yu Gothic UI", 10f), DetectUrls = false,
             };
             if (File.Exists(ManualPath)) RenderMarkdown(box, File.ReadAllText(ManualPath, Encoding.UTF8));
             else box.Text = "マニュアル(MANUAL.md)が見つかりません: " + ManualPath;
@@ -84,19 +84,19 @@ namespace OperationRecorderApp
             p.Controls.Add(lblShortcutMenuNote);
             lblShortcut = new Label { AutoSize = true, Margin = new Padding(3, 3, 3, 6) };
             p.Controls.Add(lblShortcut);
-            var btnInstall = new Button { Text = "スタートメニューに登録", AutoSize = true };
+            var btnInstall = new Button { Name = "installShortcuts", Text = "スタートメニューに登録", AutoSize = true };
             btnInstall.Enabled = !AppSettings.Passive && AppSettings.SettingsDirectoryOverride == null;
             btnInstall.Click += (s, e) =>
             {
-                try { ShortcutInstaller.Install(); }
+                try { interaction.InstallShortcuts(); }
                 catch (Exception ex) { ShowWarning("登録できませんでした: " + ex.Message); }
                 UpdateShortcutStatus();
             };
-            var btnUninstall = new Button { Text = "登録を解除", AutoSize = true };
+            var btnUninstall = new Button { Name = "uninstallShortcuts", Text = "登録を解除", AutoSize = true };
             btnUninstall.Enabled = btnInstall.Enabled;
             btnUninstall.Click += (s, e) =>
             {
-                try { ShortcutInstaller.Uninstall(); }
+                try { interaction.UninstallShortcuts(); }
                 catch (Exception ex) { ShowWarning("解除できませんでした: " + ex.Message); }
                 UpdateShortcutStatus();
             };
@@ -111,26 +111,31 @@ namespace OperationRecorderApp
             p.Controls.Add(Caption("テンプレートのフォルダ", true));
             p.Controls.Add(WideNote("報告書(md)の体裁は、このフォルダの md(テンプレート)で決まります。空欄ならアプリと同じ場所の templates フォルダを使います。\n" +
                 "書き方と使える変数は、各テンプレートの冒頭のコメントに書いてあります。社内様式などを作るときは、コピーして別のフォルダに置き、ここで指定してください。"));
-            txtTemplateDir = new TextBox { Width = 520, Text = settings.TemplateDir };
+            txtTemplateDir = new TextBox { Name = "templateDirectory", Width = 520, Text = settings.TemplateDir };
             var btnTplBrowse = BrowseButton(txtTemplateDir, "テンプレートのフォルダ");
-            var btnTplApply = new Button { Text = "反映", AutoSize = true };
+            var btnTplApply = new Button { Name = "applyTemplateDirectory", Text = "反映", AutoSize = true };
             btnTplApply.Click += (s, e) =>
             {
-                settings.TemplateDir = txtTemplateDir.Text.Trim();
-                settings.Save();
-                var items = LoadTemplates();
-                FillTemplateList(clbTemplates, items, settings.Templates);
-                FillTemplateList(clbSesTemplates, items, settings.Templates);
-                statusLabel.Text = "テンプレートのフォルダ: " + settings.EffectiveTemplateDir + "(" + items.Count + " 件)";
+                string previous = settings.TemplateDir;
+                try
+                {
+                    settings.TemplateDir = txtTemplateDir.Text.Trim();
+                    var items = LoadTemplates();
+                    settings.Save();
+                    FillTemplateList(clbTemplates, items, settings.Templates);
+                    FillTemplateList(clbSesTemplates, items, settings.Templates);
+                    statusLabel.Text = "テンプレートのフォルダ: " + settings.EffectiveTemplateDir + "(" + items.Count + " 件)";
+                }
+                catch (Exception ex) { settings.TemplateDir = previous; ShowWarning("テンプレートのフォルダを反映できませんでした: " + ex.Message); }
             };
-            var btnTplOpen = new Button { Text = "フォルダを開く", AutoSize = true };
+            var btnTplOpen = new Button { Name = "openTemplateDirectory", Text = "フォルダを開く", AutoSize = true };
             btnTplOpen.Click += (s, e) => OpenPath(settings.EffectiveTemplateDir);
             p.Controls.Add(Row(txtTemplateDir, btnTplBrowse, btnTplApply, btnTplOpen));
 
             p.Controls.Add(Caption("管理者権限", true));
             p.Controls.Add(WideNote("「管理者として実行」したアプリの操作を記録するときは、このツールも管理者権限で動かす必要があります。\n" +
                 "(UAC の確認画面そのものは、管理者権限でも記録できません)"));
-            var btnElevate = new Button { Text = "管理者として再起動", AutoSize = true };
+            var btnElevate = new Button { Name = "restartAsAdmin", Text = "管理者として再起動", AutoSize = true };
             btnElevate.Enabled = !AppSettings.Passive && AppSettings.SettingsDirectoryOverride == null;
             btnElevate.Click += (s, e) => RestartAsAdmin();
             p.Controls.Add(btnElevate);
@@ -145,15 +150,20 @@ namespace OperationRecorderApp
         void UpdateShortcutStatus()
         {
             if (lblShortcut == null) return;
-            lblShortcut.Text = ShortcutInstaller.InstallerShortcutPointsToThisExe()
+            lblShortcut.Text = interaction.InstallerShortcutPointsToThisExe
                 ? "インストーラーのショートカットが登録されています。追加の登録は不要です。"
-                : ShortcutInstaller.IsInstalled
-                ? (ShortcutInstaller.PointsToThisExe() ? "登録済みです。" : "登録済みですが、別の場所のツールを指しています。登録し直してください。")
+                : interaction.ShortcutIsInstalled
+                ? (interaction.ShortcutPointsToThisExe ? "登録済みです。" : "登録済みですが、別の場所のツールを指しています。登録し直してください。")
                 : "登録されていません。";
         }
 
         void RestartAsAdmin()
         {
+            if (AppSettings.Passive || AppSettings.SettingsDirectoryOverride != null)
+            {
+                ShowInfo("隔離した実行では管理者として再起動できません。");
+                return;
+            }
             if (controller.State == RecState.Recording || controller.State == RecState.Saving)
             {
                 ShowInfo("記録中は再起動できません。記録を保存してから操作してください。");
@@ -164,8 +174,7 @@ namespace OperationRecorderApp
             {
                 // 同時に 1 つしか動かせないので、管理者の cmd に 1 秒待ってから起動し直してもらい、その間にこちらは終了する。
                 // UAC で取り消されたらここで例外になるので、終了処理はその後(取り消し時にアプリが止まったままにならないように)
-                Process.Start(new ProcessStartInfo("cmd.exe", "/c timeout /t 2 >nul & start \"\" \"" + Environment.ProcessPath + "\"")
-                { UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden });
+                interaction.RestartAsAdmin(Environment.ProcessPath);
             }
             catch (Exception ex)
             {

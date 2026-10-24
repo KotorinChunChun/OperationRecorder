@@ -46,6 +46,7 @@ namespace OperationRecorderApp
             }
             finally { filling = false; }
             editorDirty = false;
+            editing.SelectRows(SelectedRowIds());
             FillSourceSteps(); ShowEditor(); UpdateStatus();
         }
 
@@ -60,17 +61,29 @@ namespace OperationRecorderApp
         void FillSourceSteps()
         {
             var selected = sourceSteps.SelectedItems.Cast<ListViewItem>().Select(item => (long)item.Tag).ToArray();
-            sourceSteps.BeginUpdate(); sourceSteps.Items.Clear();
             string id = SelectedSourceId;
-            sourcePath.Text = project.Sources.FirstOrDefault(item => item.Id == id)?.OriginalDirectory ?? "";
-            if (id != null)
-                foreach (var step in project.SourceSteps(id))
-                {
-                    var item = new ListViewItem(new[] { step.Number.ToString(), step.Headline ?? "(画面キャプチャ)" }) { Tag = step.Seq, ToolTipText = step.Headline };
-                    sourceSteps.Items.Add(item);
-                    item.Selected = selected.Contains(step.Seq);
-                }
-            sourceSteps.EndUpdate();
+            bool previousFilling = filling; filling = true;
+            sourceSteps.BeginUpdate();
+            try
+            {
+                sourceSteps.Items.Clear();
+                sourcePath.Text = project.Sources.FirstOrDefault(item => item.Id == id)?.OriginalDirectory ?? "";
+                if (id != null)
+                    foreach (var step in project.SourceSteps(id))
+                    {
+                        var item = new ListViewItem(new[] { step.Number.ToString(), step.Headline ?? "(画面キャプチャ)" }) { Tag = step.Seq, ToolTipText = step.Headline };
+                        sourceSteps.Items.Add(item);
+                        item.Selected = selected.Contains(step.Seq);
+                    }
+            }
+            finally { sourceSteps.EndUpdate(); filling = previousFilling; }
+            SyncSourceSelection();
+        }
+
+        void SyncSourceSelection()
+        {
+            if (SelectedSourceId != null)
+                editing.SelectSourceSteps(SelectedSourceId, sourceSteps.SelectedItems.Cast<ListViewItem>().OrderBy(item => item.Index).Select(item => (long)item.Tag));
         }
 
         void ShowEditor()
@@ -181,42 +194,11 @@ namespace OperationRecorderApp
                 }
             });
         }
-        void Remember()
-        {
-            undo.Push(project.CaptureState()); redo.Clear();
-            TrimUndo();
-        }
-
-        void TrimUndo()
-        {
-            // 多数の手順でも取り消し履歴が無制限に増えないよう、件数と文字数を制限する。
-            var keep = new List<string>();
-            long characters = 0;
-            foreach (var state in undo)
-            {
-                if (keep.Count >= 60 || keep.Count > 0 && characters + state.Length > 8 * 1024 * 1024) break;
-                keep.Add(state); characters += state.Length;
-            }
-            undo.Clear();
-            for (int i = keep.Count - 1; i >= 0; i--) undo.Push(keep[i]);
-        }
         void CommitEditors()
         {
             if (filling || !editorDirty) return;
-            var row = project.Rows.FirstOrDefault(item => item.Id == editorRowId);
-            var step = row == null ? null : project.GetStep(row);
-            bool changed = (project.Caption ?? "") != caption.Text || (project.Description ?? "") != description.Text ||
-                step != null && ((step.Headline ?? "") != headline.Text || (step.Body ?? "") != body.Text);
-            if (changed)
-            {
-                Remember();
-                project.Caption = caption.Text; project.Description = description.Text;
-                if (step != null)
-                {
-                    if ((step.Headline ?? "") != headline.Text) row.HeadlineOverride = headline.Text;
-                    if ((step.Body ?? "") != body.Text) row.BodyOverride = body.Text;
-                }
-            }
+            editing.StageText(editorRowId, caption.Text, description.Text, headline.Text, body.Text);
+            editing.CommitPending();
             editorDirty = false;
         }
 
@@ -227,10 +209,7 @@ namespace OperationRecorderApp
             Run(() =>
             {
                 CommitEditors();
-                string previous = project.CaptureState();
-                try { action(); }
-                catch { project.RestoreState(previous); throw; }
-                if (previous != project.CaptureState()) { undo.Push(previous); TrimUndo(); redo.Clear(); }
+                action();
                 FillAll(select);
             });
         }
@@ -244,7 +223,7 @@ namespace OperationRecorderApp
             catch (Exception ex)
             {
                 if (errorReporter != null) errorReporter(ex);
-                else MessageBox.Show(this, ex.Message, WindowTitle.Create("合成作業を続けられません"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                else interaction.Message(this, ex.Message, WindowTitle.Create("合成作業を続けられません"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             finally
             {
@@ -290,8 +269,8 @@ namespace OperationRecorderApp
             saveState.Text = dirty ? "● 未保存の変更" : "保存済み";
             saveState.ForeColor = dirty ? Color.DarkGoldenrod : Color.DarkGreen;
             draftPath.Text = "途中保存先: " + project.DraftFile;
-            undoButton.Enabled = !busy && (undo.Count > 0 || editorDirty);
-            redoButton.Enabled = !busy && redo.Count > 0;
+            undoButton.Enabled = !busy && editing.CanUndo;
+            redoButton.Enabled = !busy && editing.CanRedo;
             finishButton.Enabled = !busy && count > 0;
         }
 
@@ -299,55 +278,57 @@ namespace OperationRecorderApp
         {
             string source = SelectedSourceId;
             var steps = sourceSteps.SelectedItems.Cast<ListViewItem>().OrderBy(item => item.Index).Select(item => (long)item.Tag).ToArray();
-            if (source == null || steps.Length == 0) { MessageBox.Show(this, "左側の元記録から差し込む手順を選択してください。Ctrl/Shiftで複数選択できます。", Text); return; }
-            int index = project.Rows.Count;
+            if (source == null || steps.Length == 0) { interaction.Message(this, "左側の元記録から差し込む手順を選択してください。Ctrl/Shiftで複数選択できます。", Text, MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             if (where != "end")
             {
-                if (rows.SelectedIndices.Count == 0) { MessageBox.Show(this, "差し込み先を完成順の一覧から選択してください。", Text); return; }
-                index = where == "before" ? rows.SelectedIndices.Cast<int>().Min() : rows.SelectedIndices.Cast<int>().Max() + 1;
+                if (rows.SelectedIndices.Count == 0) { interaction.Message(this, "差し込み先を完成順の一覧から選択してください。", Text, MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             }
-            Change(() => project.Insert(source, steps, index));
+            Change(() =>
+            {
+                editing.SelectRows(SelectedRowIds()); editing.SelectSourceSteps(source, steps);
+                editing.Insert(where == "before" ? CompositionInsertPosition.Before : where == "after" ? CompositionInsertPosition.After : CompositionInsertPosition.End);
+            });
         }
 
         void MoveRows(string where)
         {
             var ids = SelectedRowIds(); if (ids.Length == 0) return;
-            var indices = project.Rows.Select((row, index) => new { row.Id, Index = index }).Where(item => ids.Contains(item.Id)).Select(item => item.Index).ToArray();
-            int target = where == "first" ? 0 : where == "last" ? project.Rows.Count : where == "up" ? Math.Max(0, indices.Min() - 1) : Math.Min(project.Rows.Count, indices.Max() + 2);
-            Change(() => project.Move(ids, target), ids);
+            Change(() =>
+            {
+                editing.SelectRows(ids);
+                editing.Move(where == "first" ? CompositionMoveDirection.First : where == "last" ? CompositionMoveDirection.Last : where == "up" ? CompositionMoveDirection.Up : CompositionMoveDirection.Down);
+            }, ids);
         }
 
         void SetIncluded(bool included)
         {
             var ids = SelectedRowIds(); if (ids.Length == 0) return;
-            Change(() => { foreach (var row in project.Rows.Where(item => ids.Contains(item.Id))) row.Included = included; }, ids);
+            Change(() => editing.SetIncluded(ids, included), ids);
         }
 
         void AddNote()
         {
-            int index = rows.SelectedIndices.Count == 0 ? project.Rows.Count : rows.SelectedIndices.Cast<int>().Max() + 1;
-            Change(() => project.AddNote("補足説明", "", index));
-            if (index < rows.Items.Count)
+            string id = null;
+            Run(() =>
             {
-                filling = true;
-                foreach (var item in rows.SelectedItems.Cast<ListViewItem>().ToArray()) item.Selected = false;
-                rows.Items[index].Selected = true; filling = false;
-                ShowEditor(); headline.Focus(); headline.SelectAll();
-            }
+                CommitEditors(); editing.SelectRows(SelectedRowIds());
+                id = editing.AddNote("補足説明", "");
+                FillAll(new[] { id }); headline.Focus(); headline.SelectAll();
+            });
         }
 
         void AddSource()
         {
-            using (var dialog = new FolderBrowserDialog { Description = "追加する記録フォルダー（session.jsonがあるフォルダー）を選んでください。", UseDescriptionForTitle = true })
-                if (dialog.ShowDialog(this) == DialogResult.OK) Change(() => project.AddSource(dialog.SelectedPath, suggest.Checked));
+            string path = interaction.SelectFolder(this, "追加する記録フォルダー（session.jsonがあるフォルダー）を選んでください。", outputRoot);
+            if (path != null) Change(() => editing.AddSource(path, suggest.Checked));
         }
 
         void Undo()
         {
             Run(() =>
             {
-                CommitEditors(); if (undo.Count == 0) return;
-                redo.Push(project.CaptureState()); project.RestoreState(undo.Pop()); FillAll();
+                CommitEditors(); if (!editing.Undo()) return;
+                FillAll(editing.SelectedRowIds.ToArray());
             });
         }
 
@@ -355,8 +336,8 @@ namespace OperationRecorderApp
         {
             Run(() =>
             {
-                CommitEditors(); if (redo.Count == 0) return;
-                undo.Push(project.CaptureState()); project.RestoreState(redo.Pop()); FillAll();
+                CommitEditors(); if (!editing.Redo()) return;
+                FillAll(editing.SelectedRowIds.ToArray());
             });
         }
 
@@ -365,7 +346,7 @@ namespace OperationRecorderApp
             bool success = false;
             Run(() =>
             {
-                CommitEditors(); project.Save(); savedState = project.CaptureState(); success = true; FillAll();
+                CommitEditors(); editing.Save(); success = true; FillAll();
             });
             return success;
         }
@@ -376,8 +357,7 @@ namespace OperationRecorderApp
             {
                 CommitEditors();
                 // 完成後の作業保存失敗で、完成記録が作られた事実を見失わないよう先に途中保存する。
-                project.Save(); savedState = project.CaptureState();
-                string directory = project.Complete(outputRoot);
+                string directory = editing.Complete(outputRoot);
                 MergedDir = directory; finished = true; DialogResult = DialogResult.OK; Close();
             });
         }
@@ -388,8 +368,17 @@ namespace OperationRecorderApp
             if (busy) { e.Cancel = true; return; }
             CommitEditors();
             if (!HasUnsavedChanges) return;
-            var answer = MessageBox.Show(this, "合成作業に未保存の変更があります。途中保存して閉じますか？\n「いいえ」は最後に保存した状態を残して閉じます。", Text, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
-            if (answer == DialogResult.Cancel || answer == DialogResult.Yes && !SaveDraft()) e.Cancel = true;
+            var answer = interaction.Message(this, "合成作業に未保存の変更があります。途中保存して閉じますか？\n「いいえ」は最後に保存した状態を残して閉じます。", Text, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            try
+            {
+                e.Cancel = !editing.TryClose(answer == DialogResult.Yes ? CompositionCloseDecision.Save : answer == DialogResult.No ? CompositionCloseDecision.Discard : CompositionCloseDecision.Cancel);
+            }
+            catch (Exception error)
+            {
+                e.Cancel = true;
+                if (errorReporter != null) errorReporter(error);
+                else interaction.Message(this, error.Message, WindowTitle.Create("合成作業を続けられません"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
     }
 }

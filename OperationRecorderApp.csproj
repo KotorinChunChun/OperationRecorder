@@ -12,7 +12,7 @@
     <RootNamespace>OperationRecorderApp</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <Version>0.1.3</Version>
+    <Version>0.1.4</Version>
     <Product>OperationRecorder</Product>
     <Company>OperationRecorder</Company>
     <Description>PC の操作を記録して、スクリーンショット付きの操作手順書(md)を作るツール</Description>

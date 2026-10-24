@@ -13,6 +13,8 @@ namespace OperationRecorderApp
     public sealed partial class MainForm : Form
     {
         readonly AppSettings settings = AppSettings.Load();
+        readonly AppInteraction interaction;
+        readonly string signalPrefix;
         readonly RecordingController controller;
         readonly NotifyIcon tray = new NotifyIcon();
         readonly ContextMenuStrip trayMenu = new ContextMenuStrip();
@@ -36,8 +38,10 @@ namespace OperationRecorderApp
         int overlayTitleTick;
         RecState lastState = RecState.Idle;
 
-        public MainForm(bool recordOnLaunch, bool startHidden = false)
+        public MainForm(bool recordOnLaunch, bool startHidden = false, AppInteraction interaction = null, string signalPrefix = InstanceSignal.DefaultPrefix)
         {
+            this.interaction = interaction ?? new AppInteraction();
+            this.signalPrefix = signalPrefix;
             startRecordingOnLaunch = recordOnLaunch;
             this.startHidden = startHidden && !recordOnLaunch;
             Text = WindowTitle.Create();
@@ -69,6 +73,7 @@ namespace OperationRecorderApp
             BuildSessionsTab();
             BuildHelpTab();
             BuildSettingsTab();
+            NameEditingControls();
 
             controller = new RecordingController(() => settings);
             controller.StateChanged += OnStateChanged;
@@ -137,7 +142,7 @@ namespace OperationRecorderApp
             {
                 instanceSignal = new InstanceSignal(
                     () => BeginInvoke(new Action(ShowMain)),
-                    () => BeginInvoke(new Action(() => { if (controller.State == RecState.Idle) controller.Begin(); })));
+                    () => BeginInvoke(new Action(() => { if (controller.State == RecState.Idle) controller.Begin(); })), signalPrefix);
             }
             catch { }   // 合図を受け取れなくても、アプリとしては動く
             // 旧スタートアップlnkは利用者の設定として保持し、自動修正しない。
@@ -159,15 +164,15 @@ namespace OperationRecorderApp
         // 初回起動時(または exe を別の場所へ移した後)に、スタートメニューへの登録を勧める
         void MaybeOfferShortcut()
         {
-            if (AppSettings.Passive || AppSettings.SettingsDirectoryOverride != null || ShortcutInstaller.InstallerShortcutPointsToThisExe()) return;
-            bool moved = ShortcutInstaller.IsInstalled && !ShortcutInstaller.PointsToThisExe();
+            if (AppSettings.Passive || AppSettings.SettingsDirectoryOverride != null || interaction.InstallerShortcutPointsToThisExe) return;
+            bool moved = interaction.ShortcutIsInstalled && !interaction.ShortcutPointsToThisExe;
             if (settings.AskedShortcut && !moved) return;
             string msg = moved
                 ? "スタートメニューのショートカットが、別の場所の操作記録ツールを指しています。\nこの場所のツールで登録し直しますか?"
                 : "スタートメニューに「操作記録ツール」を登録しますか?\n(このユーザーのスタートメニューだけに登録します。後から「設定」タブで解除できます)";
             if (Confirm(msg, MessageBoxIcon.Question))
             {
-                try { ShortcutInstaller.Install(); }
+                try { interaction.InstallShortcuts(); }
                 catch (Exception ex) { ShowWarning("登録できませんでした: " + ex.Message); }
             }
             settings.AskedShortcut = true;
@@ -317,21 +322,53 @@ namespace OperationRecorderApp
 
         // ---------- 共通の部品 ----------
 
+        // ハンドルや表示順序に依存せず、非表示STA試験から実際の操作部品を特定する。
+        void NameEditingControls()
+        {
+            var controls = new Dictionary<string, Control>
+            {
+                [nameof(txtCaption)] = txtCaption, [nameof(txtDescription)] = txtDescription,
+                [nameof(txtOutDir)] = txtOutDir, [nameof(txtReportDir)] = txtReportDir,
+                [nameof(rbWindow)] = rbWindow, [nameof(rbApp)] = rbApp, [nameof(rbActive)] = rbActive,
+                [nameof(rbDesktop)] = rbDesktop, [nameof(rbAllDesktops)] = rbAllDesktops,
+                [nameof(rbPick)] = rbPick, [nameof(rbForeground)] = rbForeground, [nameof(rbChoose)] = rbChoose,
+                [nameof(cmbWindows)] = cmbWindows, [nameof(cmbMonitors)] = cmbMonitors, [nameof(chkAllSame)] = chkAllSame,
+                [nameof(rbLink)] = rbLink, [nameof(rbEmbed)] = rbEmbed, [nameof(clbTemplates)] = clbTemplates,
+                [nameof(chkOpen)] = chkOpen, [nameof(chkOpenHtml)] = chkOpenHtml, [nameof(chkOpenFolder)] = chkOpenFolder,
+                [nameof(chkOutMd)] = chkOutMd, [nameof(chkOutHtml)] = chkOutHtml,
+                [nameof(numRadius)] = numRadius, [nameof(chkMarkPointer)] = chkMarkPointer,
+                [nameof(chkMarkCircle)] = chkMarkCircle, [nameof(chkMarkArrow)] = chkMarkArrow, [nameof(chkMarkFrame)] = chkMarkFrame,
+                [nameof(numBeforeMs)] = numBeforeMs, [nameof(numAfterMs)] = numAfterMs,
+                [nameof(chkOverlay)] = chkOverlay, [nameof(chkOverlayFlee)] = chkOverlayFlee,
+                [nameof(chkTargetFrame)] = chkTargetFrame, [nameof(chkFlash)] = chkFlash,
+                [nameof(txtRecordsDir)] = txtRecordsDir, [nameof(txtSesCaption)] = txtSesCaption,
+                [nameof(txtSesDescription)] = txtSesDescription, [nameof(txtSesReportDir)] = txtSesReportDir,
+                [nameof(lbSteps)] = lbSteps, [nameof(clbSesTemplates)] = clbSesTemplates,
+                [nameof(rbSesLink)] = rbSesLink, [nameof(rbSesEmbed)] = rbSesEmbed,
+                [nameof(btnSaveMeta)] = btnSaveMeta, [nameof(btnOutHtml)] = btnOutHtml, [nameof(btnOutMd)] = btnOutMd,
+                [nameof(btnOpenSaveFolder)] = btnOpenSaveFolder, [nameof(btnDeleteSession)] = btnDeleteSession,
+                [nameof(btnSaveStep)] = btnSaveStep, [nameof(btnResetStep)] = btnResetStep, [nameof(btnDeleteStep)] = btnDeleteStep,
+            };
+            foreach (var entry in controls) entry.Value.Name = entry.Key;
+            foreach (var entry in ruleBoxes)
+                for (int i = 0; i < entry.Value.Length; i++) entry.Value[i].Name = "captureRule." + entry.Key + "." + i;
+        }
+
         // ---------- メッセージ ----------
 
         const string AppTitle = "操作記録ツール";
 
-        void ShowInfo(string text) => MessageBox.Show(this, text, AppTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
-        void ShowWarning(string text) => MessageBox.Show(this, text, AppTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        void ShowInfo(string text) => interaction.Message(this, text, AppTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        void ShowWarning(string text) => interaction.Message(this, text, AppTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         // 「はい」を選んだら true
-        bool Confirm(string text, MessageBoxIcon icon = MessageBoxIcon.Warning) => MessageBox.Show(this, text, AppTitle, MessageBoxButtons.YesNo, icon) == DialogResult.Yes;
+        bool Confirm(string text, MessageBoxIcon icon = MessageBoxIcon.Warning) => interaction.Message(this, text, AppTitle, MessageBoxButtons.YesNo, icon) == DialogResult.Yes;
         // 「OK」を選んだら true
-        bool ConfirmOk(string text) => MessageBox.Show(this, text, AppTitle, MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK;
+        bool ConfirmOk(string text) => interaction.Message(this, text, AppTitle, MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK;
 
-        internal static void OpenPath(string path)
+        internal void OpenPath(string path)
         {
-            try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); }
-            catch (Exception ex) { MessageBox.Show("開けませんでした: " + path + "\n" + ex.Message, AppTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            try { interaction.OpenPath(path); }
+            catch (Exception ex) { interaction.Message(this, "開けませんでした: " + path + "\n" + ex.Message, AppTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
 
         static Label SubCaption(string text) =>
@@ -344,14 +381,7 @@ namespace OperationRecorderApp
         static Label Note(string text, int maxWidth = 460) =>
             new Label { Text = text, AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(3, 0, 3, 6), MaximumSize = new Size(maxWidth, 0) };
 
-        static string BrowseFolder(IWin32Window owner, string current, string description)
-        {
-            using (var dlg = new FolderBrowserDialog { Description = description, UseDescriptionForTitle = true, ShowNewFolderButton = true })
-            {
-                if (Directory.Exists(current)) dlg.SelectedPath = current;
-                return dlg.ShowDialog(owner) == DialogResult.OK ? dlg.SelectedPath : null;
-            }
-        }
+        string BrowseFolder(IWin32Window owner, string current, string description) => interaction.SelectFolder(owner, description, current);
 
         // テンプレート一覧(templates フォルダの md)。説明は各テンプレート冒頭コメントの 3 行目
         List<OutputChoices.TemplateItem> LoadTemplates() => OutputChoices.LoadTemplates(settings.EffectiveTemplateDir);

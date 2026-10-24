@@ -65,20 +65,23 @@ namespace OperationRecorderApp
         {
             string err = Check(text);
             if (err != null) throw new InvalidOperationException(err);
-            string tmp = Path.Combine(Path.GetTempPath(), "OperationRecorder-template-preview");
+            string tmp = Path.Combine(Path.GetTempPath(), "OperationRecorder-template-preview", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tmp);
-            string tpl = Path.Combine(tmp, "preview.md");
-            File.WriteAllText(tpl, text, new UTF8Encoding(false));
-            var r = ReportGenerator.Render(new ReportGenerator.Options
+            try
             {
-                SessionDir = sessionDir,
-                Templates = new[] { tpl },
-                TemplateDir = tmp,
-                ReportDir = tmp,
-                EmbedImages = true,
-
-            });
-            return r[0].Value;
+                string tpl = Path.Combine(tmp, "preview.md");
+                File.WriteAllText(tpl, text, new UTF8Encoding(false));
+                var r = ReportGenerator.Render(new ReportGenerator.Options
+                {
+                    SessionDir = sessionDir,
+                    Templates = new[] { tpl },
+                    TemplateDir = tmp,
+                    ReportDir = tmp,
+                    EmbedImages = true,
+                });
+                return r[0].Value;
+            }
+            finally { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); }
         }
 
         static string Skeleton(string name) =>
