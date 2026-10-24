@@ -352,7 +352,7 @@ namespace OperationRecorderApp.Tests
                     var baseDirectory = Environment.GetEnvironmentVariable("OPREC_RECORDING_ARTIFACTS") ?? Path.Combine(AppContext.BaseDirectory, "recording-evidence");
                     Root = Path.Combine(Path.GetFullPath(baseDirectory), name + "-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(Root);
                     Fixture = new FixtureProcess(); Fixture.Command("cover");
-                    Input = new NativeInput(Fixture); Input.AssertForeground();
+                    Input = new NativeInput(Fixture); Input.WaitForInitialForeground();
                     Delay(600);
                 }
                 catch
@@ -514,7 +514,20 @@ namespace OperationRecorderApp.Tests
             {
                 RequireNoExternalRecorder();
                 fixture.VerifyIdentity(); GetWindowThreadProcessId(GetForegroundWindow(), out uint pid);
-                if (pid != fixture.Pid) throw Blocked("前面が専用fixtureから離れたため、入力と試験を中断しました。");
+                if (pid != fixture.Pid) throw Blocked("前面が専用fixtureから離れたため、入力と試験を中断しました。expectedPid=" + fixture.Pid + ", actualPid=" + pid);
+            }
+            public void WaitForInitialForeground()
+            {
+                // 前面要求に伴うWindowsメッセージの処理を待つ。試験開始後の逸脱は再前面化せず中断する。
+                var clock = Stopwatch.StartNew();
+                while (clock.Elapsed < TimeSpan.FromSeconds(5))
+                {
+                    RequireNoExternalRecorder(); fixture.VerifyIdentity();
+                    GetWindowThreadProcessId(GetForegroundWindow(), out uint pid);
+                    if (pid == fixture.Pid) return;
+                    Thread.Sleep(25);
+                }
+                AssertForeground();
             }
             void Send(params INPUT[] inputs)
             {

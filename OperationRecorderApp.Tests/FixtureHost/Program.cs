@@ -2,6 +2,7 @@ using System.IO.Pipes;
 using System.Text.Json;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
 
 // 専用試験hostからだけ操作される別PIDの記録対象。通常設定・ファイル・登録へアクセスしない。
 internal static class Program
@@ -93,12 +94,29 @@ internal static class Program
                 }
                 FormBorderStyle = FormBorderStyle.None; Bounds = Screen.PrimaryScreen!.Bounds; TopMost = true;
             }
-            if (command is "cover" or "front") { Show(); BringToFront(); Activate(); action.Focus(); }
+            if (command is "cover" or "front")
+            {
+                Show(); BringToFront(); Activate(); action.Focus();
+                // CLIの親が前面アプリではなくても、専用fixtureの初期前面化を完了させる。
+                // 接続はこの要求の間だけとし、利用者の前面ロック設定は変更しない。
+                uint foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
+                uint currentThread = GetCurrentThreadId();
+                bool attached = foregroundThread != 0 && foregroundThread != currentThread && AttachThreadInput(currentThread, foregroundThread, true);
+                try { BringWindowToTop(Handle); SetForegroundWindow(Handle); }
+                finally { if (attached) AttachThreadInput(currentThread, foregroundThread, false); }
+            }
             if (command == "reset") { input.Text = password.Text = ""; actions = 0; state.Text = "操作前"; }
             if (command == "close") return new { ok = true };
             return new { ok = true, pid = Environment.ProcessId, hwnd = Handle.ToInt64(), title = Text,
                 action = RectangleOf(action), input = RectangleOf(input), password = RectangleOf(password),
                 drag = RectangleOf(drag), wheel = RectangleOf(wheel), actions, value = input.Text, passwordLength = password.Text.Length };
         }
+
+        [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint pid);
+        [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+        [DllImport("user32.dll")] static extern bool AttachThreadInput(uint from, uint to, bool attach);
+        [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr window);
+        [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
     }
 }
