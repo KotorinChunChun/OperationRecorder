@@ -14,6 +14,8 @@ using System.Threading;
 
 namespace OpRec
 {
+    public enum SnapshotTrigger { Manual, WindowsSnip }
+
     // 記録の全体構成(スレッドは4本):
     //   フック   : マウス・キーボードの低レベルフック。コールバックは Raw を積むだけで即 return する
     //              (重い処理をすると LowLevelHooksTimeout を超えて Windows にフックを外される)
@@ -322,6 +324,15 @@ namespace OpRec
 
         // 直前 1 手の取消を頼む(Ctrl+Shift+F10 と同じ。アプリのトレイメニューから呼ぶ)
         public void RequestUndo() { Enqueue(new Raw { Type = 5, Ts = sw.ElapsedMilliseconds }); }
+
+        // OSの切り取り画面やグローバルキーを起動せず、同じ振り分け経路へ撮影を要求する。
+        public void RequestSnapshot(SnapshotTrigger trigger = SnapshotTrigger.Manual)
+        {
+            if (trigger != SnapshotTrigger.Manual && trigger != SnapshotTrigger.WindowsSnip)
+                throw new ArgumentOutOfRangeException(nameof(trigger));
+            if (stopped || !sw.IsRunning) return;
+            Enqueue(new Raw { Type = 6, Vk = (int)trigger, Ts = sw.ElapsedMilliseconds, Fg = N.GetForegroundWindow() });
+        }
 
         static readonly uint OwnPid = (uint)Environment.ProcessId;
 

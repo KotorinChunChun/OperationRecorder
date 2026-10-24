@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="FixtureHost\**\*.cs" />
     <ProjectReference Include="..\OperationRecorderApp.csproj" />
   </ItemGroup>
 

@@ -10,7 +10,7 @@ using Xunit.Abstractions;
 namespace OperationRecorderApp.Tests
 {
     // スキル(pwsh)の New-OperationReport.ps1 と、アプリの出力が同じ md になるか。
-    // pwsh やスキルのフォルダが見つからない環境では何もしない(合格扱い。理由を出力に書く)
+    // pwshや同梱スクリプトがない場合は、未実行を合格にせず理由付きで失敗させる。
     public class CliParityTests : IDisposable
     {
         readonly TestSession s = new TestSession();
@@ -46,7 +46,7 @@ namespace OperationRecorderApp.Tests
         public void pwshとアプリで同じmdになる(bool embed)
         {
             string scripts = FindSkillScripts(), pwsh = FindPwsh();
-            if (scripts == null || pwsh == null) { log.WriteLine("pwsh かスキルのフォルダが見つからないので確かめていません"); return; }
+            Assert.True(scripts != null && pwsh != null, "pwshまたは同梱スクリプトが見つからず比較試験を実行できません。");
 
             string outPs = Path.Combine(s.Root, "ps"), outCs = Path.Combine(s.Root, "cs");
             var psi = new ProcessStartInfo(pwsh) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true,

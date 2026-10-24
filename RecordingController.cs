@@ -29,42 +29,49 @@ namespace OperationRecorderApp
 
         readonly Func<AppSettings> settings;
         readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 200 };
-        readonly SynchronizationContext ui;
-        HotkeyListener listener;
-        Reuse reuse;                     // 取り直し(F11)のときに、前回決まった対象をそのまま使う
+        readonly RecordingControllerDependencies dependencies;
+        readonly Action<Action> dispatch, background;
+        IRecordingSession activeSession;
+        bool disposed;
+        volatile int generation;
+        IStartHotkeyRegistration listener;
+        RecordingTargetReuse reuse;                     // 取り直し(F11)のときに、前回決まった対象をそのまま使う
 
-        sealed class Reuse { public IntPtr Hwnd; public string ProcessName; public int MonitorIndex; }
-
-        public RecordingController(Func<AppSettings> settingsProvider)
+        public RecordingController(Func<AppSettings> settingsProvider, RecordingControllerDependencies dependencies = null)
         {
-            settings = settingsProvider;
-            ui = SynchronizationContext.Current;
+            settings = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
+            this.dependencies = dependencies ?? new RecordingControllerDependencies();
+            var ui = SynchronizationContext.Current;
+            dispatch = this.dependencies.Dispatch ?? (action => { if (ui != null) ui.Post(_ => action(), null); else action(); });
+            background = this.dependencies.Background ?? (action => Task.Run(action));
             timer.Tick += OnTick;
-            timer.Start();
+            if (this.dependencies.EnableTimer) timer.Start();
             EnableStartHotkey();
         }
-
         void SetState(RecState s) { State = s; StateChanged?.Invoke(); }
 
         void EnableStartHotkey()
         {
-            if (AppSettings.Passive) return;
-            if (listener != null) return;
-            listener = new HotkeyListener();
-            listener.Start(settings().Hotkeys, false);
-            HotkeyError = listener.Error;
-            if (listener.Error != null)
+            if (disposed || AppSettings.Passive) return;
+            if (!dependencies.RegisterStartHotkey || listener != null) return;
+            try
             {
-                Notify?.Invoke("ホットキーを登録できません", listener.Error + "\nボタンやトレイのメニューから記録を開始してください。", ToolTipIcon.Warning);
-                listener.Dispose();
-                listener = null;
+                listener = dependencies.HotkeyFactory != null ? dependencies.HotkeyFactory(settings().Hotkeys) : new NativeStartHotkeyRegistration(settings().Hotkeys);
+                if (listener == null) throw new InvalidOperationException("開始キーの登録処理を作成できませんでした。");
+                HotkeyError = listener.Error;
+            }
+            catch (Exception error) { HotkeyError = error.Message; }
+            if (HotkeyError != null)
+            {
+                Notify?.Invoke("ホットキーを登録できません", HotkeyError + "\nボタンやトレイのメニューから記録を開始してください。", ToolTipIcon.Warning);
+                DisableStartHotkey();
             }
         }
 
         // 操作キーの設定を変えたとき。待機中なら開始のキーを登録し直す(記録中は、次に待機に戻ったときに反映される)
         public void ReloadHotkeys()
         {
-            if (State != RecState.Idle) return;
+            if (disposed || State != RecState.Idle) return;
             DisableStartHotkey();
             EnableStartHotkey();
         }
@@ -79,36 +86,74 @@ namespace OperationRecorderApp
         // (開始のキーは、待機中ならいつでも受け付けるので、待つ状態は無い)
         public void Begin()
         {
-            if (AppSettings.Passive) return;
+            if (disposed || AppSettings.Passive) return;
             if (State != RecState.Idle) return;
             reuse = null;
             StartRecording();
         }
 
-        public void RequestUndo() { if (State == RecState.Recording) Current.RequestUndo(); }
-        public void RequestRestart() { if (State == RecState.Recording) Current.RestartRequested.Set(); }
-        public void RequestStop() { if (State == RecState.Recording) Current.StopRequested.Set(); }
+        public void RequestUndo() { if (!disposed && State == RecState.Recording) activeSession.Undo(); }
+        public void RequestRestart() { if (!disposed && State == RecState.Recording) activeSession.RequestRestart(); }
+        public void RequestStop() { if (!disposed && State == RecState.Recording) activeSession.RequestStop(); }
 
-        void OnTick(object sender, EventArgs e)
+        void OnTick(object sender, EventArgs e) => Poll();
+
+        // CLI試験ではタイマーを止め、同じ状態遷移を明示的に進められる。
+        public void Poll()
         {
+            if (disposed) return;
             if (State == RecState.Idle)
             {
-                if (listener != null && listener.StartPressed.WaitOne(0))
-                {
-                    listener.StartPressed.Reset();
-                    StartRecording();
-                }
+                if (listener != null && listener.ConsumeStart()) StartRecording();
             }
             else if (State == RecState.Recording)
             {
-                if (Current.StopRequested.WaitOne(0)) Finish(true);
-                else if (Current.RestartRequested.WaitOne(0)) Finish(false);
+                if (activeSession.StopRequested) Finish(true);
+                else if (activeSession.RestartRequested) Finish(false);
             }
         }
-
         void StartRecording()
         {
             var s = settings();
+            int sessionGeneration = ++generation;
+            string targetNote = null;
+            IRecordingSession session = null;
+            try
+            {
+                session = dependencies.SessionFactory != null
+                    ? dependencies.SessionFactory(s, reuse)
+                    : CreateNativeSession(s, reuse, out targetNote);
+                if (session == null) throw new InvalidOperationException("記録エンジンを作成できませんでした。");
+                var rec = session.NativeRecorder;
+                // 記録エンジンの保存・取消の通知は別スレッドから来るので、UI スレッドに渡す
+                session.StepSaved += line => dispatch(() => { if (!disposed && generation == sessionGeneration) StepSaved?.Invoke(line, session.SessionDir); });
+                session.StepRemoved += seq => dispatch(() => { if (!disposed && generation == sessionGeneration) StepRemoved?.Invoke(seq); });
+                session.StepCaptured += (kind, pt) => dispatch(() => { if (!disposed && generation == sessionGeneration) StepCaptured?.Invoke(kind, pt); });
+
+                Directory.CreateDirectory(s.OutDir);
+                DisableStartHotkey();
+                LastSessionDir = session.Start(s.OutDir);
+                activeSession = session;
+                Current = rec;
+                SetState(RecState.Recording);
+                string how = rec != null && rec.PickTarget
+                    ? (rec.Mode == CaptureMode.Desktop ? "記録したいディスプレイに映っているウィンドウを 1 回クリックしてください。" : "記録したいウィンドウを 1 回クリックしてください。")
+                    : "ふだんどおりに操作してください。";
+                Notify?.Invoke("記録を始めました", (targetNote != null ? targetNote + "\n" : "") + how + "\n" + UiTexts.NotifySaveKey(s.Hotkeys), ToolTipIcon.Info);
+            }
+            catch (Exception ex)
+            {
+                try { session?.Stop(); } catch { }
+                generation++;
+                activeSession = null; Current = null;
+                EnableStartHotkey();
+                SetState(RecState.Idle);
+                Notify?.Invoke("記録を開始できませんでした", ex.Message, ToolTipIcon.Error);
+            }
+        }
+
+        IRecordingSession CreateNativeSession(AppSettings s, RecordingTargetReuse targetReuse, out string targetNote)
+        {
             var rules = new Dictionary<string, CaptureRule>();
             foreach (var k in CaptureRules.Order) rules[k] = s.Rule(k).Clone();
             var rec = new Recorder
@@ -123,70 +168,47 @@ namespace OperationRecorderApp
                 AfterMs = Math.Max(0, s.AfterMs),
                 Hotkeys = s.Hotkeys.Clone(),
             };
-            string targetNote = null;
+            targetNote = null;
             // 「0.2 秒前」の画面はリングから選ぶので、操作前の ms より長く画面を持っておく
             rec.RetainMs = Math.Max(1500, rec.BeforeMs + 1000);
 
-            try
+            if (targetReuse != null && ApplyReuse(rec, targetReuse)) { }
+            else if (rec.Mode == CaptureMode.Active || rec.Mode == CaptureMode.AllDesktops) { }
+            else if (s.Target == AppSettings.TargetForeground)
             {
-                if (reuse != null && ApplyReuse(rec, reuse)) { }
-                else if (rec.Mode == CaptureMode.Active || rec.Mode == CaptureMode.AllDesktops) { }
-                else if (s.Target == AppSettings.TargetForeground)
+                // 開始のキーを押したときに前面にあるウィンドウ(Desktop はそれが映っているディスプレイ)を対象にする
+                if (!rec.UseForegroundTarget())
                 {
-                    // 開始のキーを押したときに前面にあるウィンドウ(Desktop はそれが映っているディスプレイ)を対象にする
-                    if (!rec.UseForegroundTarget())
-                    {
-                        rec.PickTarget = true;
-                        targetNote = "前面に記録できるウィンドウが無かったので、最初にクリックしたものを対象にします。";
-                    }
+                    rec.PickTarget = true;
+                    targetNote = "前面に記録できるウィンドウが無かったので、最初にクリックしたものを対象にします。";
                 }
-                else if (rec.Mode == CaptureMode.Desktop)
-                {
-                    if (s.Target == AppSettings.TargetPick) rec.PickTarget = true;
-                    else
-                    {
-                        rec.TargetMonitor = Monitors.Get(s.MonitorIndex);
-                        if (rec.TargetMonitor == null) throw new InvalidOperationException("ディスプレイ " + s.MonitorIndex + " が見つかりません。設定し直してください。");
-                    }
-                }
+            }
+            else if (rec.Mode == CaptureMode.Desktop)
+            {
+                if (s.Target == AppSettings.TargetPick) rec.PickTarget = true;
                 else
                 {
-                    if (s.Target == AppSettings.TargetPick) rec.PickTarget = true;
-                    else
-                    {
-                        IntPtr h = string.IsNullOrEmpty(s.WindowTitle) ? IntPtr.Zero : WinUtil.FindWindowByTitle(s.WindowTitle);
-                        if (rec.Mode == CaptureMode.App && s.AllSameProcess && !string.IsNullOrEmpty(s.ProcessName)) rec.TargetProcessName = s.ProcessName;
-                        if (h == IntPtr.Zero && rec.TargetProcessName == null)
-                            throw new InvalidOperationException("「" + s.WindowTitle + "」というウィンドウが見つかりません。アプリを起動してから、一覧を更新して選び直してください。");
-                        rec.TargetHwnd = h;
-                    }
+                    rec.TargetMonitor = Monitors.Get(s.MonitorIndex);
+                    if (rec.TargetMonitor == null) throw new InvalidOperationException("ディスプレイ " + s.MonitorIndex + " が見つかりません。設定し直してください。");
                 }
-
-                // 記録エンジンの保存・取消の通知は別スレッドから来るので、UI スレッドに渡す
-                rec.StepSaved += line => ui.Post(_ => StepSaved?.Invoke(line, rec.SessionDir), null);
-                rec.StepRemoved += seq => ui.Post(_ => StepRemoved?.Invoke(seq), null);
-                rec.StepCaptured += (kind, pt) => ui.Post(_ => StepCaptured?.Invoke(kind, pt), null);
-
-                Directory.CreateDirectory(s.OutDir);
-                DisableStartHotkey();
-                LastSessionDir = rec.Start(s.OutDir);
-                Current = rec;
-                SetState(RecState.Recording);
-                string how = rec.PickTarget
-                    ? (rec.Mode == CaptureMode.Desktop ? "記録したいディスプレイに映っているウィンドウを 1 回クリックしてください。" : "記録したいウィンドウを 1 回クリックしてください。")
-                    : "ふだんどおりに操作してください。";
-                Notify?.Invoke("記録を始めました", (targetNote != null ? targetNote + "\n" : "") + how + "\n" + UiTexts.NotifySaveKey(s.Hotkeys), ToolTipIcon.Info);
             }
-            catch (Exception ex)
+            else
             {
-                Current = null;
-                EnableStartHotkey();
-                SetState(RecState.Idle);
-                Notify?.Invoke("記録を開始できませんでした", ex.Message, ToolTipIcon.Error);
+                if (s.Target == AppSettings.TargetPick) rec.PickTarget = true;
+                else
+                {
+                    IntPtr h = string.IsNullOrEmpty(s.WindowTitle) ? IntPtr.Zero : WinUtil.FindWindowByTitle(s.WindowTitle);
+                    if (rec.Mode == CaptureMode.App && s.AllSameProcess && !string.IsNullOrEmpty(s.ProcessName)) rec.TargetProcessName = s.ProcessName;
+                    if (h == IntPtr.Zero && rec.TargetProcessName == null)
+                        throw new InvalidOperationException("「" + s.WindowTitle + "」というウィンドウが見つかりません。アプリを起動してから、一覧を更新して選び直してください。");
+                    rec.TargetHwnd = h;
+                }
             }
+
+            return new NativeRecordingSession(rec);
         }
 
-        static bool ApplyReuse(Recorder rec, Reuse r)
+        static bool ApplyReuse(Recorder rec, RecordingTargetReuse r)
         {
             if (rec.Mode == CaptureMode.Desktop && r.MonitorIndex > 0)
             {
@@ -233,56 +255,51 @@ namespace OperationRecorderApp
         // save = true: 保存して md / HTML を出す(F12) / false: 捨てて待機に戻る。次の F9 で同じ対象を記録する(F11)
         void Finish(bool save)
         {
-            var rec = Current;
+            var session = activeSession;
             var s = settings();
             SetState(RecState.Saving);
-            Task.Run(() =>
+            background(() =>
             {
-                rec.Stop();
                 var mds = new List<string>();
                 var htmls = new List<string>();
                 string error = null;
-                if (!save)
+                bool stopped = false;
+                try
                 {
-                    try { Directory.Delete(rec.SessionDir, true); } catch { }
+                    session.Stop(); stopped = true;
+                    if (!save)
+                    {
+                        if (dependencies.DeleteDirectory != null) dependencies.DeleteDirectory(session.SessionDir);
+                        else Directory.Delete(session.SessionDir, true);
+                    }
+                    else if (session.SavedCount > 0 && s.Templates.Count > 0 && (s.OutputMd || s.OutputHtml))
+                    {
+                        if (dependencies.Export != null) dependencies.Export(s, session.SessionDir, mds, htmls);
+                        else Export(s, session.SessionDir, s.Templates, s.ReportDir, s.EmbedImages, s.OutputMd, s.OutputHtml, null, null, mds, htmls);
+                    }
                 }
-                else if (rec.SavedCount > 0 && s.Templates.Count > 0 && (s.OutputMd || s.OutputHtml))
+                catch (Exception ex) { error = ex.Message; }
+                dispatch(() =>
                 {
-                    try { Export(s, rec.SessionDir, s.Templates, s.ReportDir, s.EmbedImages, s.OutputMd, s.OutputHtml, null, null, mds, htmls); }
-                    catch (Exception ex) { error = ex.Message; }
-                }
-                return (mds, htmls, error);
-            }).ContinueWith(t =>
-            {
-                var (mds, htmls, error) = t.Result;
-                reuse = new Reuse
-                {
-                    Hwnd = rec.TargetHwnd,
-                    ProcessName = rec.TargetProcessName,
-                    MonitorIndex = rec.TargetMonitor != null ? rec.TargetMonitor.Index : 0,
-                };
-                Current = null;
-                EnableStartHotkey();
-                if (!save)
-                {
-                    // 取り直し: 待機に戻る。次に開始のキーを押すと、同じ対象で記録を始める
-                    SetState(RecState.Idle);
-                    Notify?.Invoke("記録を取り消しました", UiTexts.NotifyRestarted(s.Hotkeys), ToolTipIcon.Info);
-                    return;
-                }
-                reuse = null;
-                SetState(RecState.Idle);
-                if (error != null) Notify?.Invoke("報告書を出力できませんでした", error, ToolTipIcon.Error);
-                else if (rec.SavedCount == 0) Notify?.Invoke("記録を保存しました", "操作が 0 件だったので、報告書は出力していません。", ToolTipIcon.Warning);
-                else Notify?.Invoke("記録を保存しました", rec.SavedCount + " 件の操作を保存しました。" + (mds.Count + htmls.Count > 0 ? "報告書を出力しました。" : ""), ToolTipIcon.Info);
-                Saved?.Invoke(rec.SessionDir, mds, htmls);
-            }, TaskScheduler.FromCurrentSynchronizationContext());
+                    if (disposed) return;
+                    reuse = !save && stopped ? session.Target : null;
+                    generation++;
+                    activeSession = null; Current = null;
+                    EnableStartHotkey(); SetState(RecState.Idle);
+                    if (error != null) Notify?.Invoke(save ? "記録の保存・出力に失敗しました" : "記録の取り消しに失敗しました", error, ToolTipIcon.Error);
+                    else if (!save) Notify?.Invoke("記録を取り消しました", UiTexts.NotifyRestarted(s.Hotkeys), ToolTipIcon.Info);
+                    else if (session.SavedCount == 0) Notify?.Invoke("記録を保存しました", "操作が 0 件だったので、報告書は出力していません。", ToolTipIcon.Warning);
+                    else Notify?.Invoke("記録を保存しました", session.SavedCount + " 件の操作を保存しました。" + (mds.Count + htmls.Count > 0 ? "報告書を出力しました。" : ""), ToolTipIcon.Info);
+                    if (save && stopped) Saved?.Invoke(session.SessionDir, mds, htmls);
+                });
+            });
         }
-
         public void Dispose()
         {
-            timer.Stop();
-            if (Current != null) { try { Current.Stop(); } catch { } }
+            if (disposed) return;
+            disposed = true; generation++; timer.Stop(); timer.Dispose();
+            if (activeSession != null) { try { activeSession.Stop(); } catch { } }
+            activeSession = null; Current = null; State = RecState.Idle;
             DisableStartHotkey();
         }
     }

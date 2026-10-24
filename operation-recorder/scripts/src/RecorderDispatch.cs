@@ -319,7 +319,7 @@ namespace OpRec
             // Win+Shift+S(Windows の切り取り)は、切り取り画面が出る前の、押した瞬間の画面をキャプチャする
             if (r.Win && r.Shift && !r.Ctrl && !r.Alt && vk == 0x53)
             {
-                TakeSnapshot(r.Ts, r.Fg, CaptureRules.WinShiftS, "Win+Shift+S");
+                DispatchSnapshot(r.Ts, r.Fg, SnapshotTrigger.WindowsSnip);
                 return;
             }
             var krule = Rule(CaptureRules.KeyGroupOf(vk, r.Ctrl, r.Alt, r.Win));
@@ -575,8 +575,15 @@ namespace OpRec
 
         void OnSnapshot(Raw r)
         {
+            DispatchSnapshot(r.Ts, r.Fg, (SnapshotTrigger)r.Vk);
+        }
+
+        void DispatchSnapshot(long timestamp, IntPtr foreground, SnapshotTrigger trigger)
+        {
             if (!TargetReady.WaitOne(0)) return;
-            TakeSnapshot(r.Ts, r.Fg, CaptureRules.CtrlShift, "Ctrl+Shift");
+            bool windowsSnip = trigger == SnapshotTrigger.WindowsSnip;
+            TakeSnapshot(timestamp, foreground, windowsSnip ? CaptureRules.WinShiftS : CaptureRules.CtrlShift,
+                windowsSnip ? "Win+Shift+S" : "Ctrl+Shift");
         }
 
         // ts の時点の画面を 1 つの手順(kind = capture)にする。操作前・操作後は同じ画像だが、後で編集できるよう別ファイルに保存する

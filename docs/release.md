@@ -4,7 +4,7 @@
 
 ## 生成と検証
 
-1. 子の変更・版を確認し、`dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj -c Release`を実行します。
+1. 子の変更・版を確認し、`pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite Core`を実行します。実入力・撮影の確認は`-Suite Desktop`を明示し、環境不足の`blocked`を合格と区別します。詳細は[自動テスト](testing.md)を参照してください。
 2. 子のコミットと親のGitリンクを確定し、親の採用ソースだけを隔離してパッケージを生成します。
 
 ```powershell

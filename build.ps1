@@ -10,7 +10,8 @@
 記録エンジン・報告書作成・テンプレート・マニュアルは、子内の operation-recorder
 (Claude のスキル)のファイルをそのまま取り込む(-SkillDir で場所を変えられる)。
 
-配布用を作る前に、自動テスト(OperationRecorderApp.Tests。画面は操作しない)を実行し、失敗したら止まる。
+配布用を作る前にCoreの自動テストを実行し、失敗したら止まる。
+実入力・撮影はdev/scripts/Test-OperationRecorder.ps1 -Suite Desktopを明示して別に検証する。
 
 .EXAMPLE
 pwsh -File build.ps1
@@ -26,7 +27,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
 if (-not $SkipTests) {
-    dotnet test (Join-Path $PSScriptRoot 'OperationRecorderApp.Tests/OperationRecorderApp.Tests.csproj') -c Release -nologo -p:SkillDir="$SkillDir"
+    dotnet test (Join-Path $PSScriptRoot 'OperationRecorderApp.Tests/OperationRecorderApp.Tests.csproj') -c Release -nologo -p:SkillDir="$SkillDir" --filter 'Category!=Desktop'
     if ($LASTEXITCODE -ne 0) { throw "自動テストが失敗しました(終了コード $LASTEXITCODE)。配布用は作っていません" }
 }
 

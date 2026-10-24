@@ -2,7 +2,7 @@
 
 PC の操作を記録して、スクリーンショット付きの操作手順書(md)を作るデスクトップアプリ。
 このリポジトリ内の `operation-recorder/` にある記録エンジンとテンプレートを使用する。
-KotorinToysのコレクションからインストール・起動・表示・停止ができる。開発ソースは0.1.3。公開済み0.1.2は未署名の開発版（prerelease）として提供しており、0.1.3の配布物はまだ公開していない。
+KotorinToysのコレクションからインストール・起動・表示・停止ができる。開発ソースは0.1.4。公開済み0.1.2は未署名の開発版（prerelease）として提供しており、0.1.4の配布物はまだ公開していない。
 
 - KotorinToysからの起動と管理: [連携ガイド](docs/kotorintoys-integration.md)
 - 使い方(利用者向け): [操作記録マニュアル](operation-recorder/MANUAL.md)
@@ -10,6 +10,7 @@ KotorinToysのコレクションからインストール・起動・表示・停
 - 本体対応インストーラーの入手: [GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)。KotorinToysからは公開カタログを更新し、「インストール」を選ぶ。
 - 配布に含む第三者ソフトウェア: [配布通知](THIRD-PARTY-NOTICES.md)
 - インストーラー作成・公開の手順: [リリース手順](docs/release.md)
+- 全機能のコマンドライン試験とケース一覧: [自動テスト](docs/testing.md)
 
 ## 動画ではなく静止画で記録する理由
 
@@ -49,6 +50,9 @@ KotorinToysのコレクションからインストール・起動・表示・停
 | `MainForm.HotkeysTab.cs` | 「ショートカットキー」タブ(操作キーの変更。判定は記録エンジンの `HotkeySet.Validate`) |
 | `MainForm*.cs` | 画面(記録する / 記録一覧・md 出力 / 使い方 / 設定)とタスクトレイ |
 | `RecordingController.cs` | 記録 1 件の開始〜保存(ホットキー待ち・保存・md 出力・取り直し) |
+| `RecordingRuntime.cs` / `AppInteraction.cs` | 記録OS境界と確認・ファイル選択・外部起動等の差替え。自動試験から通常環境を変更しない |
+| `AutomationCommand.cs` / `BasicAutomation.cs` / `CompositionAutomation.cs` | 実EXEからJSONシナリオを実行し、共通サービスと編集セッションの結果・終了コードを返す |
+| `CompositionEditingSession.cs` | GUIとCLI共通の合成命令、入力中文章、Undo/Redo、途中保存と閉じる判断 |
 | `AppSettings.cs` | 設定(`%APPDATA%\OperationRecorder\settings.json`)と、前の版の設定からの移行(`FromJson`) |
 | `ShortcutInstaller.cs` | スタートメニューへの登録・解除(このユーザーだけ) |
 | `AppIcons.cs` / `Assets\app.ico` | アイコン |
@@ -82,11 +86,17 @@ dotnet build .\OperationRecorderApp.csproj -c Debug --artifacts-path .\artifacts
 
 ```powershell
 cd C:\develop\KotorinToys\tools\OperationRecorder
-dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj -c Release
+pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite Core
 ```
 
+0.1.4から、全機能を単体/API・STA実フォーム・実EXE・専用別プロセスのOS fixtureへ分けてコマンドから試験する。
+`-Suite Desktop`で実入力・撮影を、`-Suite All`で両方を実行できる。Computer Useは不要。
+通常の常駐・設定・記録を隔離し、環境不足は`blocked`と非0終了で知らせる。
+結果は対象版の`dev/history/vX.Y.Z/logs/`へTRXと`summary.json`で残す。
+詳細な実行・再実行手順、確認/OS副作用の検証範囲、全機能のケース対応は[自動テスト](docs/testing.md)を参照。
+
 `OperationRecorderApp.Tests`(xUnit)。テスト用の記録フォルダ(画像はその場で描く)を一時フォルダに作り、
-画面を出さずに次を確かめる。新しい機能は、判断の部分を画面のコードから分けてここでテストできるようにし、
+共通サービスと実フォームから次を確かめる。新しい機能は、判断の部分を画面のコードから分けてここでテストできるようにし、
 画面(`MainForm*.cs`)は値を受け渡すだけにする。
 
 | テスト | 確かめること |
