@@ -12,6 +12,8 @@ Add-Type -Path $src -ReferencedAssemblies @(
     # .NET 9 以降の System.Drawing は内部インターフェース(IPointer 等)をここに持つ。無いと CS0012 になる
     'System.Private.Windows.Core', 'System.Private.Windows.GdiPlus',
     'System.Text.Json', 'System.Text.Encodings.Web',
+    # 合成作業のスナップショット検証で使うSHA-256。CLIも同じエンジン全体をコンパイルする。
+    [System.Security.Cryptography.SHA256].Assembly.Location,
     'System.Collections', 'System.Collections.Concurrent', 'System.Linq',
     'System.Diagnostics.Process', 'System.Diagnostics.FileVersionInfo', 'System.ComponentModel.Primitives',
     'System.Console', 'System.Threading', 'System.Threading.Thread',

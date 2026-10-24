@@ -30,7 +30,7 @@ namespace OperationRecorderApp
         {
             get
             {
-                var session = SelectedSession;
+                var session = displayedSession ?? SelectedSession;
                 var step = SelectedStep;
                 return session != null && (txtSesCaption.Text.Trim() != (session.Caption ?? "").Trim() ||
                     txtSesDescription.Text.Trim() != (session.Description ?? "").Trim()) ||
@@ -45,10 +45,12 @@ namespace OperationRecorderApp
             public int Steps;
             public List<string> Outputs = new List<string>();   // 記録フォルダにある md / HTML
         }
+        SessionItem displayedSession;
+        bool restoringSessionSelection, refreshingSessionList;
 
         void BuildSessionsTab()
         {
-            var top = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = false };
+            var top = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true };
             top.Controls.Add(new Label { Text = "記録を探すフォルダ:", AutoSize = true, Margin = new Padding(3, 8, 3, 3) });
             txtRecordsDir = new TextBox { Width = 520, Text = settings.OutDir };
             var btnBrowse = BrowseButton(txtRecordsDir, "記録が保存されているフォルダ");
@@ -56,6 +58,11 @@ namespace OperationRecorderApp
             btnReload.Click += (s, e) => RefreshSessions();
             txtRecordsDir.Leave += (s, e) => RefreshSessions();
             top.Controls.AddRange(new Control[] { txtRecordsDir, btnBrowse, btnReload });
+            btnMerge = new Button { Text = "選択した記録を合成…", Name = "composeSessions", AutoSize = true, Enabled = false };
+            btnMerge.Click += (s, e) => OpenMerge();
+            var resume = new Button { Text = "合成作業を再開…", Name = "resumeComposition", AutoSize = true };
+            resume.Click += (s, e) => ResumeMerge();
+            top.Controls.AddRange(new Control[] { btnMerge, resume });
 
             var split = new SplitContainer { Dock = DockStyle.Fill, FixedPanel = FixedPanel.Panel1 };
             pageSessions.Controls.Add(split);
@@ -70,7 +77,7 @@ namespace OperationRecorderApp
             };
 
             // 左: 記録の一覧
-            lvSessions = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, MultiSelect = false, HideSelection = false };
+            lvSessions = new ListView { Name = "lvSessions", Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, MultiSelect = true, HideSelection = false };
             lvSessions.Columns.Add("記録日時", 145);
             lvSessions.Columns.Add("名前", 100);
             lvSessions.Columns.Add("手順", 45, HorizontalAlignment.Right);
@@ -124,9 +131,6 @@ namespace OperationRecorderApp
             btnOpenSaveFolder = new Button { Text = "保存フォルダを開く", AutoSize = true };
             btnOpenSaveFolder.Click += (s, e) => { if (SelectedSession != null) OpenPath(SaveFolderOf(SelectedSession)); };
             info.Controls.Add(btnOpenSaveFolder);
-            btnMerge = new Button { Text = "ほかの記録と合成…", AutoSize = true, Margin = new Padding(3, 12, 3, 3) };
-            btnMerge.Click += (s, e) => OpenMerge();
-            info.Controls.Add(btnMerge);
             btnDeleteSession = new Button { Text = "この記録を削除(ごみ箱へ)", AutoSize = true, ForeColor = Color.DarkRed, Margin = new Padding(3, 16, 3, 3) };
             btnDeleteSession.Click += (s, e) => DeleteSelectedSession();
             info.Controls.Add(btnDeleteSession);
@@ -191,15 +195,16 @@ namespace OperationRecorderApp
             EnableStepEditor(false);
         }
 
-        SessionItem SelectedSession => lvSessions.SelectedItems.Count > 0 ? (SessionItem)lvSessions.SelectedItems[0].Tag : null;
+        SessionItem SelectedSession => lvSessions.SelectedItems.Count == 1 ? (SessionItem)lvSessions.SelectedItems[0].Tag : null;
 
         ReportGenerator.StepInfo SelectedStep =>
             lbSteps.SelectedIndex >= 0 && lbSteps.SelectedIndex < currentSteps.Count ? currentSteps[lbSteps.SelectedIndex] : null;
 
         void EnableSessionButtons(bool on)
         {
-            foreach (var c in new Control[] { txtSesCaption, txtSesDescription, btnSaveMeta, btnOutHtml, btnOutMd, btnOpenSaveFolder, btnMerge, btnDeleteSession })
+            foreach (var c in new Control[] { txtSesCaption, txtSesDescription, btnSaveMeta, btnOutHtml, btnOutMd, btnOpenSaveFolder, btnDeleteSession })
                 c.Enabled = on;
+            btnMerge.Enabled = lvSessions.SelectedItems.Count > 0;
         }
 
         void EnableStepEditor(bool on)
@@ -210,8 +215,16 @@ namespace OperationRecorderApp
 
         void RefreshSessions(string select = null)
         {
+            if (HasUnsavedSessionEdits)
+            {
+                statusLabel.Text = "未保存の名前・解説・手順文章を保存してから一覧を更新してください。";
+                return;
+            }
             string keep = select ?? SelectedSession?.Dir;
             lvSessions.BeginUpdate();
+            refreshingSessionList = true;
+            try
+            {
             lvSessions.Items.Clear();
             string root = txtRecordsDir.Text.Trim();
             if (Directory.Exists(root))
@@ -225,9 +238,10 @@ namespace OperationRecorderApp
                     if (keep != null && string.Equals(it.Dir, keep, StringComparison.OrdinalIgnoreCase)) lvi.Selected = true;
                 }
             }
-            lvSessions.EndUpdate();
+            }
+            finally { refreshingSessionList = false; lvSessions.EndUpdate(); }
             if (lvSessions.SelectedItems.Count > 0) lvSessions.SelectedItems[0].EnsureVisible();
-            else ClearSessionDetail();
+            LoadSelectedSession();
         }
 
         static SessionItem ReadSession(string dir)
@@ -259,7 +273,10 @@ namespace OperationRecorderApp
 
         void ClearSessionDetail()
         {
-            lblSesInfo.Text = "左の一覧から記録を選んでください。";
+            displayedSession = null;
+            lblSesInfo.Text = lvSessions.SelectedItems.Count > 1
+                ? lvSessions.SelectedItems.Count + "件の記録を選択中です。「選択した記録を合成…」でまとめられます。個別の編集・削除・出力は1件を選んでください。"
+                : "左の一覧から記録を選んでください。Ctrl / Shift キーで複数選択して合成できます。";
             txtSesCaption.Text = txtSesDescription.Text = "";
             lbSteps.Items.Clear();
             SetPictures(null, null);
@@ -270,8 +287,23 @@ namespace OperationRecorderApp
 
         void LoadSelectedSession()
         {
+            if (restoringSessionSelection || refreshingSessionList) return;
             var it = SelectedSession;
+            if (displayedSession != null && it?.Dir != displayedSession.Dir && HasUnsavedSessionEdits)
+            {
+                // 複数選択へ移ると詳細欄が消えるため、先に未保存の文章を保護する。
+                restoringSessionSelection = true;
+                try
+                {
+                    foreach (ListViewItem item in lvSessions.Items)
+                        item.Selected = string.Equals(((SessionItem)item.Tag).Dir, displayedSession.Dir, StringComparison.OrdinalIgnoreCase);
+                }
+                finally { restoringSessionSelection = false; }
+                ShowInfo("編集中の名前・解説・手順文章を保存してから、ほかの記録を選択してください。");
+                return;
+            }
             if (it == null) { ClearSessionDetail(); return; }
+            displayedSession = it;
             EnableSessionButtons(true);
             lblSesInfo.Text = "撮影モード: " + it.Mode + " / 対象: " + it.Target;   // 日時・名前・手順数は左の一覧で分かるので出さない
             txtSesCaption.Text = it.Caption;
@@ -378,20 +410,43 @@ namespace OperationRecorderApp
         }
 
         // テンプレートのエディタ。選んでいる記録があれば、それに当てはめてプレビューできる
-        // 選んでいる記録(A)に、取り直した記録(B)を合成して、新しい記録を作る
+        // 複数の原記録は変更せず、スナップショットから新しい完成記録を作る。
         void OpenMerge()
         {
-            var it = SelectedSession;
-            if (it == null) return;
-            var others = lvSessions.Items.Cast<ListViewItem>().Select(i => (SessionItem)i.Tag).Where(o => o.Dir != it.Dir)
-                .Select(o => (o.Dir, o.Start + "  " + o.Caption + "(" + o.Steps + " 手順)")).ToList();
-            if (others.Count == 0) { ShowInfo("合成する相手の記録がありません。同じフォルダに、取り直した記録を保存してください。"); return; }
-            using (var f = new MergeForm(it.Dir, others))
-                if (f.ShowDialog(this) == DialogResult.OK && f.MergedDir != null)
+            var sources = lvSessions.SelectedItems.Cast<ListViewItem>().Select(i => (SessionItem)i.Tag)
+                .OrderBy(item => item.Start, StringComparer.Ordinal).ThenBy(item => item.Dir, StringComparer.OrdinalIgnoreCase)
+                .Select(item => item.Dir).ToArray();
+            if (sources.Length == 0) return;
+            if (HasUnsavedSessionEdits) { ShowInfo("未保存の名前・解説・手順文章があります。先に記録へ保存してから合成してください。"); return; }
+            try { using (var form = new MergeForm(sources, Path.GetFullPath(txtRecordsDir.Text.Trim()))) ShowComposition(form); }
+            catch (Exception ex) { ShowWarning("合成を開けませんでした: " + ex.Message); }
+        }
+
+        void ResumeMerge()
+        {
+            if (HasUnsavedSessionEdits) { ShowInfo("未保存の名前・解説・手順文章があります。先に記録へ保存してから合成を再開してください。"); return; }
+            try
+            {
+                string root = Path.GetFullPath(txtRecordsDir.Text.Trim());
+                using (var dialog = new OpenFileDialog { Title = "保存した合成作業を選択", Filter = "合成作業 (draft.json)|draft.json", CheckFileExists = true })
                 {
-                    RefreshSessions(f.MergedDir);
-                    statusLabel.Text = "合成した記録を作りました: " + Path.GetFileName(f.MergedDir);
+                    string drafts = Path.Combine(root, ".compositions");
+                    dialog.InitialDirectory = Directory.Exists(drafts) ? drafts : root;
+                    if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                    using (var form = MergeForm.Resume(dialog.FileName, root)) ShowComposition(form);
                 }
+            }
+            catch (Exception ex) { ShowWarning("合成作業を再開できませんでした: " + ex.Message); }
+        }
+
+        void ShowComposition(MergeForm form)
+        {
+            // モーダルで開き、本体の管理停止から未完了の編集を保護する。
+            if (form.ShowDialog(this) == DialogResult.OK && form.MergedDir != null)
+            {
+                RefreshSessions(form.MergedDir);
+                statusLabel.Text = "合成した記録を作りました: " + Path.GetFileName(form.MergedDir);
+            }
         }
 
         void OpenTemplateEditor()
@@ -415,6 +470,8 @@ namespace OperationRecorderApp
                 j["caption"] = txtSesCaption.Text.Trim();
                 j["description"] = txtSesDescription.Text.Trim();
                 File.WriteAllText(jsonPath, j.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }), new UTF8Encoding(false));
+                it.Caption = txtSesCaption.Text.Trim();
+                it.Description = txtSesDescription.Text.Trim();
                 RefreshSessions(it.Dir);
                 statusLabel.Text = "名前・解説を保存しました: " + it.Name;
             }
@@ -455,6 +512,9 @@ namespace OperationRecorderApp
             {
                 SetPictures(null, null);
                 RecycleBin.SendDirectory(it.Dir);
+                displayedSession = null;
+                foreach (ListViewItem item in lvSessions.SelectedItems.Cast<ListViewItem>().ToArray()) item.Selected = false;
+                ClearSessionDetail();
                 RefreshSessions();
             }
             catch (Exception ex) { ShowWarning("削除できませんでした: " + ex.Message); }

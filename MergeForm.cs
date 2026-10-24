@@ -3,144 +3,192 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text.Json.Nodes;
 using System.Windows.Forms;
 using OpRec;
 
 namespace OperationRecorderApp
 {
-    // 2 つの記録を合成する画面(記録一覧の「ほかの記録と合成…」から開く)。
-    // 突き合わせとまとめ方の案は SessionMerger.Plan、合成は SessionMerger.Merge にあり、ここは受け渡しだけ
-    public sealed class MergeForm : Form
+    // 元の記録を読むだけにし、完成順と採用元は独立した合成作業へ保存する。
+    public sealed partial class MergeForm : Form
     {
-        readonly string dirA;
-        readonly ComboBox cmbB = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 520 };
-        readonly RadioButton rbPreferB = new RadioButton { Text = "取り直した記録(B)を採る", AutoSize = true, Checked = true };
-        readonly RadioButton rbPreferA = new RadioButton { Text = "前の記録(A)を採る", AutoSize = true };
-        readonly ListView lv = new ListView { Dock = DockStyle.Fill, View = View.Details, CheckBoxes = true, FullRowSelect = true, HideSelection = false };
-        readonly Label lblSummary = new Label { AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
-        List<JsonObject> a = new List<JsonObject>(), b = new List<JsonObject>();
-        List<SessionMerger.Row> plan = new List<SessionMerger.Row>();
-        bool filling;
+        readonly CompositionProject project;
+        readonly string outputRoot;
+        readonly Action<Exception> errorReporter;
+        readonly Stack<string> undo = new Stack<string>(), redo = new Stack<string>();
+        string savedState, editorRowId;
+        bool filling, busy, finished, editorDirty, disposing, refreshingNumbers, numberRefreshQueued;
 
-        public string MergedDir { get; private set; }   // 作った記録フォルダ(作らなかったら null)
+        readonly ComboBox sources = Combo("compositionSources");
+        readonly CheckBox suggest = new CheckBox { Name = "compositionSuggest", Text = "重複候補を推定して追加", Checked = true, AutoSize = true };
+        readonly ListView sourceSteps = List("compositionSourceSteps", false);
+        readonly ListView rows = List("compositionRows", true);
+        readonly TextBox caption = new TextBox { Name = "compositionCaption", Dock = DockStyle.Fill };
+        readonly TextBox description = new TextBox { Name = "compositionDescription", Dock = DockStyle.Fill };
+        readonly TextBox sourcePath = new TextBox { Name = "compositionSourcePath", ReadOnly = true, Dock = DockStyle.Fill };
+        readonly ComboBox candidate = Combo("compositionCandidate"), comparison = Combo("compositionComparison");
+        readonly TextBox headline = new TextBox { Name = "compositionHeadline", Dock = DockStyle.Fill };
+        readonly TextBox body = new TextBox { Name = "compositionBody", Multiline = true, AcceptsReturn = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill };
+        readonly Label summary = new Label { Name = "compositionSummary", AutoSize = true, Padding = new Padding(3, 6, 3, 3) };
+        readonly Label saveState = new Label { Name = "compositionSaveState", AutoSize = true, Padding = new Padding(3, 6, 3, 3) };
+        readonly Label draftPath = new Label { Name = "compositionDraftPath", AutoSize = true, MaximumSize = new Size(1250, 0), ForeColor = SystemColors.GrayText };
+        readonly Label selectedText = new Label { Name = "compositionSelectedText", Dock = DockStyle.Fill, AutoEllipsis = true };
+        readonly TextBox comparedText = new TextBox { Name = "compositionComparedText", Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical };
+        readonly PictureBox before = Picture("compositionBefore"), after = Picture("compositionAfter");
+        readonly PictureBox compareBefore = Picture("compositionCompareBefore"), compareAfter = Picture("compositionCompareAfter");
+        readonly PictureBox chosenBefore = Picture("compositionChosenBefore"), chosenAfter = Picture("compositionChosenAfter");
+        readonly ToolTip tips = new ToolTip();
+        readonly List<Control> mutating = new List<Control>();
+        Button undoButton, redoButton, finishButton;
 
-        sealed class SessionChoice { public string Dir, Text; public override string ToString() => Text; }
+        public string MergedDir { get; private set; }
+        public string DraftFile => project.DraftFile;
+        public bool HasUnsavedChanges => editorDirty || project.CaptureState() != savedState;
 
+        // 旧2記録の入口を維持する。未編集で閉じるだけなら保存確認を出さない。
         public MergeForm(string sessionDirA, IEnumerable<(string Dir, string Text)> others)
+            : this(new[] { sessionDirA }.Concat((others ?? Enumerable.Empty<(string Dir, string Text)>()).Take(1).Select(item => item.Dir)),
+                Path.GetDirectoryName(sessionDirA.TrimEnd('\\', '/'))) { }
+
+        public MergeForm(IEnumerable<string> sessionDirectories, string outputRoot, Action<Exception> errorReporter = null)
+            : this(CompositionProject.Create(sessionDirectories, Path.Combine(Path.GetFullPath(outputRoot), ".compositions")), outputRoot, errorReporter) { }
+
+        public static MergeForm Resume(string draftFile, string outputRoot, Action<Exception> errorReporter = null) => new MergeForm(CompositionProject.Open(draftFile), outputRoot, errorReporter);
+
+        MergeForm(CompositionProject project, string outputRoot, Action<Exception> errorReporter = null)
         {
-            dirA = sessionDirA;
+            this.project = project;
+            this.outputRoot = Path.GetFullPath(outputRoot);
+            this.errorReporter = errorReporter;
             Text = WindowTitle.Create("記録の合成");
+            Icon = (Icon)AppIcons.Idle.Clone();
             Font = new Font("Yu Gothic UI", 9.5f);
-            Size = new Size(1100, 760);
-            MinimumSize = new Size(800, 500);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            MinimumSize = new Size(1100, 720);
+            var area = Screen.FromPoint(Cursor.Position).WorkingArea;
+            Size = new Size(Math.Min(1500, area.Width), Math.Min(920, area.Height));
             StartPosition = FormStartPosition.CenterParent;
-            ShowIcon = false;
-
-            var top = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Padding = new Padding(8) };
-            top.Controls.Add(new Label { Text = "前の記録(A)", AutoSize = true, Margin = new Padding(3, 6, 12, 3) }, 0, 0);
-            top.Controls.Add(new Label { Text = Path.GetFileName(dirA), AutoSize = true, Margin = new Padding(3, 6, 3, 3) }, 1, 0);
-            top.Controls.Add(new Label { Text = "取り直した記録(B)", AutoSize = true, Margin = new Padding(3, 6, 12, 3) }, 0, 1);
-            top.Controls.Add(cmbB, 1, 1);
-            top.Controls.Add(new Label { Text = "両方にある手順は", AutoSize = true, Margin = new Padding(3, 6, 12, 3) }, 0, 2);
-            var prefer = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-            prefer.Controls.AddRange(new Control[] { rbPreferB, rbPreferA });
-            top.Controls.Add(prefer, 1, 2);
-
-            lv.Columns.Add("入れる", 60);
-            lv.Columns.Add("どちらの記録", 110);
-            lv.Columns.Add("手順", 640);
-            lv.Columns.Add("突き合わせ", 200);
-
-            var bottom = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(8) };
-            var btnMerge = new Button { Text = "合成して新しい記録を作る", AutoSize = true, Font = new Font("Yu Gothic UI", 10f, FontStyle.Bold) };
-            var btnCancel = new Button { Text = "閉じる", AutoSize = true, DialogResult = DialogResult.Cancel };
-            bottom.Controls.AddRange(new Control[] { btnMerge, btnCancel, lblSummary });
-
-            Controls.Add(lv);
-            Controls.Add(top);
-            Controls.Add(bottom);
-            CancelButton = btnCancel;
-
-            foreach (var o in others) cmbB.Items.Add(new SessionChoice { Dir = o.Dir, Text = o.Text });
-            cmbB.SelectedIndexChanged += (s, e) => LoadB();
-            rbPreferA.CheckedChanged += (s, e) => { if (!filling) Rebuild(); };
-            // 一覧が初めて表示されるときにも、チェックの状態を写すために呼ばれる(そのときは項目を作っている途中なので、全体は見ない)
-            lv.ItemChecked += (s, e) =>
-            {
-                if (filling || !(e.Item?.Tag is SessionMerger.Row r)) return;
-                r.Include = e.Item.Checked;
-                e.Item.ForeColor = r.Include ? SystemColors.WindowText : Color.Gray;
-                ShowSummary();
-            };
-            // 両方にある手順は、ダブルクリックで A / B を切り替える
-            lv.DoubleClick += (s, e) =>
-            {
-                if (lv.SelectedItems.Count == 0 || !(lv.SelectedItems[0].Tag is SessionMerger.Row r) || r.Kind != SessionMerger.RowKind.Both) return;
-                r.UseA = !r.UseA;
-                Fill();
-            };
-            btnMerge.Click += (s, e) => DoMerge();
-
-            a = SessionMerger.LoadEvents(dirA);
-            if (cmbB.Items.Count > 0) cmbB.SelectedIndex = 0;
+            BuildLayout();
+            WireEvents();
+            savedState = project.CaptureState();
+            FillAll();
         }
 
-        void LoadB()
+        static ComboBox Combo(string name) => new ComboBox { Name = name, DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
+        static ListView List(string name, bool check) => new CompositionListView
         {
-            var c = cmbB.SelectedItem as SessionChoice;
-            b = c == null ? new List<JsonObject>() : SessionMerger.LoadEvents(c.Dir);
-            Rebuild();
-        }
-
-        void Rebuild()
+            Name = name, Dock = DockStyle.Fill, View = View.Details, CheckBoxes = check,
+            MultiSelect = true, FullRowSelect = true, HideSelection = false, ShowItemToolTips = true
+        };
+        static PictureBox Picture(string name) => new PictureBox
         {
-            plan = SessionMerger.Plan(a, b, rbPreferA.Checked);
-            Fill();
-        }
-
-        void Fill()
+            Name = name, Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom,
+            BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(235, 235, 235)
+        };
+        // ハンドル生成・再生成のチェック同期は利用者の採否変更として扱わない。
+        // ListView内部の項目対応表が未完成な間にはItemCheckedも発火する。
+        sealed class CompositionListView : ListView
         {
-            filling = true;
-            lv.BeginUpdate();
-            lv.Items.Clear();
-            foreach (var r in plan)
+            public bool SynchronizingNativeState { get; private set; }
+            protected override void OnHandleCreated(EventArgs e)
             {
-                bool fromA = r.Kind == SessionMerger.RowKind.OnlyA || (r.Kind == SessionMerger.RowKind.Both && r.UseA);
-                var e = fromA ? a[r.A] : b[r.B];
-                string head = ReportGenerator.HeadlineFromJson(e.ToJsonString());
-                if (string.IsNullOrEmpty(head)) head = "(画面キャプチャ)";
-                string which = r.Kind == SessionMerger.RowKind.Both ? (r.UseA ? "A(両方にある)" : "B(両方にある)") : r.Kind == SessionMerger.RowKind.OnlyA ? "A だけ" : "B だけ";
-                string match = r.Kind == SessionMerger.RowKind.Both ? "A " + (r.A + 1) + " = B " + (r.B + 1) + "(ダブルクリックで切替)"
-                             : r.Kind == SessionMerger.RowKind.OnlyA ? "A " + (r.A + 1) : "B " + (r.B + 1);
-                var item = new ListViewItem(new[] { "", which, head, match }) { Checked = r.Include, Tag = r };
-                if (!r.Include) item.ForeColor = Color.Gray;
-                lv.Items.Add(item);
+                bool previous = SynchronizingNativeState;
+                SynchronizingNativeState = true;
+                try { base.OnHandleCreated(e); }
+                finally { SynchronizingNativeState = previous; }
             }
-            lv.EndUpdate();
-            filling = false;
-            ShowSummary();
-        }
-
-        void ShowSummary()
-        {
-            int n = plan.Count(r => r.Include);
-            lblSummary.Text = "合成すると " + n + " 手順になります(A " + a.Count + " 手順 / B " + b.Count + " 手順、両方にある手順 " + plan.Count(r => r.Kind == SessionMerger.RowKind.Both) + ")";
-        }
-
-        void DoMerge()
-        {
-            if (!(cmbB.SelectedItem is SessionChoice)) return;
-            if (!plan.Any(r => r.Include)) return;
-            try
+            protected override void DestroyHandle()
             {
-                Cursor = Cursors.WaitCursor;
-                MergedDir = SessionMerger.Merge(dirA, ((SessionChoice)cmbB.SelectedItem).Dir, plan, Path.GetDirectoryName(dirA.TrimEnd('\\', '/')));
-                DialogResult = DialogResult.OK;
-                Close();
+                bool previous = SynchronizingNativeState;
+                SynchronizingNativeState = true;
+                try { base.DestroyHandle(); }
+                finally { SynchronizingNativeState = previous; }
             }
-            catch (Exception ex) { MessageBox.Show(this, "合成できませんでした: " + ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-            finally { Cursor = Cursors.Default; }
+            protected override void OnHandleDestroyed(EventArgs e)
+            {
+                bool previous = SynchronizingNativeState;
+                SynchronizingNativeState = true;
+                try { base.OnHandleDestroyed(e); }
+                finally { SynchronizingNativeState = previous; }
+            }
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing) SynchronizingNativeState = true;
+                base.Dispose(disposing);
+            }
+        }
+        sealed class Choice
+        {
+            public string Id, Text;
+            public int Index;
+            public override string ToString() => Text;
+        }
+        CompositionRow SelectedRow => rows.SelectedItems.Count == 1 ? project.Rows.FirstOrDefault(row => row.Id == (string)rows.SelectedItems[0].Tag) : null;
+        string SelectedSourceId => (sources.SelectedItem as Choice)?.Id;
+        string[] SelectedRowIds() => rows.SelectedItems.Cast<ListViewItem>().OrderBy(item => item.Index).Select(item => (string)item.Tag).ToArray();
+
+        void WireEvents()
+        {
+            sources.SelectedIndexChanged += (s, e) => { if (!filling) FillSourceSteps(); };
+            rows.SelectedIndexChanged += (s, e) =>
+            {
+                if (filling) return;
+                CommitEditors();
+                ShowEditor();
+            };
+            rows.ItemChecked += (s, e) =>
+            {
+                if (filling || busy || disposing || refreshingNumbers ||
+                    ((CompositionListView)rows).SynchronizingNativeState || !(e.Item?.Tag is string id)) return;
+                var row = project.Rows.FirstOrDefault(item => item.Id == id);
+                if (row == null || row.Included == e.Item.Checked) return;
+                Remember();
+                row.Included = e.Item.Checked;
+                e.Item.ForeColor = row.Included ? SystemColors.WindowText : Color.Gray;
+                QueueNumbers(); UpdateStatus();
+            };
+            candidate.SelectedIndexChanged += (s, e) =>
+            {
+                if (filling || busy || SelectedRow == null || !(candidate.SelectedItem is Choice choice)) return;
+                var row = SelectedRow;
+                if (row.SelectedCandidate != choice.Index) Change(() => project.Choose(row.Id, choice.Index));
+            };
+            comparison.SelectedIndexChanged += (s, e) => { if (!filling) ShowComparison(); };
+            headline.TextChanged += (s, e) => MarkEditorDirty();
+            body.TextChanged += (s, e) => MarkEditorDirty();
+            caption.TextChanged += (s, e) => MarkEditorDirty();
+            description.TextChanged += (s, e) => MarkEditorDirty();
+            FormClosing += ConfirmClose;
+            foreach (var picture in new[] { before, after, compareBefore, compareAfter, chosenBefore, chosenAfter })
+            {
+                tips.SetToolTip(picture, "ダブルクリックすると画像を大きく表示します。");
+                picture.DoubleClick += (s, e) => OpenImage((PictureBox)s);
+            }
+            KeyPreview = true;
+            KeyDown += (s, e) =>
+            {
+                if (e.Control && e.KeyCode == Keys.S) { SaveDraft(); e.SuppressKeyPress = true; }
+                else if (e.Control && e.KeyCode == Keys.Z && !(ActiveControl is TextBoxBase)) { Undo(); e.SuppressKeyPress = true; }
+                else if (e.Control && e.KeyCode == Keys.Y && !(ActiveControl is TextBoxBase)) { Redo(); e.SuppressKeyPress = true; }
+            };
+        }
+
+        void MarkEditorDirty()
+        {
+            if (filling) return;
+            editorDirty = true;
+            UpdateStatus();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                this.disposing = true;
+                foreach (var picture in new[] { before, after, compareBefore, compareAfter, chosenBefore, chosenAfter }) SetImage(picture, null);
+                tips.Dispose();
+                Icon?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }
