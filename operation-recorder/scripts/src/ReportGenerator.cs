@@ -65,7 +65,7 @@ namespace OpRec
             var files = new List<string>();
             foreach (var t0 in templates)
             {
-                // v1.1 までの user-table / user-before は、user に置き換わった(画像の並べ方はテンプレートの {{images.…}} で決める)。名前で指定されたら user として扱う
+                // 旧名の互換。user-beforeは同梱ファイルで操作前だけを出す。独自フォルダーに無い旧名だけuserへ戻す。
                 string t = t0;
                 if ((t == "user-table" || t == "user-before") && !File.Exists(Path.Combine(o.TemplateDir, t + ".md"))) t = "user";
                 string path = (t.Contains("\\") || t.Contains("/")) ? t : Path.Combine(o.TemplateDir, t.EndsWith(".md") ? t : t + ".md");
@@ -444,9 +444,9 @@ namespace OpRec
             switch (layout)
             {
                 case "before":
-                    return b ?? "**操作後:**\n\n" + a;
+                    return b ?? "";
                 case "after":
-                    return a ?? "**操作前:**\n\n" + b;
+                    return a ?? "";
                 case "vertical":
                     {
                         var parts = new List<string>();

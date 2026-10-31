@@ -1,4 +1,5 @@
 using System.IO;
+using System.Collections.Generic;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -7,7 +8,7 @@ using Markdig;
 namespace OperationRecorderApp
 {
     // 操作手順書(md)を、ブラウザで読める HTML にする。画像のパスは md と同じ(md と同じフォルダに HTML を置く前提)。
-    // JavaScript は使わず、CSS だけで次のことをする(メールのプレビューなど CSS が効かない所では、今までどおり両方の画像が並ぶ)
+    // 表示切替とクリック拡大はCSSで行い、Escによる解除だけ小さなスクリプトで補う。
     //   ・操作前 / 操作後だけの表示切り替え(最初の手順の直前に置くラジオボタン + :checked)。印刷するときは切り替えを隠して両方を出す
     //   ・画像をクリックすると画面いっぱいに拡大(:target)。もう一度クリックするか「戻る」で元に戻る
     public static class HtmlExporter
@@ -42,19 +43,33 @@ pre code { background: none; padding: 0; }
 /* クリックで拡大 */
 .zoom { display: inline-block; }
 .zoom > .zoom-open { cursor: zoom-in; }
-.zoom > .zoom-close { display: none; }
+.zoom > .zoom-close, .zoom > .zoom-backdrop { display: none; }
 .zoom:target { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 100; background: rgba(0,0,0,.85); text-align: center; }
-.zoom:target > .zoom-open img { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 96vw; max-height: 94vh; width: auto; height: auto; border: none; }
-.zoom:target > .zoom-close { display: block; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 101; cursor: zoom-out; }
+.zoom:target > .zoom-open img { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 96vw; max-height: 94vh; width: auto; height: auto; border: none; z-index: 101; }
+.zoom:target > .zoom-backdrop { display: block; position: fixed; inset: 0; z-index: 100; cursor: zoom-out; }
+.zoom:target > .zoom-close { display: block; position: fixed; top: 12px; right: 12px; z-index: 102; padding: 8px 16px; border: 1px solid #b8c4dc; border-radius: 6px; background: #fff; color: #1e3c78; font-weight: bold; text-decoration: none; cursor: pointer; }
 
 @media print {
   body { max-width: none; margin: 0; }
   h2 { page-break-after: avoid; }
   img { page-break-inside: avoid; }
-  .view-switch, .zoom > .zoom-close { display: none !important; }
+  .view-switch, .zoom > .zoom-close, .zoom > .zoom-backdrop { display: none !important; }
   .report .shot-before, .report .shot-after { display: revert !important; }
 }
 ";
+
+        const string EscapeScript = @"<script>
+document.addEventListener('keydown', function (event) {
+  if (event.defaultPrevented || (event.key !== 'Escape' && event.key !== 'Esc')) return;
+  var zoom = document.querySelector('.zoom:target');
+  if (!zoom) return;
+  event.preventDefault();
+  if (window.history && window.history.replaceState) window.history.replaceState(null, '', window.location.href.split('#')[0]);
+  else window.location.hash = '_';
+  var opener = zoom.querySelector('.zoom-open');
+  if (opener) opener.focus();
+});
+</script>\n";
 
         // 切り替えのラジオボタンと、そのラベル。最初の手順の直前に置き、兄弟セレクタ ~ で後ろの手順(.report)に効かせる
         // (:has() を使わないので古いブラウザでも動く)
@@ -84,7 +99,8 @@ pre code { background: none; padding: 0; }
             return "<!DOCTYPE html>\n<html lang=\"ja\">\n<head>\n<meta charset=\"utf-8\">\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n" +
                    "<title>" + WebUtility.HtmlEncode(title) + "</title>\n<style>" + Css + "</style>\n</head>\n<body>\n" +
                    (intro.Length > 0 ? "<div class=\"intro\">\n" + intro + "</div>\n" : "") +
-                   (switchable ? ViewSwitch : "") + "<div class=\"report\">\n" + steps + "</div>\n</body>\n</html>\n";
+                   (switchable ? ViewSwitch : "") + "<div class=\"report\">\n" + steps + "</div>\n" +
+                   (body.Contains("class=\"zoom\"") ? EscapeScript : "") + "</body>\n</html>\n";
         }
 
         // 手順の部分が始まる位置: 最初に操作前 / 操作後の画像が出てくる手順の見出し(その前の最後の <h2>)。見出しが無ければその画像の段落・表
@@ -99,19 +115,22 @@ pre code { background: none; padding: 0; }
         }
 
         // 操作前・操作後の画像(alt が「手順 N 操作前」「手順 N 操作後」)と、その見出し(「操作前:」「操作後:」)・表の列に、
-        // shot-before / shot-after を付ける。「画面の変化なし」で 1 枚にまとめた画像は、どちらの表示でも出す。付けたものがあれば true
+        // shot-before / shot-after を付ける。「画面の変化なし」で 1 枚にまとめた画像は、どちらの表示でも出す。
+        // 同じ手順に両画像がある場合だけ切り替え可能とする。
         static bool MarkBeforeAfter(ref string html)
         {
-            int n = 0;
+            var before = new HashSet<string>(); var after = new HashSet<string>();
+            foreach (Match image in Regex.Matches(html, @"<img\b[^>]*\balt=""手順 (\d+) 操作(前|後)""[^>]*>"))
+                (image.Groups[2].Value == "前" ? before : after).Add(image.Groups[1].Value);
             string Side(string s) => s == "前" ? "shot-before" : "shot-after";
             // 画像だけが入った段落・表のセル
             html = Regex.Replace(html, @"<(p|td)>(\s*<img[^>]*\balt=""手順 \d+ 操作(前|後)""[^>]*>\s*)</\1>",
-                mm => { n++; return "<" + mm.Groups[1].Value + " class=\"" + Side(mm.Groups[3].Value) + "\">" + mm.Groups[2].Value + "</" + mm.Groups[1].Value + ">"; });
+                mm => "<" + mm.Groups[1].Value + " class=\"" + Side(mm.Groups[3].Value) + "\">" + mm.Groups[2].Value + "</" + mm.Groups[1].Value + ">");
             // 縦に並べたときの見出し「操作前:」「操作後:」
             html = Regex.Replace(html, @"<p><strong>操作(前|後):</strong></p>", mm => "<p class=\"" + Side(mm.Groups[1].Value) + "\"><strong>操作" + mm.Groups[1].Value + ":</strong></p>");
             // 左右に並べた表の見出しの列
             html = Regex.Replace(html, @"<th>操作(前|後)</th>", mm => "<th class=\"" + Side(mm.Groups[1].Value) + "\">操作" + mm.Groups[1].Value + "</th>");
-            return n > 0;
+            return before.Overlaps(after);
         }
 
         // 画像を、クリックで拡大できる入れ物で包む(同じ画像を拡大して見せるので、埋め込んだ画像でもファイルは大きくならない)
@@ -123,7 +142,8 @@ pre code { background: none; padding: 0; }
                 k++;
                 string id = "zoom-" + k;
                 return "<span class=\"zoom\" id=\"" + id + "\"><a class=\"zoom-open\" href=\"#" + id + "\">" + mm.Value + "</a>" +
-                       "<a class=\"zoom-close\" href=\"#_\" title=\"閉じる\" aria-label=\"閉じる\"></a></span>";
+                       "<a class=\"zoom-backdrop\" href=\"#_\" aria-label=\"拡大画像を閉じる\"></a>" +
+                       "<a class=\"zoom-close\" href=\"#_\" role=\"button\" aria-label=\"閉じる（ESC）\">閉じる（ESC）</a></span>";
             });
         }
 

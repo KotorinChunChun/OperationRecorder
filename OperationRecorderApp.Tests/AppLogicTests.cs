@@ -81,11 +81,20 @@ namespace OperationRecorderApp.Tests
 
         [Theory]
         [InlineData("user-table")]
-        [InlineData("user-before")]
         public void 以前のテンプレートはuserに読み替える(string legacy)
         {
             var s = AppSettings.FromJson("{\"Templates\":[\"" + legacy + "\",\"ai\"],\"ImageLayout\":\"before\"}");
             Assert.Equal(new[] { "user", "ai" }, s.Templates);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(5)]
+        public void 操作前だけの選択は設定の再読込でも保持する(int version)
+        {
+            var settings = AppSettings.FromJson("{\"SettingsVersion\":" + version + ",\"Templates\":[\"user-before\",\"ai\"]}");
+            Assert.Equal(new[] { "user-before", "ai" }, settings.Templates);
+            Assert.Equal(settings.Templates, AppSettings.FromJson(settings.ToJson()).Templates);
         }
 
         [Fact]
@@ -191,13 +200,14 @@ namespace OperationRecorderApp.Tests
         public void テンプレートはuserが先頭で説明を先に表示する()
         {
             var items = OutputChoices.LoadTemplates(Path.Combine(AppContext.BaseDirectory, "templates"));
-            Assert.Equal(new[] { "user", "ai", "psr", "text" }, items.Select(t => t.Name));
+            Assert.Equal(new[] { "user", "ai", "psr", "text", "user-before" }, items.Select(t => t.Name));
             Assert.Equal(new[]
             {
                 "ユーザー向けの手順書（操作前後画像）[user]",
                 "AI向けの手順書（操作前後画像と詳細UI情報）[ai]",
                 "ステップ記録ツール形式（簡易UI操作履歴）[psr]",
                 "テキスト手順書（操作情報のみ）[text]",
+                "ユーザー向けの手順書（操作前画像だけ）[user-before]",
             }, items.Select(t => t.ToString()));
         }
 

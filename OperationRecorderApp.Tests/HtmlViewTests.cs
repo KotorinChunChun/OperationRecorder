@@ -7,7 +7,7 @@ using Xunit;
 
 namespace OperationRecorderApp.Tests
 {
-    // HTML の、JavaScript を使わない表示切り替え(操作前だけ / 操作後だけ)と、クリックで拡大
+    // HTMLの切替・クリック拡大・Esc補助。任意のCLI用成果物も同じ生成経路から書き出す。
     public class HtmlViewTests : IDisposable
     {
         readonly TestSession s = new TestSession();
@@ -52,7 +52,8 @@ namespace OperationRecorderApp.Tests
             Assert.Contains("id=\"view-both\" class=\"view-radio\" checked", h);   // 最初は両方を出す
             Assert.Contains("#view-before:checked ~ .report .shot-after", h);
             Assert.Contains("#view-after:checked ~ .report .shot-before", h);
-            Assert.DoesNotContain("<script", h);
+            Assert.Contains("event.key !== 'Escape'", h);
+            Artifact("both", Html(embed: true));
         }
 
         [Fact]
@@ -93,6 +94,8 @@ namespace OperationRecorderApp.Tests
                 Assert.Contains("<span class=\"zoom\" id=\"zoom-" + k + "\"><a class=\"zoom-open\" href=\"#zoom-" + k + "\"><img ", h);
             }
             Assert.Equal(8, TestSession.Count(h, "<a class=\"zoom-close\" href=\"#_\""));
+            Assert.Equal(8, TestSession.Count(h, ">閉じる（ESC）</a>"));
+            Assert.Contains("window.history.replaceState(null, '', window.location.href.split('#')[0])", h);
             Assert.Contains(".zoom:target", h);
         }
 
@@ -117,6 +120,37 @@ namespace OperationRecorderApp.Tests
             string h = Html("text");
             Assert.DoesNotContain("id=\"view-before\"", h);
             Assert.DoesNotContain("class=\"zoom\"", h);
+            Assert.DoesNotContain("<script", h);
+        }
+
+        [Theory]
+        [InlineData("before")]
+        [InlineData("after")]
+        public void 片側だけの全手順には切り替えを出さない(string side)
+        {
+            string html = Html(ImagesTemplate("images." + side), embed: true);
+            Assert.Equal(4, TestSession.Count(html, "<img "));
+            for (int n = 1; n <= 4; n++) Assert.Contains("alt=\"手順 " + n + " 操作" + (side == "before" ? "前" : "後") + "\"", html);
+            Assert.DoesNotContain("id=\"view-both\"", html);
+            Assert.DoesNotContain("<div class=\"view-switch\"", html);
+            Artifact(side, html);
+        }
+
+        [Fact]
+        public void 別々の手順に片側ずつあるだけでは切り替えを出さない()
+        {
+            const string markdown = "# 手順書\n\n## 手順 1\n\n![手順 1 操作前](before.png)\n\n## 手順 2\n\n![手順 2 操作後](after.png)\n";
+            var html = HtmlExporter.ToHtml(markdown);
+            Assert.DoesNotContain("id=\"view-both\"", html);
+            Assert.Equal(2, TestSession.Count(html, "<img "));
+        }
+
+        static void Artifact(string name, string html)
+        {
+            var directory = Environment.GetEnvironmentVariable("OPREC_HTML_TEST_ARTIFACTS");
+            if (string.IsNullOrWhiteSpace(directory)) return;
+            directory = Path.GetFullPath(directory); Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, name + ".html"), html);
         }
     }
 }

@@ -132,10 +132,10 @@ namespace OperationRecorderApp
             // v1.3 から、キーはグループに分け、どれも既定で記録しない(それまでの「操作キー」は既定で記録していた)
             if (s.SettingsVersion < 4)
                 foreach (var g in CaptureRules.KeyGroups) s.Rule(g).Record = false;
-            // v1.1 までの user-table / user-before は、画像の並べ方の設定に置き換わった
-            if (s.Templates.Contains("user-table") || s.Templates.Contains("user-before"))
+            // user-beforeは操作前専用テンプレートとして保存・再開でも保持する。
+            if (s.Templates.Contains("user-table"))
             {
-                s.Templates.RemoveAll(t => t == "user-table" || t == "user-before");
+                s.Templates.RemoveAll(t => t == "user-table");
                 if (!s.Templates.Contains("user")) s.Templates.Insert(0, "user");
             }
             // v1.2 から、マウスホイールは既定で記録しない(v1.1 までの既定は「記録する」だった)

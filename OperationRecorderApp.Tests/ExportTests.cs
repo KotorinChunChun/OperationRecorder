@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json.Nodes;
 using OpRec;
 using Xunit;
 
@@ -176,11 +177,41 @@ namespace OperationRecorderApp.Tests
 
         [Theory]
         [InlineData("user-table")]
-        [InlineData("user-before")]
         public void 以前のテンプレート名はuserとして出力する(string legacy)
         {
             var r = Export(legacy);
             Assert.EndsWith("_user.md", r.MdFiles[0]);
+        }
+
+        [Fact]
+        public void 操作前専用は最初の操作後が欠けても全手順を操作前だけで出力する()
+        {
+            var path = Path.Combine(s.Dir, "events.jsonl"); var lines = File.ReadAllLines(path);
+            var first = JsonNode.Parse(lines[0]); first["after"] = null; lines[0] = first.ToJsonString(); File.WriteAllLines(path, lines);
+            var report = Export("user-before");
+            Assert.EndsWith("_user-before.md", report.MdFiles.Single());
+            Assert.Equal(4, TestSession.Steps(report.Md).Count);
+            foreach (var step in TestSession.Steps(report.Md))
+            {
+                Assert.Equal(1, TestSession.Count(step.Value, "_before.png"));
+                Assert.DoesNotContain("_after.png", step.Value);
+            }
+            Assert.Equal(4, TestSession.Count(report.Html, "<img "));
+            Assert.DoesNotContain("id=\"view-before\"", report.Html);
+        }
+
+        [Theory]
+        [InlineData("before", "after")]
+        [InlineData("after", "before")]
+        public void 指定側の画像がない手順に反対側を差し込まない(string side, string opposite)
+        {
+            var path = Path.Combine(s.Dir, "events.jsonl"); var lines = File.ReadAllLines(path);
+            var second = JsonNode.Parse(lines[1]); second[side] = null; lines[1] = second.ToJsonString(); File.WriteAllLines(path, lines);
+            var report = Export(ImagesTemplate("images." + side));
+            Assert.Equal(3, TestSession.Count(report.Md, "_" + side + ".png"));
+            Assert.DoesNotContain("_" + opposite + ".png", report.Md);
+            Assert.Equal(4, TestSession.Steps(report.Md).Count);
+            Assert.DoesNotContain("id=\"view-before\"", report.Html);
         }
     }
 }
