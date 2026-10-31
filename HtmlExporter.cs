@@ -10,7 +10,7 @@ namespace OperationRecorderApp
     // 操作手順書(md)を、ブラウザで読める HTML にする。画像のパスは md と同じ(md と同じフォルダに HTML を置く前提)。
     // 表示切替とクリック拡大はCSSで行い、Escによる解除だけ小さなスクリプトで補う。
     //   ・操作前 / 操作後だけの表示切り替え(最初の手順の直前に置くラジオボタン + :checked)。印刷するときは切り替えを隠して両方を出す
-    //   ・画像をクリックすると画面いっぱいに拡大(:target)。もう一度クリックするか「戻る」で元に戻る
+    //   ・画像をクリックすると画面いっぱいに拡大(:target)。右上の閉じる・背景・Escで解除する
     public static class HtmlExporter
     {
         static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
@@ -64,12 +64,12 @@ document.addEventListener('keydown', function (event) {
   var zoom = document.querySelector('.zoom:target');
   if (!zoom) return;
   event.preventDefault();
-  if (window.history && window.history.replaceState) window.history.replaceState(null, '', window.location.href.split('#')[0]);
-  else window.location.hash = '_';
+  window.location.hash = '_';
   var opener = zoom.querySelector('.zoom-open');
   if (opener) opener.focus();
 });
-</script>\n";
+</script>
+";
 
         // 切り替えのラジオボタンと、そのラベル。最初の手順の直前に置き、兄弟セレクタ ~ で後ろの手順(.report)に効かせる
         // (:has() を使わないので古いブラウザでも動く)

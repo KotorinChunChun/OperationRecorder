@@ -213,5 +213,14 @@ namespace OperationRecorderApp.Tests
             Assert.Equal(4, TestSession.Steps(report.Md).Count);
             Assert.DoesNotContain("id=\"view-before\"", report.Html);
         }
+
+        [Fact]
+        public void 独自フォルダーに操作前テンプレートがなければ両側へ読み替えない()
+        {
+            var directory = Path.Combine(s.Root, "custom-templates"); Directory.CreateDirectory(directory);
+            File.Copy(Path.Combine(TemplateDir, "user.md"), Path.Combine(directory, "user.md"));
+            Assert.Throws<FileNotFoundException>(() => RecordingController.Export(directory, s.Dir, new[] { "user-before" },
+                null, false, true, true, null, null, new List<string>(), new List<string>()));
+        }
     }
 }

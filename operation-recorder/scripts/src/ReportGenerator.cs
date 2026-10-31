@@ -65,9 +65,9 @@ namespace OpRec
             var files = new List<string>();
             foreach (var t0 in templates)
             {
-                // 旧名の互換。user-beforeは同梱ファイルで操作前だけを出す。独自フォルダーに無い旧名だけuserへ戻す。
+                // user-tableだけを旧名互換で扱う。user-beforeが無い場合は両側へ黙って切り替えない。
                 string t = t0;
-                if ((t == "user-table" || t == "user-before") && !File.Exists(Path.Combine(o.TemplateDir, t + ".md"))) t = "user";
+                if (t == "user-table" && !File.Exists(Path.Combine(o.TemplateDir, t + ".md"))) t = "user";
                 string path = (t.Contains("\\") || t.Contains("/")) ? t : Path.Combine(o.TemplateDir, t.EndsWith(".md") ? t : t + ".md");
                 if (!File.Exists(path)) throw new FileNotFoundException("テンプレートが見つかりません: " + path);
                 files.Add(Path.GetFullPath(path));

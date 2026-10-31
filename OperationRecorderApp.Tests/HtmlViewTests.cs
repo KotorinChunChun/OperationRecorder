@@ -95,7 +95,7 @@ namespace OperationRecorderApp.Tests
             }
             Assert.Equal(8, TestSession.Count(h, "<a class=\"zoom-close\" href=\"#_\""));
             Assert.Equal(8, TestSession.Count(h, ">閉じる（ESC）</a>"));
-            Assert.Contains("window.history.replaceState(null, '', window.location.href.split('#')[0])", h);
+            Assert.Contains("window.location.hash = '_'", h);
             Assert.Contains(".zoom:target", h);
         }
 

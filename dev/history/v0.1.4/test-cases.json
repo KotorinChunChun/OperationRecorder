@@ -4,8 +4,17 @@
   "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
   "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
   "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
-  "methodCount": 254,
-  "expandedCaseCount": 414,
+  "methodCount": 260,
+  "expandedCaseCount": 421,
+  "additionalSuites": [
+    {
+      "id": "html-browser",
+      "entrypoint": "dev/scripts/Test-ReportHtml.cjs",
+      "requirements": "Node.js/Playwright/Edge",
+      "result": "指定した版別logsのsummary.json",
+      "boundary": "専用生成HTMLをヘッドレスで検証。Core/ Desktopの引数行数には含めない"
+    }
+  ],
   "layers": [
     {
       "id": "unit",
@@ -39,7 +48,7 @@
       "id": "F-SETTINGS",
       "title": "設定の既定・移行・保存復元",
       "boundary": "専用設定JSON、通常設定は変更しない",
-      "caseCount": 19,
+      "caseCount": 20,
       "status": "automated"
     },
     {
@@ -144,7 +153,7 @@
       "id": "F-EXPORT",
       "title": "Markdown/HTMLの出力形式・画像・本文と旧CLI互換",
       "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
-      "caseCount": 25,
+      "caseCount": 28,
       "status": "automated"
     },
     {
@@ -157,8 +166,8 @@
     {
       "id": "F-HTML",
       "title": "HTMLの操作前後切替・拡大・印刷",
-      "boundary": "HTML/CSS/リンク構造、ブラウザーと印刷機の実描画は対象外",
-      "caseCount": 8,
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "caseCount": 10,
       "status": "automated"
     },
     {
@@ -286,7 +295,6 @@
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
       "boundary": "専用設定JSON、通常設定は変更しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.AppSettingsTests.以前のテンプレートはuserに読み替える(legacy: \"user-before\")",
         "OperationRecorderApp.Tests.AppSettingsTests.以前のテンプレートはuserに読み替える(legacy: \"user-table\")"
       ]
     },
@@ -363,6 +371,22 @@
       "boundary": "専用設定JSON、通常設定は変更しない",
       "displayNames": [
         "OperationRecorderApp.Tests.AppSettingsTests.前の版の設定のキーはどれも記録しないに直す"
+      ]
+    },
+    {
+      "id": "TEST-65269DBA5563",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.操作前だけの選択は設定の再読込でも保持する",
+      "title": "操作前だけの選択は設定の再読込でも保持する",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.操作前だけの選択は設定の再読込でも保持する(version: 0)",
+        "OperationRecorderApp.Tests.AppSettingsTests.操作前だけの選択は設定の再読込でも保持する(version: 5)"
       ]
     },
     {
@@ -1757,7 +1781,6 @@
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
       "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.ExportTests.以前のテンプレート名はuserとして出力する(legacy: \"user-before\")",
         "OperationRecorderApp.Tests.ExportTests.以前のテンプレート名はuserとして出力する(legacy: \"user-table\")"
       ]
     },
@@ -1824,6 +1847,22 @@
       ]
     },
     {
+      "id": "TEST-075E15E81EA9",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.指定側の画像がない手順に反対側を差し込まない",
+      "title": "指定側の画像がない手順に反対側を差し込まない",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.指定側の画像がない手順に反対側を差し込まない(side: \"after\", opposite: \"before\")",
+        "OperationRecorderApp.Tests.ExportTests.指定側の画像がない手順に反対側を差し込まない(side: \"before\", opposite: \"after\")"
+      ]
+    },
+    {
       "id": "TEST-9C76C5E1D3B8",
       "fullName": "OperationRecorderApp.Tests.ExportTests.手順の文章の手直しが反映される",
       "title": "手順の文章の手直しが反映される",
@@ -1884,6 +1923,21 @@
       ]
     },
     {
+      "id": "TEST-B52C17C37D08",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.操作前専用は最初の操作後が欠けても全手順を操作前だけで出力する",
+      "title": "操作前専用は最初の操作後が欠けても全手順を操作前だけで出力する",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.操作前専用は最初の操作後が欠けても全手順を操作前だけで出力する"
+      ]
+    },
+    {
       "id": "TEST-2704560D1A54",
       "fullName": "OperationRecorderApp.Tests.ExportTests.同じ画面なら1枚にまとめる",
       "title": "同じ画面なら1枚にまとめる",
@@ -1897,6 +1951,21 @@
       "displayNames": [
         "OperationRecorderApp.Tests.ExportTests.同じ画面なら1枚にまとめる(variable: \"images.sideMerged\", twoImages: \"| 操作前 | 操作後 |\")",
         "OperationRecorderApp.Tests.ExportTests.同じ画面なら1枚にまとめる(variable: \"images.verticalMerged\", twoImages: \"**操作後:**\")"
+      ]
+    },
+    {
+      "id": "TEST-D37EE8DD8323",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.独自フォルダーに操作前テンプレートがなければ両側へ読み替えない",
+      "title": "独自フォルダーに操作前テンプレートがなければ両側へ読み替えない",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.独自フォルダーに操作前テンプレートがなければ両側へ読み替えない"
       ]
     },
     {
@@ -2108,7 +2177,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "HTML/CSS/リンク構造、ブラウザーと印刷機の実描画は対象外",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
       "displayNames": [
         "OperationRecorderApp.Tests.HtmlViewTests.一枚にまとめた画像はどちらの表示でも出す"
       ]
@@ -2123,7 +2192,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "HTML/CSS/リンク構造、ブラウザーと印刷機の実描画は対象外",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
       "displayNames": [
         "OperationRecorderApp.Tests.HtmlViewTests.印刷では切り替えを隠して両方を出す"
       ]
@@ -2138,7 +2207,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "HTML/CSS/リンク構造、ブラウザーと印刷機の実描画は対象外",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
       "displayNames": [
         "OperationRecorderApp.Tests.HtmlViewTests.画像の無い手順書には切り替えを出さない"
       ]
@@ -2153,7 +2222,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "HTML/CSS/リンク構造、ブラウザーと印刷機の実描画は対象外",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
       "displayNames": [
         "OperationRecorderApp.Tests.HtmlViewTests.画像はクリックで拡大できる"
       ]
@@ -2168,7 +2237,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "HTML/CSS/リンク構造、ブラウザーと印刷機の実描画は対象外",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
       "displayNames": [
         "OperationRecorderApp.Tests.HtmlViewTests.左右に並べた表の列に印を付ける"
       ]
@@ -2183,7 +2252,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "HTML/CSS/リンク構造、ブラウザーと印刷機の実描画は対象外",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
       "displayNames": [
         "OperationRecorderApp.Tests.HtmlViewTests.縦に並べたときは見出しと画像に印を付ける"
       ]
@@ -2198,9 +2267,40 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "HTML/CSS/リンク構造、ブラウザーと印刷機の実描画は対象外",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
       "displayNames": [
         "OperationRecorderApp.Tests.HtmlViewTests.切り替えのボタンは最初の手順の直前に置く"
+      ]
+    },
+    {
+      "id": "TEST-61E9894F9AE5",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.別々の手順に片側ずつあるだけでは切り替えを出さない",
+      "title": "別々の手順に片側ずつあるだけでは切り替えを出さない",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.別々の手順に片側ずつあるだけでは切り替えを出さない"
+      ]
+    },
+    {
+      "id": "TEST-4E4F46A0A565",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.片側だけの全手順には切り替えを出さない",
+      "title": "片側だけの全手順には切り替えを出さない",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.片側だけの全手順には切り替えを出さない(side: \"after\")",
+        "OperationRecorderApp.Tests.HtmlViewTests.片側だけの全手順には切り替えを出さない(side: \"before\")"
       ]
     },
     {
@@ -2213,7 +2313,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "HTML/CSS/リンク構造、ブラウザーと印刷機の実描画は対象外",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
       "displayNames": [
         "OperationRecorderApp.Tests.HtmlViewTests.埋め込んでも画像は増えない"
       ]

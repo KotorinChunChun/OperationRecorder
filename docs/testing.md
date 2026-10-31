@@ -98,7 +98,7 @@ Desktopテストを直接起動する場合はrunnerと同じfixture/環境条�
 | 未保存テンプレートのプレビュー | `TemplateStoreTests`、`UiWiringTests` | 埋込画像を含む生成HTML、原本不変、並列生成、成功/失敗時の専用一時領域cleanup |
 | Markdown/HTML・形式選択・出力先・埋込・全テンプレート | `ExportTests`、`ExportCommandTests`、`CliParityTests`、`BasicAutomationTests`、`UiWiringTests` | 実ファイル・実EXEの終了コード、旧pwsh出力との一致、画像の並べ方、作らない形式を開かない |
 | 丸・矢印・枠・ポインタ、旧記録互換 | `MarkTests`、`DragArrowTests`、`ExportTests` | 元画像を変更せず別画像へ合成、座標・半径、二重描画を防ぐ |
-| HTMLの前後切替・拡大・印刷 | `HtmlViewTests` | HTML/CSS構造とリンク。ブラウザーや印刷機の実描画は検証しない |
+| HTMLの前後切替・拡大・印刷 | `HtmlViewTests`、`Test-ReportHtml.cjs` | CoreでHTML/CSS構造とリンク、別CLIでヘッドレスブラウザーの切替・右上ボタン・Escを検証。物理印刷機は検証しない |
 | 設定移行・撮影/対象/出力/テンプレートフォルダーの保存復元 | `AppSettingsTests`、`TargetSettingsTests`、`BasicAutomationTests`、`UiWiringTests` | 古いJSON移行、壊れた設定、全撮影規則、設定フォルダー隔離 |
 | ヘルプ・外部ファイル/フォルダーを開く | `UiWiringTests` | RichTextBox内容と実ボタンの起動要求、Shell失敗通知。Explorer/既定アプリ自体は起動しない |
 | スタートメニュー登録/解除、管理者再起動 | `AppInteractionTests`、`LaunchTests`、`UiWiringTests` | 隔離中の拒否、対象EXE一致、要求/取消・失敗の分岐。実利用者のショートカット作成/削除、UAC承認を自動実行しない |
@@ -173,6 +173,24 @@ Desktopテストを直接起動する場合はrunnerと同じfixture/環境条�
 正確な必須項目・上限・拒否規則は[CompositionAutomation.cs](../CompositionAutomation.cs)、[BasicAutomation.cs](../BasicAutomation.cs)とその実行可能なテストを参照する。全操作を順に動かすfixtureは`CompositionAutomationTests`にある。
 
 ## ケースを追加するとき
+
+### 生成HTMLをヘッドレスブラウザーで検証する
+
+Node.js、Playwright、Edgeを用意する。既存の利用者ブラウザープロファイルやComputer Useを使わず、専用生成画像を埋め込んだHTMLを検証する。Playwrightが通常のモジュール検索先にない場合は、`OPREC_PLAYWRIGHT_MODULE`にそのパッケージフォルダーを指定する。
+
+```powershell
+cd C:\develop\KotorinToys\tools\OperationRecorder
+$env:OPREC_HTML_TEST_ARTIFACTS = Join-Path (Get-Location) 'dev/history/v0.1.4/logs/html-local/fixtures'
+dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj -c Release `
+  --artifacts-path .\artifacts\html-tests --filter 'FullyQualifiedName~HtmlViewTests'
+node .\dev\scripts\Test-ReportHtml.cjs `
+  .\dev\history\v0.1.4\logs\html-local\fixtures .\dev\history\v0.1.4\logs\html-local\browser
+Remove-Item Env:OPREC_HTML_TEST_ARTIFACTS
+```
+
+操作前/操作後の全4手順、両側モードだけの切替、全手順へ効く切替、右上の「閉じる（ESC）」、Esc、狭い画面、JavaScript無効時のクリック解除を試験する。終了0が成功、1が試験失敗。結果JSONと専用HTMLのスクリーンショットは指定した版別logsに保存する。これはCoreのケース表とは別のブラウザー実行であり、物理印刷機や外部アプリの試験を意味しない。
+
+### 通常のケース追加
 
 1. GUI固有の確認・ファイル選択・OS副作用は`AppInteraction`へ、記録OS境界は`RecordingRuntime`へ集約する。
 2. GUIとCLIは共通の処理を呼ぶ。新しいフォーム操作は安定した`Control.Name`を付け、STAで実コントロールのイベントを検証する。
