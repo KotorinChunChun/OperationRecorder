@@ -11,10 +11,11 @@ namespace OperationRecorderApp.Replay;
 public static class ReplayCommand
 {
     public const string Usage = "OperationRecorder.exe --replay import --source <記録フォルダー> --out <config.json> [--no-images]\n" +
-        "OperationRecorder.exe --replay check|run|watch --config <config.json> [--now] [--logs <フォルダー>] [--result <結果.json>]";
+        "OperationRecorder.exe --replay check|run|watch --config <config.json> [--now] [--logs <フォルダー>] [--result <結果.json>]\n" + ReplayLearningCommand.Usage;
     public static bool IsReplay(string[] args) => args.Length > 0 && args[0] == "--replay";
     public static int Execute(string[] args)
     {
+        if (args.Length > 1 && args[1].StartsWith("learn-", StringComparison.Ordinal)) return ReplayLearningCommand.Execute(args);
         CommandConsole.Prepare(); int code = 0; string resultPath = null; string logDirectory = null;
         var result = new Dictionary<string, object> { ["schemaVersion"] = 1, ["product"] = "operation-recorder-replay", ["status"] = "failed" };
         try

@@ -1,0 +1,55 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "bundleId": { "type": "string" },
+    "observationsSha256": { "type": "string" },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "steps": { "type": "array", "minItems": 1, "maxItems": 2000, "items": { "$ref": "#/$defs/step" } },
+    "questions": { "type": "array", "maxItems": 100, "items": { "type": "string", "maxLength": 2048 } }
+  },
+  "required": ["schemaVersion", "bundleId", "observationsSha256", "summary", "steps", "questions"],
+  "$defs": {
+    "predicate": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string", "enum": ["title", "className", "automationId", "name", "controlType"] },
+        "match": { "type": "string", "enum": ["exact", "contains", "prefix", "regex"] },
+        "value": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "ignoreCase": { "type": "boolean" }
+      },
+      "required": ["field", "match", "value", "ignoreCase"]
+    },
+    "condition": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "all": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/predicate" } },
+        "any": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/predicate" } },
+        "none": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/predicate" } }
+      },
+      "required": ["all", "any", "none"]
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "recordingId": { "type": "string", "minLength": 1 },
+        "sourceSeq": { "type": "integer" }
+      },
+      "required": ["recordingId", "sourceSeq"]
+    },
+    "step": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "step": { "type": "integer", "minimum": 1, "maximum": 2000 },
+        "correspondences": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "$ref": "#/$defs/evidence" } },
+        "windowCondition": { "$ref": "#/$defs/condition" },
+        "elementCondition": { "anyOf": [{ "$ref": "#/$defs/condition" }, { "type": "null" }] },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "dynamicParts": { "type": "array", "maxItems": 32, "items": { "type": "string", "maxLength": 2048 } },
+        "risks": { "type": "array", "maxItems": 32, "items": { "type": "string", "maxLength": 2048 } }
+      },
+      "required": ["step", "correspondences", "windowCondition", "elementCondition", "reason", "dynamicParts", "risks"]
+    }
+  }
+}

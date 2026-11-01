@@ -35,10 +35,12 @@
     <Compile Include="$(SkillDir)\scripts\src\*.cs" Link="Engine\%(Filename)%(Extension)" />
     <None Include="tool.json;config\shortcuts.json;docs\**\*.md;README.md;THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="config\replay-example.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="config\replay-learning-prompt.md;config\replay-learning-response.schema.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(SkillDir)\templates\*.md" Link="templates\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(SkillDir)\MANUAL.md" Link="MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('$(SkillDir)\MANUAL.md')" />
     <None Include="$(SkillDir)\scripts\Invoke-OperationReplay.ps1" Link="scripts\Invoke-OperationReplay.ps1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(SkillDir)\scripts\New-OperationReplayWithCodex.ps1" Link="scripts\New-OperationReplayWithCodex.ps1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="operation-recorder\MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 

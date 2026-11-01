@@ -11,7 +11,7 @@ public sealed class ReplayCondition
     public List<ReplayPredicate> All { get; set; } = new();
     public List<ReplayPredicate> Any { get; set; } = new();
     public List<ReplayPredicate> None { get; set; } = new();
-    public IEnumerable<ReplayPredicate> Positive => (All ?? new()).Concat(Any ?? new());
+    [System.Text.Json.Serialization.JsonIgnore] public IEnumerable<ReplayPredicate> Positive => (All ?? new()).Concat(Any ?? new());
     public bool Matches(IReadOnlyDictionary<string, string> fields) =>
         All.All(p => p.Matches(fields)) && (Any.Count == 0 || Any.Any(p => p.Matches(fields))) && !None.Any(p => p.Matches(fields));
     public IEnumerable<string> Validate(bool window)
@@ -27,8 +27,8 @@ public sealed class ReplayCondition
             if (p.Match == "regex")
             {
                 bool valid;
-                try { _ = ReplayPredicate.Pattern(p.Value, p.IgnoreCase); valid = true; } catch (Exception e) when (e is ArgumentException or NotSupportedException) { valid = false; }
-                if (!valid) yield return "正規表現が不正またはNonBacktracking非対応です。";
+                try { valid = !ReplayPredicate.Pattern(p.Value, p.IgnoreCase).IsMatch("") && p.Value != ".+"; } catch (Exception e) when (e is ArgumentException or NotSupportedException) { valid = false; }
+                if (!valid) yield return "正規表現が不正、空文字/任意文字へ広すぎる、またはNonBacktracking非対応です。";
             }
         }
     }
