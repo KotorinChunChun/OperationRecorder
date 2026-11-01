@@ -38,4 +38,4 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## .NET
 
-正式インストーラーには.NET 10.0.13のランタイムを同梱します。配布元のライセンスと第三者通知は`runtime-licenses/`、メンテナンスプログラムの通知は`maintenance/runtime-licenses/`へ収録します。
+正式インストーラーには.NET 10.0.14のランタイムを同梱します。配布元のライセンスと第三者通知は`runtime-licenses/`、メンテナンスプログラムの通知は`maintenance/runtime-licenses/`へ収録します。
