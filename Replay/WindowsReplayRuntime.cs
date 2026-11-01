@@ -66,7 +66,7 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
             if (GetForegroundWindow() != window) return Waiting("waitingForWindow", "対象が前面になるのを待っています。");
         }
         AutomationElement element = null; Rectangle bounds = frame;
-        if (!after && step.PositionMode == "element" && step.Element != null && step.Kind != "wait")
+        if (!after && step.PositionMode == "element" && step.Element != null && (step.Kind != "wait" || step.Element.Condition != null))
         {
             var selector = step.Element;
             var root = AutomationElement.FromHandle(window);

@@ -61,6 +61,8 @@ pwsh -NoProfile -File .\scripts\Invoke-OperationReplay.ps1 -Config 'C:\Replay\jo
 
 受入後にconfigを編集すると再確認が必要。比較元のどれかが変わった場合も実行を拒否する。原本や既存の案を上書きしない。生成用ps1は受入・再生を自動実行しない。
 
+操作後の画像待ちでも同じbindingを使う。操作後にタイトルが別形式へ変わる場合は、その状態も条件が許容するか、事後の待機を次の手順へ分ける必要がある。画像を見て条件を自動調整する機能は含まない。
+
 ## 条件式
 
 ウィンドウのconditionにはtitle/className、要素のconditionにはautomationId/name/className/controlTypeを指定する。
