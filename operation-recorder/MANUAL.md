@@ -15,7 +15,7 @@ PC で行う操作(クリック・キー操作・文字の入力)を自動で記
 
 KotorinToysの一覧からOperationRecorderを選び、公開カタログを更新して「インストール」を押します。
 インストール完了後、「起動」と「画面を表示」から利用できます。.NETランタイムは同梱しているため、別途導入する必要はありません。
-単体で導入する場合は[GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)の`OperationRecorder-0.1.2-setup.exe`を実行します。管理者権限は不要です。
+単体で導入する場合は[GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)から対象版の`OperationRecorder-<版>-setup.exe`を実行します。管理者権限は不要です。
 正式インストーラーはスタートメニューへOperationRecorderを登録し、アプリは追加登録を提案しません。
 
 従来の単体zipを使用する場合の手順は次のとおりです。
