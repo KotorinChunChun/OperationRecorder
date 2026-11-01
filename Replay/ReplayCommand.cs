@@ -57,7 +57,7 @@ public static class ReplayCommand
             else
             {
                 var config = ReplayConfig.Load(protectedFile);
-                var errors = config.Validate(); if (errors.Count > 0) throw new ArgumentException(string.Join("\n", errors));
+                var errors = config.Validate(checkEnvironment: true); if (errors.Count > 0) throw new ArgumentException(string.Join("\n", errors));
                 if (config.Steps.Any(step => new[] { step.BeforeImage, step.AfterImage }.Any(g => g != null && string.Equals(config.PathOf(g.File), resultPath, StringComparison.OrdinalIgnoreCase)))) throw new ArgumentException("照合元画像を結果の保存先にはできません。");
                 result["steps"] = config.Steps.Count;
                 result["conditions"] = config.Steps.Select((s, i) => new { step = i + 1, s.Kind, s.Skip, element = s.Element != null, beforeImage = s.BeforeImage != null, afterImage = s.AfterImage != null, environmentInput = !string.IsNullOrEmpty(s.Text?.Environment) }).ToArray();
@@ -83,8 +83,8 @@ public static class ReplayCommand
                         using var stream = new StreamWriter(Path.Combine(logDirectory, "progress.jsonl")) { AutoFlush = true };
                         void Progress(ReplayProgress value)
                         {
-                            stream.WriteLine(JsonSerializer.Serialize(new { utc = DateTimeOffset.UtcNow, value.Step, value.State, value.Message }));
-                            Console.Error.WriteLine("[" + value.Step + "] " + value.Message);
+                            stream.WriteLine(JsonSerializer.Serialize(new { utc = DateTimeOffset.UtcNow, value.Run, value.Step, value.State, value.Message }));
+                            Console.Error.WriteLine("[" + value.Run + ":" + value.Step + "] " + value.Message);
                         }
                         var runtime = new WindowsReplayRuntime(config);
                         var monitor = new ReplayMonitor(runtime, id => runtime.ApplicationIdentity(config.Targets[id]), hotkeys.Consume, value => hotkeys.Enabled = value, runtime.EndRun, Progress);

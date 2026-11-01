@@ -20,7 +20,7 @@ public sealed class ReplayMonitor
     { this.runtime = runtime; this.application = application; this.consume = consume; this.enabled = enabled; this.endRun = endRun; this.progress = progress; }
     public async Task Run(ReplayConfig config, bool watch, bool now, CancellationToken cancellation)
     {
-        var errors = config.Validate(); if (errors.Count > 0) throw new ArgumentException(string.Join("\n", errors));
+        var errors = config.Validate(checkEnvironment: true); if (errors.Count > 0) throw new ArgumentException(string.Join("\n", errors));
         if (!now && config.Triggers.All(t => t.Type == "at" && ReplayTriggerClock.TryOffsetTime(t.At, out var at) && runtime.Now > at.AddSeconds(t.LateGraceSeconds)))
             throw new ArgumentException("開始日時の遅刻許容幅を過ぎています。日時を見直してください。");
         var clock = new ReplayTriggerClock(runtime.Now); long waitingSince = runtime.ElapsedMilliseconds; long lastReport = long.MinValue / 2;
@@ -44,7 +44,7 @@ public sealed class ReplayMonitor
                 await runtime.Delay(config.PollMs, cancellation); continue;
             }
             enabled(false);
-            var engine = new ReplayEngine(runtime, progress);
+            var engine = new ReplayEngine(runtime, value => progress(value with { Run = Runs + 1 }));
             try { await engine.Run(config, cancellation); }
             finally { CompletedSteps = engine.CompletedSteps; endRun(); enabled(true); }
             Runs++;

@@ -21,6 +21,8 @@ public class ReplayCommandTests
         Assert.Equal(0, imported.Code); Assert.Equal("draft", JsonNode.Parse(imported.Output)["status"].GetValue<string>());
         var config = ReplayConfig.Load(configFile);
         foreach (var target in config.Targets.Values) target.Executable = Environment.ProcessPath;
+        // この既存出力用fixtureのホイールUIA矩形は疑似値なので、config側で明示補正する。
+        config.Steps[2].X = config.Steps[2].Y = config.Steps[2].EndX = config.Steps[2].EndY = .5;
         config.Save(configFile);
         string result = scope.Workspace.Resolve("check-result.json");
         var check = scope.Process("--replay", "check", "--config", configFile, "--result", result);

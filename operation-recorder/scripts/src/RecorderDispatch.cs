@@ -337,6 +337,7 @@ namespace OpRec
                 Rectangle rf = WinUtil.GetFrame(root);
                 ev.WinFrame = rf;
                 ev.Rec["key"] = KeyText(r);
+                ev.Rec["keyCode"] = vk;
                 ev.Rec["window"] = WindowInfo(root);
                 IntPtr fh = r.Focus != IntPtr.Zero ? r.Focus : r.Fg;
                 ev.Rec["win32"] = Win32Info(fh, root);

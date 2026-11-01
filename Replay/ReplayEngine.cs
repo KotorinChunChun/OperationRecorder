@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace OperationRecorderApp.Replay;
 
-public sealed record ReplayProgress(int Step, string State, string Message);
+public sealed record ReplayProgress(int Step, string State, string Message) { public int Run { get; init; } }
 public sealed class ReplayObservation
 {
     public bool Ready { get; init; }

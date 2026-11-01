@@ -32,21 +32,27 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
     public async Task<ReplayObservation> Observe(ReplayConfig c, ReplayStep step, ReplayImage image, bool after, CancellationToken cancellation)
     {
         CheckDesktop(); CheckForeground();
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        request.CancelAfter(TimeSpan.FromSeconds(3));
         // UIA providerが停止していても新しい探索workerを無制限に積まず、その回で中止する。
-        try { return await Task.Run(() => Resolve(c, step, image, after), cancellation).WaitAsync(TimeSpan.FromSeconds(3), cancellation); }
+        try { return await Task.Run(() => Resolve(c, step, image, after, request.Token), request.Token).WaitAsync(TimeSpan.FromSeconds(3), cancellation); }
         catch (TimeoutException) { throw new TimeoutException("UIA提供元が応答しません。操作は再試行していません。"); }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested) { throw new TimeoutException("UIA提供元が応答しません。"); }
+        finally { request.Cancel(); }
     }
-    ReplayObservation Resolve(ReplayConfig c, ReplayStep step, ReplayImage image, bool after)
+    ReplayObservation Resolve(ReplayConfig c, ReplayStep step, ReplayImage image, bool after, CancellationToken cancellation)
     {
         using var dpi = new DpiContext();
+        cancellation.ThrowIfCancellationRequested();
         var target = c.Targets[step.Target];
         var windows = Windows(target).ToArray();
         if (windows.Length == 0) return Waiting("waitingForWindow", "ウィンドウを探しています。");
         windows = windows.Where(h => WinUtil.ClassOf(h).StartsWith(target.ClassPrefix ?? "", StringComparison.Ordinal)).ToArray();
         if (windows.Length == 0) return Waiting("waitingForClass", "クラスを探しています。");
-        windows = windows.Where(h => string.IsNullOrEmpty(target.Title) || WinUtil.TextOf(h) == target.Title).ToArray();
+        windows = windows.Where(h => target.MatchesTitle(WinUtil.TextOf(h))).ToArray();
         if (windows.Length == 0) return Waiting("waitingForWindow", "指定タイトルのウィンドウを探しています。");
         if (windows.Length != 1) throw new InvalidOperationException("ウィンドウ候補が複数あります。bindingを絞ってください。");
+        cancellation.ThrowIfCancellationRequested();
         IntPtr window = windows[0]; int pid = checked((int)WinUtil.PidOf(window));
         if (!IsWindowEnabled(window) || IsIconic(window)) return Waiting("waitingForWindow", "操作可能なウィンドウを待っています（モーダル/最小化）。");
         Rectangle frame = WinUtil.GetFrame(window);
@@ -65,28 +71,31 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
             Condition condition = !string.IsNullOrWhiteSpace(selector.AutomationId)
                 ? new PropertyCondition(AutomationElement.AutomationIdProperty, selector.AutomationId)
                 : new PropertyCondition(AutomationElement.NameProperty, selector.Name);
-            var matches = root.FindAll(TreeScope.Descendants, condition).Cast<AutomationElement>()
+            var matches = root.FindAll(TreeScope.Subtree, condition).Cast<AutomationElement>()
                 .Where(e => string.IsNullOrEmpty(selector.ControlType) || e.Current.ControlType.ProgrammaticName == "ControlType." + selector.ControlType.Replace("ControlType.", ""))
                 .Where(e => string.IsNullOrEmpty(selector.ClassPrefix) || e.Current.ClassName.StartsWith(selector.ClassPrefix, StringComparison.Ordinal)).ToArray();
             if (matches.Length == 0) return Waiting("waitingForElement", "該当するUI要素を探しています。");
             if (matches.Length != 1) throw new InvalidOperationException("UI要素の候補が複数あります。AutomationId/名前/クラスを絞ってください。");
             element = matches[0]; var value = element.Current;
             if (!value.IsEnabled || value.IsOffscreen) return Waiting("waitingForElement", "UI要素が操作可能になるのを待っています。");
-            bounds = RectangleOf(value.BoundingRectangle);
+            bounds = value.NativeWindowHandle == window.ToInt64() ? frame : RectangleOf(value.BoundingRectangle);
             if (bounds.Width <= 0 || bounds.Height <= 0 || !frame.Contains(bounds)) return Waiting("waitingForElement", "UI要素がウィンドウ内に現れるのを待っています。");
         }
         if (!after && step.PositionMode == "window" && step.Kind != "wait" && !ReplayGeometry.Compatible(target, frame, checked((int)GetDpiForWindow(window))))
             throw new InvalidOperationException("相対座標の縦横比/DPI条件が変わっています。UIAでの再特定かconfig補正が必要です。");
         if (image != null)
         {
+            cancellation.ThrowIfCancellationRequested();
             // 前面が変わった場合に別アプリの画面を画像待ちの証跡へ取り込まない。
             if (GetForegroundWindow() != window) throw new InvalidOperationException("画像照合中に前面が変わりました。");
             using var expected = new Bitmap(c.PathOf(image.File));
             using var current = new Bitmap(frame.Width, frame.Height);
             using (var graphics = Graphics.FromImage(current)) graphics.CopyFromScreen(frame.Location, Point.Empty, frame.Size);
             var crop = image.Crop == null ? new Rectangle(Point.Empty, expected.Size) : new Rectangle(image.Crop.X, image.Crop.Y, image.Crop.W, image.Crop.H);
-            if (ReplayGeometry.Similarity(expected, crop, current) < image.Threshold) return Waiting("waitingForImage", after ? "操作後の画像が一致するのを待っています。" : "該当画像になるのを待っています。");
+            double similarity = ReplayGeometry.Similarity(expected, crop, current);
+            if (similarity < image.Threshold) return Waiting("waitingForImage", (after ? "操作後の画像が一致するのを待っています。" : "該当画像になるのを待っています。") + $"（一致度 {similarity:F3} / 条件 {image.Threshold:F3}）");
         }
+        cancellation.ThrowIfCancellationRequested();
         return new() { Ready = true, State = "ready", Message = "実行条件が揃いました。", Context = new Match(window, pid, frame, bounds, element) };
     }
     public async Task Execute(ReplayConfig c, ReplayStep step, ReplayObservation observation, CancellationToken cancellation)
@@ -110,11 +119,18 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
             string value = string.IsNullOrWhiteSpace(step.Text.Environment) ? step.Text.Literal : Environment.GetEnvironmentVariable(step.Text.Environment);
             if (value == null) throw new InvalidOperationException("入力値が未設定です。");
             var element = match.Element ?? throw new InvalidOperationException("入力欄のUIAが必要です。");
+            if (element.Current.IsPassword && string.IsNullOrWhiteSpace(step.Text.Environment)) throw new InvalidOperationException("実際のpassword欄には環境変数参照が必要です。");
             if (!element.TryGetCurrentPattern(ValuePattern.Pattern, out var pattern) || ((ValuePattern)pattern).Current.IsReadOnly) throw new InvalidOperationException("入力欄はValuePatternで編集できません。");
             // 値やUIA例外本文はログへ渡さない。
-            try { await Task.Run(() => { Verify(match, c.Targets[step.Target]); ((ValuePattern)pattern).SetValue(value); }, cancellation).WaitAsync(TimeSpan.FromSeconds(3), cancellation); }
-            catch (OperationCanceledException) { throw; }
+            using var request = CancellationTokenSource.CreateLinkedTokenSource(cancellation); request.CancelAfter(TimeSpan.FromSeconds(3));
+            try { await Task.Run(() =>
+                {
+                    Verify(match, c.Targets[step.Target]); request.Token.ThrowIfCancellationRequested(); var field = (ValuePattern)pattern; field.SetValue(value);
+                    if (!element.Current.IsPassword && field.Current.Value != value) throw new InvalidOperationException();
+                }, request.Token).WaitAsync(TimeSpan.FromSeconds(3), cancellation); }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
             catch (Exception) { throw new InvalidOperationException("入力欄への値の設定を完了できませんでした。"); }
+            finally { request.Cancel(); }
             return;
         }
         if (step.Kind == "key")
@@ -162,7 +178,7 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
             {
                 int pid = checked((int)WinUtil.PidOf(h)); if (pid == Environment.ProcessId || target.ProcessId > 0 && target.ProcessId != pid) return true;
                 using var p = Process.GetProcessById(pid);
-                if (p.SessionId == session && string.Equals(p.MainModule?.FileName, target.Executable, StringComparison.OrdinalIgnoreCase)) result.Add(h);
+                if (p.SessionId == session && string.Equals(p.MainModule?.FileName, Path.GetFullPath(target.Executable), StringComparison.OrdinalIgnoreCase)) result.Add(h);
             }
             catch (Exception) { }
             return true;
@@ -176,8 +192,8 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
         {
             using var process = Process.GetProcessById(pid);
             IntPtr foreground = GetForegroundWindow();
-            if (config.Targets.Values.Any(t => string.Equals(t.Executable, process.MainModule?.FileName, StringComparison.OrdinalIgnoreCase) &&
-                (t.ProcessId == 0 || t.ProcessId == pid) && (string.IsNullOrEmpty(t.Title) || WinUtil.TextOf(foreground) == t.Title) &&
+            if (config.Targets.Values.Any(t => t != null && !string.IsNullOrEmpty(t.Executable) && string.Equals(Path.GetFullPath(t.Executable), process.MainModule?.FileName, StringComparison.OrdinalIgnoreCase) &&
+                (t.ProcessId == 0 || t.ProcessId == pid) && t.MatchesTitle(WinUtil.TextOf(foreground)) &&
                 WinUtil.ClassOf(foreground).StartsWith(t.ClassPrefix ?? "", StringComparison.Ordinal))) return;
         }
         catch (Exception) { }
@@ -188,8 +204,9 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
         using var dpi = new DpiContext();
         if (!IsWindow(match.Window) || GetForegroundWindow() != match.Window || WinUtil.PidOf(match.Window) != match.Pid || WinUtil.GetFrame(match.Window) != match.Frame || !IsWindowEnabled(match.Window) || IsIconic(match.Window)) throw new InvalidOperationException("実行直前に対象ウィンドウの状態が変わりました。");
         using var p = Process.GetProcessById(match.Pid);
-        if (!string.Equals(p.MainModule?.FileName, target.Executable, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("対象EXEが変わりました。");
-        if (match.Element != null && (!match.Element.Current.IsEnabled || match.Element.Current.IsOffscreen || RectangleOf(match.Element.Current.BoundingRectangle) != match.Bounds)) throw new InvalidOperationException("実行直前にUI要素の状態が変わりました。");
+        if (!string.Equals(p.MainModule?.FileName, Path.GetFullPath(target.Executable), StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("対象EXEが変わりました。");
+        if (match.Element != null && (!match.Element.Current.IsEnabled || match.Element.Current.IsOffscreen ||
+            (match.Element.Current.NativeWindowHandle == match.Window.ToInt64() ? match.Frame : RectangleOf(match.Element.Current.BoundingRectangle)) != match.Bounds)) throw new InvalidOperationException("実行直前にUI要素の状態が変わりました。");
     }
     static void VerifyPoint(Match match, Point point)
     {

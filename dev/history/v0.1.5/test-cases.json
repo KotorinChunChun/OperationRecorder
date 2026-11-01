@@ -1,0 +1,4756 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.5",
+  "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
+  "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
+  "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
+  "methodCount": 291,
+  "expandedCaseCount": 464,
+  "additionalSuites": [
+    {
+      "id": "html-browser",
+      "entrypoint": "dev/scripts/Test-ReportHtml.cjs",
+      "requirements": "Node.js/Playwright/Edge",
+      "result": "指定した版別logsのsummary.json",
+      "boundary": "専用生成HTMLをヘッドレスで検証。Core/ Desktopの引数行数には含めない"
+    }
+  ],
+  "layers": [
+    {
+      "id": "unit",
+      "description": "判断・状態遷移と注入したOS境界"
+    },
+    {
+      "id": "api",
+      "description": "GUIと同じサービス・編集セッションと実ファイル"
+    },
+    {
+      "id": "sta",
+      "description": "STA実フォーム・コントロールイベント、確認とOS副作用は差替え"
+    },
+    {
+      "id": "cli",
+      "description": "実EXE/pwsh/隔離プロセス、結果JSONと終了コード"
+    },
+    {
+      "id": "desktop",
+      "description": "専用別PIDfixtureで実OS入力と撮影、環境不足はblocked"
+    }
+  ],
+  "unverifiedBoundaries": [
+    "この台帳は試験の対応表。Desktopの実行可否と実行結果はrunnerのsummaryに記録する。",
+    "OSのUAC承認、実利用者のショートカット/ごみ箱、外部アプリの起動は要求/拒否/取消/失敗の差替え検証。",
+    "見た目の良さ、全DPI/全ハードウェア、外部ブラウザー/印刷機の実描画、インストーラー配布はこの台帳の合格範囲に含めない。",
+    "手順の画像移動失敗は画像を残したままJSON削除を続ける既存契約。画像の物理廃棄成功を示さない。"
+  ],
+  "features": [
+    {
+      "id": "F-SETTINGS",
+      "title": "設定の既定・移行・保存復元",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "caseCount": 20,
+      "status": "automated"
+    },
+    {
+      "id": "F-TARGET",
+      "title": "撮影モードと対象ウィンドウ・プロセス・ディスプレイ",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "caseCount": 11,
+      "status": "automated"
+    },
+    {
+      "id": "F-INPUT",
+      "title": "入力分類・ホイール集約・撮影規則・画像同一判定",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "caseCount": 11,
+      "status": "automated"
+    },
+    {
+      "id": "F-HOTKEY",
+      "title": "操作キーの変更・検証・状態表示",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "caseCount": 14,
+      "status": "automated"
+    },
+    {
+      "id": "F-OVERLAY",
+      "title": "オーバーレイの直近手順・ボタン・逃避計算",
+      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "caseCount": 8,
+      "status": "automated"
+    },
+    {
+      "id": "F-RECORDING",
+      "title": "記録の開始・取消・取り直し・保存と失敗処理",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "caseCount": 17,
+      "status": "automated"
+    },
+    {
+      "id": "F-SESSION-LIST",
+      "title": "記録一覧と複数選択・未保存の保持",
+      "boundary": "実フォーム、画像と記録は専用fixture",
+      "caseCount": 3,
+      "status": "automated"
+    },
+    {
+      "id": "F-SESSION-EDIT",
+      "title": "記録名・解説・手順文章と自動文章への復元",
+      "boundary": "実session.json/edits.jsonとフォーム・共通サービス",
+      "caseCount": 4,
+      "status": "automated"
+    },
+    {
+      "id": "F-SESSION-DELETE",
+      "title": "手順と記録の削除・確認・失敗",
+      "boundary": "OSごみ箱は差替え。画像移動失敗でも手順削除を続ける既存best effortを維持",
+      "caseCount": 7,
+      "status": "automated"
+    },
+    {
+      "id": "F-COMPOSITION-ENGINE",
+      "title": "重複候補と画像・文章・出典を保持した合成",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "caseCount": 22,
+      "status": "automated"
+    },
+    {
+      "id": "F-COMPOSITION-SESSION",
+      "title": "共通編集命令・入力中文章・履歴・保存/再開/完成",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "caseCount": 10,
+      "status": "automated"
+    },
+    {
+      "id": "F-COMPOSITION-CLI",
+      "title": "合成JSONシナリオの編集・保存・完成",
+      "boundary": "共通編集セッション、専用workspace、不正命令/領域外参照の拒否",
+      "caseCount": 8,
+      "status": "automated"
+    },
+    {
+      "id": "F-COMPOSITION-FORM",
+      "title": "合成フォームの候補・差込・移動・採否・文章・保存",
+      "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
+      "caseCount": 9,
+      "status": "automated"
+    },
+    {
+      "id": "F-TEMPLATE",
+      "title": "テンプレートの一覧・追加・保存・戻す・削除・未保存確認",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "caseCount": 17,
+      "status": "automated"
+    },
+    {
+      "id": "F-PREVIEW",
+      "title": "未保存テンプレートのプレビューと並列生成",
+      "boundary": "実Markdown/HTMLと埋込画像、Guid一時領域の後始末、ブラウザー描画待ちを使わない",
+      "caseCount": 2,
+      "status": "automated"
+    },
+    {
+      "id": "F-EXPORT",
+      "title": "Markdown/HTMLの出力形式・画像・本文と旧CLI互換",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "caseCount": 28,
+      "status": "automated"
+    },
+    {
+      "id": "F-MARKS",
+      "title": "丸・矢印・部品枠・ポインタの画像合成",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "caseCount": 15,
+      "status": "automated"
+    },
+    {
+      "id": "F-HTML",
+      "title": "HTMLの操作前後切替・拡大・印刷",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "caseCount": 10,
+      "status": "automated"
+    },
+    {
+      "id": "F-REPLAY",
+      "title": "記録変換・条件監視・時刻/キー/アプリ開始とリプレイ",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "caseCount": 22,
+      "status": "automated"
+    },
+    {
+      "id": "F-LAUNCH",
+      "title": "通常/無表示起動・既存インスタンスへの合図",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "caseCount": 11,
+      "status": "automated"
+    },
+    {
+      "id": "F-MANAGEMENT",
+      "title": "本体からの表示・停止・記録中/未保存の停止拒否",
+      "boundary": "管理停止方針と実フォーム・専用プロセス、既存アプリを停止しない",
+      "caseCount": 4,
+      "status": "automated"
+    },
+    {
+      "id": "F-INTERACTION",
+      "title": "ヘルプ・外部起動・ショートカット・管理者再起動",
+      "boundary": "AppInteractionの要求/取消/失敗または隔離拒否、Explorer/UAC/本番ショートカットは実行しない",
+      "caseCount": 2,
+      "status": "automated"
+    },
+    {
+      "id": "F-AUTOMATION",
+      "title": "自動操作CLIの結果・終了コード・専用領域",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "caseCount": 15,
+      "status": "automated"
+    },
+    {
+      "id": "F-DESKTOP",
+      "title": "別PID fixtureを使った実OS入力・撮影・保存",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "caseCount": 21,
+      "status": "automated"
+    }
+  ],
+  "cases": [
+    {
+      "id": "TEST-A27864A46067",
+      "fullName": "OperationRecorderApp.Tests.AppInteractionTests.隔離指定では実OSへの登録解除と管理者再起動を拒否する",
+      "title": "隔離指定では実OSへの登録解除と管理者再起動を拒否する",
+      "featureIds": [
+        "F-INTERACTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "AppInteractionの要求/取消/失敗または隔離拒否、Explorer/UAC/本番ショートカットは実行しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppInteractionTests.隔離指定では実OSへの登録解除と管理者再起動を拒否する(passive: False, settingsOverride: True)",
+        "OperationRecorderApp.Tests.AppInteractionTests.隔離指定では実OSへの登録解除と管理者再起動を拒否する(passive: True, settingsOverride: False)"
+      ]
+    },
+    {
+      "id": "TEST-CC634C259749",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.v11の設定のホイールはオフに直す",
+      "title": "v11の設定のホイールはオフに直す",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.v11の設定のホイールはオフに直す"
+      ]
+    },
+    {
+      "id": "TEST-65D1E7FFA62B",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.v12で自分でオンにしたホイールはそのまま",
+      "title": "v12で自分でオンにしたホイールはそのまま",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.v12で自分でオンにしたホイールはそのまま"
+      ]
+    },
+    {
+      "id": "TEST-7EE54C1423D1",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.v13で自分でオンにしたキーのグループはそのまま",
+      "title": "v13で自分でオンにしたキーのグループはそのまま",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.v13で自分でオンにしたキーのグループはそのまま"
+      ]
+    },
+    {
+      "id": "TEST-B036A6B6C57C",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.キーのグループの設定を保存して読み直せる",
+      "title": "キーのグループの設定を保存して読み直せる",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.キーのグループの設定を保存して読み直せる"
+      ]
+    },
+    {
+      "id": "TEST-AFD258099EC2",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.以前のテンプレートはuserに読み替える",
+      "title": "以前のテンプレートはuserに読み替える",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.以前のテンプレートはuserに読み替える(legacy: \"user-table\")"
+      ]
+    },
+    {
+      "id": "TEST-1AEE7D5FF7A3",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.以前の版の保存したらHTMLを開かない設定はオンに直す",
+      "title": "以前の版の保存したらHTMLを開かない設定はオンに直す",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.以前の版の保存したらHTMLを開かない設定はオンに直す"
+      ]
+    },
+    {
+      "id": "TEST-A7C4E13B976D",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.壊れた設定ファイルは既定値",
+      "title": "壊れた設定ファイルは既定値",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.壊れた設定ファイルは既定値"
+      ]
+    },
+    {
+      "id": "TEST-E1EED69A2E31",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.作らない形式は保存しても開かない",
+      "title": "作らない形式は保存しても開かない",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.作らない形式は保存しても開かない"
+      ]
+    },
+    {
+      "id": "TEST-DC91A91DF71A",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.設定が無ければ既定値",
+      "title": "設定が無ければ既定値",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.設定が無ければ既定値"
+      ]
+    },
+    {
+      "id": "TEST-34B7BF66A0CB",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.前の版の設定のキーはどれも記録しないに直す",
+      "title": "前の版の設定のキーはどれも記録しないに直す",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.前の版の設定のキーはどれも記録しないに直す"
+      ]
+    },
+    {
+      "id": "TEST-65269DBA5563",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.操作前だけの選択は設定の再読込でも保持する",
+      "title": "操作前だけの選択は設定の再読込でも保持する",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.操作前だけの選択は設定の再読込でも保持する(version: 0)",
+        "OperationRecorderApp.Tests.AppSettingsTests.操作前だけの選択は設定の再読込でも保持する(version: 5)"
+      ]
+    },
+    {
+      "id": "TEST-F0F2A9E3DB88",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.逃げる設定を保存して読み直せる",
+      "title": "逃げる設定を保存して読み直せる",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.逃げる設定を保存して読み直せる"
+      ]
+    },
+    {
+      "id": "TEST-399FD886F28A",
+      "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.ファイル不足は処理失敗として結果と非ゼロを返す",
+      "title": "ファイル不足は処理失敗として結果と非ゼロを返す",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationCommandTests.ファイル不足は処理失敗として結果と非ゼロを返す"
+      ]
+    },
+    {
+      "id": "TEST-D30DECBE799D",
+      "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.結果の保存先に記録や既存入力を指定しても処理前に拒否する",
+      "title": "結果の保存先に記録や既存入力を指定しても処理前に拒否する",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationCommandTests.結果の保存先に記録や既存入力を指定しても処理前に拒否する"
+      ]
+    },
+    {
+      "id": "TEST-DAEB58891007",
+      "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.試験領域は通常フォルダーや外部への書込みを拒否する",
+      "title": "試験領域は通常フォルダーや外部への書込みを拒否する",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationCommandTests.試験領域は通常フォルダーや外部への書込みを拒否する"
+      ]
+    },
+    {
+      "id": "TEST-6E9C8AB69A48",
+      "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.実EXEの自動操作はGUI起動なしに結果JSONと終了コードを返す",
+      "title": "実EXEの自動操作はGUI起動なしに結果JSONと終了コードを返す",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationCommandTests.実EXEの自動操作はGUI起動なしに結果JSONと終了コードを返す"
+      ]
+    },
+    {
+      "id": "TEST-4780AB27CADB",
+      "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.入力と結果の同一指定を処理前に拒否する",
+      "title": "入力と結果の同一指定を処理前に拒否する",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationCommandTests.入力と結果の同一指定を処理前に拒否する"
+      ]
+    },
+    {
+      "id": "TEST-BA1856F37734",
+      "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.不正な引数とJSONは通常起動を呼ばない",
+      "title": "不正な引数とJSONは通常起動を呼ばない",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationCommandTests.不正な引数とJSONは通常起動を呼ばない"
+      ]
+    },
+    {
+      "id": "TEST-3830130A46D3",
+      "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.不明な操作はGUIダイアログなしで引数エラーを返す",
+      "title": "不明な操作はGUIダイアログなしで引数エラーを返す",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationCommandTests.不明な操作はGUIダイアログなしで引数エラーを返す(area: \"session\", action: \"missing\")",
+        "OperationRecorderApp.Tests.AutomationCommandTests.不明な操作はGUIダイアログなしで引数エラーを返す(area: \"settings\", action: \"missing\")",
+        "OperationRecorderApp.Tests.AutomationCommandTests.不明な操作はGUIダイアログなしで引数エラーを返す(area: \"template\", action: \"missing\")"
+      ]
+    },
+    {
+      "id": "TEST-61DC43850465",
+      "fullName": "OperationRecorderApp.Tests.AutomationInstanceTests.隔離実プロセスは併存し同一識別子へ表示と停止を送り別PIDを拒否する",
+      "title": "隔離実プロセスは併存し同一識別子へ表示と停止を送り別PIDを拒否する",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationInstanceTests.隔離実プロセスは併存し同一識別子へ表示と停止を送り別PIDを拒否する"
+      ]
+    },
+    {
+      "id": "TEST-B53204EA50F1",
+      "fullName": "OperationRecorderApp.Tests.AutomationInstanceTests.通常起動の識別子を保ち試験起動だけ三種の識別子を分離する",
+      "title": "通常起動の識別子を保ち試験起動だけ三種の識別子を分離する",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationInstanceTests.通常起動の識別子を保ち試験起動だけ三種の識別子を分離する"
+      ]
+    },
+    {
+      "id": "TEST-C521B00BD8D1",
+      "fullName": "OperationRecorderApp.Tests.AutomationInstanceTests.不完全な試験起動は実EXEでも設定や常駐を始めず拒否する",
+      "title": "不完全な試験起動は実EXEでも設定や常駐を始めず拒否する",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationInstanceTests.不完全な試験起動は実EXEでも設定や常駐を始めず拒否する"
+      ]
+    },
+    {
+      "id": "TEST-4FA3A90F06A9",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.テンプレートの追加読込保存削除検査とプレビューを隔離する",
+      "title": "テンプレートの追加読込保存削除検査とプレビューを隔離する",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.テンプレートの追加読込保存削除検査とプレビューを隔離する"
+      ]
+    },
+    {
+      "id": "BASIC-VALIDATE-008",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.壊れた編集JSONを含む記録の削除はイベントを書き換える前に止める",
+      "title": "壊れた編集JSONを含む記録の削除はイベントを書き換える前に止める",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.壊れた編集JSONを含む記録の削除はイベントを書き換える前に止める"
+      ]
+    },
+    {
+      "id": "TEST-D83696EE269D",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.記録の名前文章削除と両形式出力を同じサービス経路で実行する",
+      "title": "記録の名前文章削除と両形式出力を同じサービス経路で実行する",
+      "featureIds": [
+        "F-SESSION-EDIT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実session.json/edits.jsonとフォーム・共通サービス",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.記録の名前文章削除と両形式出力を同じサービス経路で実行する"
+      ]
+    },
+    {
+      "id": "BASIC-VALIDATE-002",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.記録名と解説はGUIと同様に外側だけを空白除去し省略した項目を保つ",
+      "title": "記録名と解説はGUIと同様に外側だけを空白除去し省略した項目を保つ",
+      "featureIds": [
+        "F-SESSION-EDIT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実session.json/edits.jsonとフォーム・共通サービス",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.記録名と解説はGUIと同様に外側だけを空白除去し省略した項目を保つ"
+      ]
+    },
+    {
+      "id": "BASIC-VALIDATE-004",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.旧設定の移行読込みと設定結果の再保存は維持する",
+      "title": "旧設定の移行読込みと設定結果の再保存は維持する",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.旧設定の移行読込みと設定結果の再保存は維持する"
+      ]
+    },
+    {
+      "id": "BASIC-VALIDATE-007",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.出力する独自テンプレート自体の再解析ポイントを読み込む前に拒否する",
+      "title": "出力する独自テンプレート自体の再解析ポイントを読み込む前に拒否する",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.出力する独自テンプレート自体の再解析ポイントを読み込む前に拒否する"
+      ]
+    },
+    {
+      "id": "TEST-6B1CFE3FF811",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.設定を専用領域へ保存復元し通常の静的設定を戻す",
+      "title": "設定を専用領域へ保存復元し通常の静的設定を戻す",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.設定を専用領域へ保存復元し通常の静的設定を戻す"
+      ]
+    },
+    {
+      "id": "BASIC-VALIDATE-003",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.設定保存の項目誤りや型崩れは既存設定を既定値へ戻さず拒否する",
+      "title": "設定保存の項目誤りや型崩れは既存設定を既定値へ戻さず拒否する",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.設定保存の項目誤りや型崩れは既存設定を既定値へ戻さず拒否する(json: \"[]\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.設定保存の項目誤りや型崩れは既存設定を既定値へ戻さず拒否する(json: \"{\\\"BeforeMs\\\":\\\"75\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.設定保存の項目誤りや型崩れは既存設定を既定値へ戻さず拒否する(json: \"{\\\"Caption\\\":123}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.設定保存の項目誤りや型崩れは既存設定を既定値へ戻さず拒否する(json: \"{\\\"Captoin\\\":\\\"誤字\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.設定保存の項目誤りや型崩れは既存設定を既定値へ戻さず拒否する(json: \"{\\\"OutputHtml\\\":null}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.設定保存の項目誤りや型崩れは既存設定を既定値へ戻さず拒否する(json: \"{\\\"Rules\\\":{\\\"click\\\":{\\\"Recrod\\\":true}}}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.設定保存の項目誤りや型崩れは既存設定を既定値へ戻さず拒否する(json: \"null\")"
+      ]
+    },
+    {
+      "id": "BASIC-VALIDATE-005",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.直接APIでもschemaVersionを省略して既存編集を変更できない",
+      "title": "直接APIでもschemaVersionを省略して既存編集を変更できない",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.直接APIでもschemaVersionを省略して既存編集を変更できない"
+      ]
+    },
+    {
+      "id": "BASIC-VALIDATE-009",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.独自テンプレートの出力と旧様式名からの互換切替を保つ",
+      "title": "独自テンプレートの出力と旧様式名からの互換切替を保つ",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.独自テンプレートの出力と旧様式名からの互換切替を保つ"
+      ]
+    },
+    {
+      "id": "TEST-32F82D0FD9D5",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.不正な画像参照では記録編集を始めない",
+      "title": "不正な画像参照では記録編集を始めない",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な画像参照では記録編集を始めない(path: \"../outside.png\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な画像参照では記録編集を始めない(path: \"C:/outside.png\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な画像参照では記録編集を始めない(path: \"img/file.png:alternate\")"
+      ]
+    },
+    {
+      "id": "BASIC-VALIDATE-001",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない",
+      "title": "不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"delete-step\\\",\\\"seq\\\":\\\"2\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"edit\\\",\\\"seq\\\":2,\\\"body\\\":\\\"本文\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"edit\\\",\\\"seq\\\":2,\\\"headline\\\":\\\"見出し\\\"···)",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"edit\\\",\\\"seq\\\":2,\\\"headline\\\":\\\"見出し\\\"···)",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"edit\\\",\\\"seq\\\":2,\\\"headline\\\":null,\\\"···)",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"edit\\\",\\\"seq\\\":2,\\\"hedline\\\":\\\"誤字\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"export\\\",\\\"embed\\\":null}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"export\\\",\\\"marks\\\":\\\"typo\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"export\\\",\\\"md\\\":false,\\\"html\\\":false\"···)",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"export\\\",\\\"radius\\\":null}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"export\\\",\\\"templates\\\":[]}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"export\\\",\\\"templates\\\":[\\\"../private\"···)",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"export\\\",\\\"templates\\\":\\\"user\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"inspect\\\",\\\"schemaVersion\\\":2}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"inspect\\\",\\\"schemaVersion\\\":null}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"inspect\\\",\\\"session\\\":123}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"inspect\\\",\\\"session\\\":null}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"metadata\\\",\\\"caption\\\":\\\"変更しない\\\",\\\"c\"···)",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"metadata\\\",\\\"caption\\\":null}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"metadata\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":\\\"reset\\\",\\\"seq\\\":0}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"session\", json: \"{\\\"action\\\":123}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"settings\", json: \"{\\\"action\\\":\\\"load\\\",\\\"setings\\\":{}}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"settings\", json: \"{\\\"action\\\":\\\"save\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"template\", json: \"{\\\"action\\\":\\\"check\\\",\\\"text\\\":123}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"template\", json: \"{\\\"action\\\":\\\"create\\\",\\\"name\\\":\\\" leading\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"template\", json: \"{\\\"action\\\":\\\"create\\\",\\\"name\\\":\\\"新規\\\",\\\"txet\\\":\\\"\"···)",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"template\", json: \"{\\\"action\\\":\\\"preview\\\",\\\"text\\\":\\\"# 説明\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"template\", json: \"{\\\"action\\\":\\\"read\\\"}\")",
+        "OperationRecorderApp.Tests.BasicAutomationTests.不正な操作入力は事前検証で拒否し保存済み編集と作業領域を変えない(area: \"template\", json: \"{\\\"action\\\":\\\"save\\\",\\\"name\\\":\\\"既存\\\",\\\"text\\\":null\"···)"
+      ]
+    },
+    {
+      "id": "BASIC-VALIDATE-006",
+      "fullName": "OperationRecorderApp.Tests.BasicAutomationTests.不明な項目を含む実EXE要求は失敗JSONと終了コードで保存済み文章を保つ",
+      "title": "不明な項目を含む実EXE要求は失敗JSONと終了コードで保存済み文章を保つ",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.BasicAutomationTests.不明な項目を含む実EXE要求は失敗JSONと終了コードで保存済み文章を保つ"
+      ]
+    },
+    {
+      "id": "TEST-D6C5615EABB3",
+      "fullName": "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ",
+      "title": "キーのグループ",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 101, ctrl: False, alt: False, win: False, group: \"keyDigits\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 112, ctrl: False, alt: False, win: False, group: \"keyFunction\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 112, ctrl: False, alt: True, win: False, group: \"key\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 13, ctrl: False, alt: False, win: False, group: \"keySpecial\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 135, ctrl: False, alt: False, win: False, group: \"keyFunction\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 27, ctrl: False, alt: False, win: False, group: \"keySpecial\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 36, ctrl: False, alt: False, win: False, group: \"keySpecial\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 37, ctrl: False, alt: False, win: False, group: \"keyArrows\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 37, ctrl: False, alt: False, win: True, group: \"key\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 40, ctrl: False, alt: False, win: False, group: \"keyArrows\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 46, ctrl: False, alt: False, win: False, group: \"keySpecial\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 48, ctrl: False, alt: False, win: False, group: \"keyDigits\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 49, ctrl: False, alt: False, win: False, group: \"keyDigits\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 65, ctrl: False, alt: False, win: False, group: \"keyLetters\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 83, ctrl: True, alt: False, win: False, group: \"key\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 9, ctrl: False, alt: False, win: False, group: \"keySpecial\")",
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループ(vk: 90, ctrl: False, alt: False, win: False, group: \"keyLetters\")"
+      ]
+    },
+    {
+      "id": "TEST-B73F08FC6CF7",
+      "fullName": "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループはすべて表に載る",
+      "title": "キーのグループはすべて表に載る",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CaptureRulesTests.キーのグループはすべて表に載る"
+      ]
+    },
+    {
+      "id": "TEST-7A656A940DAC",
+      "fullName": "OperationRecorderApp.Tests.CaptureRulesTests.ホイールとキーは既定で記録しない",
+      "title": "ホイールとキーは既定で記録しない",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CaptureRulesTests.ホイールとキーは既定で記録しない"
+      ]
+    },
+    {
+      "id": "TEST-963BC802A835",
+      "fullName": "OperationRecorderApp.Tests.CliParityTests.pwshとアプリで同じmdになる",
+      "title": "pwshとアプリで同じmdになる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CliParityTests.pwshとアプリで同じmdになる(embed: False)",
+        "OperationRecorderApp.Tests.CliParityTests.pwshとアプリで同じmdになる(embed: True)"
+      ]
+    },
+    {
+      "id": "COMP-CLI-001",
+      "fullName": "OperationRecorderApp.Tests.CompositionAutomationTests.JSONだけで三記録の編集保存完成と既存出力を実行できる",
+      "title": "JSONだけで三記録の編集保存完成と既存出力を実行できる",
+      "featureIds": [
+        "F-COMPOSITION-CLI"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "共通編集セッション、専用workspace、不正命令/領域外参照の拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionAutomationTests.JSONだけで三記録の編集保存完成と既存出力を実行できる"
+      ]
+    },
+    {
+      "id": "COMP-EXE-001",
+      "fullName": "OperationRecorderApp.Tests.CompositionAutomationTests.実EXEで三記録から新しい記録を完成し再開と失敗を終了コードで判定する",
+      "title": "実EXEで三記録から新しい記録を完成し再開と失敗を終了コードで判定する",
+      "featureIds": [
+        "F-COMPOSITION-CLI"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "共通編集セッション、専用workspace、不正命令/領域外参照の拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionAutomationTests.実EXEで三記録から新しい記録を完成し再開と失敗を終了コードで判定する"
+      ]
+    },
+    {
+      "id": "COMP-CLI-006",
+      "fullName": "OperationRecorderApp.Tests.CompositionAutomationTests.推定なし追加と直接位置指定と採用復帰をシナリオ実行する",
+      "title": "推定なし追加と直接位置指定と採用復帰をシナリオ実行する",
+      "featureIds": [
+        "F-COMPOSITION-CLI"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "共通編集セッション、専用workspace、不正命令/領域外参照の拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionAutomationTests.推定なし追加と直接位置指定と採用復帰をシナリオ実行する"
+      ]
+    },
+    {
+      "id": "COMP-CLI-007",
+      "fullName": "OperationRecorderApp.Tests.CompositionAutomationTests.対象の未選択を暗黙の成功にせず最後の保存を残す",
+      "title": "対象の未選択を暗黙の成功にせず最後の保存を残す",
+      "featureIds": [
+        "F-COMPOSITION-CLI"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "共通編集セッション、専用workspace、不正命令/領域外参照の拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionAutomationTests.対象の未選択を暗黙の成功にせず最後の保存を残す(operations: \"[{\\\"type\\\":\\\"insert\\\",\\\"index\\\":0}]\")",
+        "OperationRecorderApp.Tests.CompositionAutomationTests.対象の未選択を暗黙の成功にせず最後の保存を残す(operations: \"[{\\\"type\\\":\\\"insert\\\",\\\"source\\\":0,\\\"steps\\\":[],\\\"\"···)",
+        "OperationRecorderApp.Tests.CompositionAutomationTests.対象の未選択を暗黙の成功にせず最後の保存を残す(operations: \"[{\\\"type\\\":\\\"select\\\",\\\"rows\\\":[]},{\\\"type\\\":\\\"exc\"···)"
+      ]
+    },
+    {
+      "id": "COMP-CLI-003",
+      "fullName": "OperationRecorderApp.Tests.CompositionAutomationTests.不正なシナリオは作業フォルダーを作る前に拒否する",
+      "title": "不正なシナリオは作業フォルダーを作る前に拒否する",
+      "featureIds": [
+        "F-COMPOSITION-CLI"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "共通編集セッション、専用workspace、不正命令/領域外参照の拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionAutomationTests.不正なシナリオは作業フォルダーを作る前に拒否する(operations: \"[{\\\"type\\\":\\\"choose\\\",\\\"candidate\\\":-1}]\")",
+        "OperationRecorderApp.Tests.CompositionAutomationTests.不正なシナリオは作業フォルダーを作る前に拒否する(operations: \"[{\\\"type\\\":\\\"include\\\",\\\"incldued\\\":false}]\")",
+        "OperationRecorderApp.Tests.CompositionAutomationTests.不正なシナリオは作業フォルダーを作る前に拒否する(operations: \"[{\\\"type\\\":\\\"insert\\\",\\\"index\\\":0,\\\"position\\\":\\\"e\"···)",
+        "OperationRecorderApp.Tests.CompositionAutomationTests.不正なシナリオは作業フォルダーを作る前に拒否する(operations: \"[{\\\"type\\\":\\\"move\\\",\\\"direction\\\":\\\"sideways\\\"}]\")",
+        "OperationRecorderApp.Tests.CompositionAutomationTests.不正なシナリオは作業フォルダーを作る前に拒否する(operations: \"[{\\\"type\\\":\\\"move\\\",\\\"index\\\":0,\\\"direction\\\":\\\"up\"···)",
+        "OperationRecorderApp.Tests.CompositionAutomationTests.不正なシナリオは作業フォルダーを作る前に拒否する(operations: \"[{\\\"type\\\":\\\"select\\\",\\\"rows\\\":[0],\\\"row\\\":0}]\")",
+        "OperationRecorderApp.Tests.CompositionAutomationTests.不正なシナリオは作業フォルダーを作る前に拒否する(operations: \"[{\\\"type\\\":\\\"source\\\",\\\"source\\\":0}]\")",
+        "OperationRecorderApp.Tests.CompositionAutomationTests.不正なシナリオは作業フォルダーを作る前に拒否する(operations: \"[{\\\"type\\\":\\\"unknown\\\"}]\")"
+      ]
+    },
+    {
+      "id": "COMP-CLI-002",
+      "fullName": "OperationRecorderApp.Tests.CompositionAutomationTests.保存作業を別シナリオで再開し閉じる選択を機械判定できる",
+      "title": "保存作業を別シナリオで再開し閉じる選択を機械判定できる",
+      "featureIds": [
+        "F-COMPOSITION-CLI"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "共通編集セッション、専用workspace、不正命令/領域外参照の拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionAutomationTests.保存作業を別シナリオで再開し閉じる選択を機械判定できる"
+      ]
+    },
+    {
+      "id": "COMP-CLI-005",
+      "fullName": "OperationRecorderApp.Tests.CompositionAutomationTests.無効な操作で最後に保存した作業を変更しない",
+      "title": "無効な操作で最後に保存した作業を変更しない",
+      "featureIds": [
+        "F-COMPOSITION-CLI"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "共通編集セッション、専用workspace、不正命令/領域外参照の拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionAutomationTests.無効な操作で最後に保存した作業を変更しない"
+      ]
+    },
+    {
+      "id": "COMP-CLI-004",
+      "fullName": "OperationRecorderApp.Tests.CompositionAutomationTests.領域外の元記録や途中保存は拒否する",
+      "title": "領域外の元記録や途中保存は拒否する",
+      "featureIds": [
+        "F-COMPOSITION-CLI"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "共通編集セッション、専用workspace、不正命令/領域外参照の拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionAutomationTests.領域外の元記録や途中保存は拒否する"
+      ]
+    },
+    {
+      "id": "COMP-SESSION-006",
+      "fullName": "OperationRecorderApp.Tests.CompositionEditingSessionTests.元記録の追加と履歴復元は保存後に元を移動しても使える",
+      "title": "元記録の追加と履歴復元は保存後に元を移動しても使える",
+      "featureIds": [
+        "F-COMPOSITION-SESSION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEditingSessionTests.元記録の追加と履歴復元は保存後に元を移動しても使える"
+      ]
+    },
+    {
+      "id": "COMP-SESSION-002",
+      "fullName": "OperationRecorderApp.Tests.CompositionEditingSessionTests.選択範囲の差込移動採否をGUIと同じ命令で編集する",
+      "title": "選択範囲の差込移動採否をGUIと同じ命令で編集する",
+      "featureIds": [
+        "F-COMPOSITION-SESSION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEditingSessionTests.選択範囲の差込移動採否をGUIと同じ命令で編集する"
+      ]
+    },
+    {
+      "id": "COMP-SESSION-010",
+      "fullName": "OperationRecorderApp.Tests.CompositionEditingSessionTests.追加編集でRedoを破棄し取り消し件数を制限する",
+      "title": "追加編集でRedoを破棄し取り消し件数を制限する",
+      "featureIds": [
+        "F-COMPOSITION-SESSION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEditingSessionTests.追加編集でRedoを破棄し取り消し件数を制限する"
+      ]
+    },
+    {
+      "id": "COMP-SESSION-008",
+      "fullName": "OperationRecorderApp.Tests.CompositionEditingSessionTests.入力を元へ戻すと未保存にならず異なる行への入力は前の行を保持する",
+      "title": "入力を元へ戻すと未保存にならず異なる行への入力は前の行を保持する",
+      "featureIds": [
+        "F-COMPOSITION-SESSION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEditingSessionTests.入力を元へ戻すと未保存にならず異なる行への入力は前の行を保持する"
+      ]
+    },
+    {
+      "id": "COMP-SESSION-001",
+      "fullName": "OperationRecorderApp.Tests.CompositionEditingSessionTests.入力途中の文章を選択変更で確定しUndoRedo保存時点を共有する",
+      "title": "入力途中の文章を選択変更で確定しUndoRedo保存時点を共有する",
+      "featureIds": [
+        "F-COMPOSITION-SESSION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEditingSessionTests.入力途中の文章を選択変更で確定しUndoRedo保存時点を共有する"
+      ]
+    },
+    {
+      "id": "COMP-SESSION-007",
+      "fullName": "OperationRecorderApp.Tests.CompositionEditingSessionTests.不正な選択や列挙値は既存の状態を変えない",
+      "title": "不正な選択や列挙値は既存の状態を変えない",
+      "featureIds": [
+        "F-COMPOSITION-SESSION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEditingSessionTests.不正な選択や列挙値は既存の状態を変えない"
+      ]
+    },
+    {
+      "id": "COMP-SESSION-003",
+      "fullName": "OperationRecorderApp.Tests.CompositionEditingSessionTests.複合命令の失敗は選択入力バッファ履歴まで元へ戻す",
+      "title": "複合命令の失敗は選択入力バッファ履歴まで元へ戻す",
+      "featureIds": [
+        "F-COMPOSITION-SESSION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEditingSessionTests.複合命令の失敗は選択入力バッファ履歴まで元へ戻す"
+      ]
+    },
+    {
+      "id": "COMP-SESSION-009",
+      "fullName": "OperationRecorderApp.Tests.CompositionEditingSessionTests.編集トランザクションは不正な追加と永続操作を取り消す",
+      "title": "編集トランザクションは不正な追加と永続操作を取り消す",
+      "featureIds": [
+        "F-COMPOSITION-SESSION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEditingSessionTests.編集トランザクションは不正な追加と永続操作を取り消す"
+      ]
+    },
+    {
+      "id": "COMP-SESSION-005",
+      "fullName": "OperationRecorderApp.Tests.CompositionEditingSessionTests.保存後の再開と完成は原記録を残し文章画像出典を引き継ぐ",
+      "title": "保存後の再開と完成は原記録を残し文章画像出典を引き継ぐ",
+      "featureIds": [
+        "F-COMPOSITION-SESSION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEditingSessionTests.保存後の再開と完成は原記録を残し文章画像出典を引き継ぐ"
+      ]
+    },
+    {
+      "id": "COMP-SESSION-004",
+      "fullName": "OperationRecorderApp.Tests.CompositionEditingSessionTests.保存失敗と閉じる三択を標準ダイアログなしで検証できる",
+      "title": "保存失敗と閉じる三択を標準ダイアログなしで検証できる",
+      "featureIds": [
+        "F-COMPOSITION-SESSION"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "GUIとCLIが共有する実編集セッション、保存失敗・閉じる三択",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEditingSessionTests.保存失敗と閉じる三択を標準ダイアログなしで検証できる"
+      ]
+    },
+    {
+      "id": "TEST-3D713642FD88",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.Undo用状態復元は追加元と自由編集を往復できる",
+      "title": "Undo用状態復元は追加元と自由編集を往復できる",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.Undo用状態復元は追加元と自由編集を往復できる"
+      ]
+    },
+    {
+      "id": "TEST-0F1B7D3E785B",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.壊れた画像とJSONを拒否する",
+      "title": "壊れた画像とJSONを拒否する",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.壊れた画像とJSONを拒否する"
+      ]
+    },
+    {
+      "id": "TEST-61F6C440B797",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.完成記録の期間は全元記録を含み合成日時と区別する",
+      "title": "完成記録の期間は全元記録を含み合成日時と区別する",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.完成記録の期間は全元記録を含み合成日時と区別する"
+      ]
+    },
+    {
+      "id": "TEST-24450D4F7F7F",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.記録外の画像参照を拒否する",
+      "title": "記録外の画像参照を拒否する",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.記録外の画像参照を拒否する(path: \"../outside.png\")",
+        "OperationRecorderApp.Tests.CompositionEngineTests.記録外の画像参照を拒否する(path: \"C:/outside.png\")",
+        "OperationRecorderApp.Tests.CompositionEngineTests.記録外の画像参照を拒否する(path: \"img/../outside.png\")"
+      ]
+    },
+    {
+      "id": "TEST-9F5A36834965",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.元記録を移動した後も画像と編集情報から再開して出力できる",
+      "title": "元記録を移動した後も画像と編集情報から再開して出力できる",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.元記録を移動した後も画像と編集情報から再開して出力できる"
+      ]
+    },
+    {
+      "id": "TEST-C84FFBFF6A7A",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.三つの記録を突き合わせて候補と除外を保持する",
+      "title": "三つの記録を突き合わせて候補と除外を保持する",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.三つの記録を突き合わせて候補と除外を保持する"
+      ]
+    },
+    {
+      "id": "TEST-CAE48E90DFF4",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.参照画像が欠けた入力は取り込まず作業を残さない",
+      "title": "参照画像が欠けた入力は取り込まず作業を残さない",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.参照画像が欠けた入力は取り込まず作業を残さない"
+      ]
+    },
+    {
+      "id": "TEST-7447F3871E85",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.追加読込で既存の採否候補選択文章と相対順を変更しない",
+      "title": "追加読込で既存の採否候補選択文章と相対順を変更しない",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.追加読込で既存の採否候補選択文章と相対順を変更しない"
+      ]
+    },
+    {
+      "id": "TEST-9B87F357EE3B",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.範囲差し込みと移動除外文章を保存再開し完成できる",
+      "title": "範囲差し込みと移動除外文章を保存再開し完成できる",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.範囲差し込みと移動除外文章を保存再開し完成できる"
+      ]
+    },
+    {
+      "id": "TEST-2A3DAC67AB8F",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.不正な作業参照を拒否し現在の編集と保存済みJSONを保持する",
+      "title": "不正な作業参照を拒否し現在の編集と保存済みJSONを保持する",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.不正な作業参照を拒否し現在の編集と保存済みJSONを保持する"
+      ]
+    },
+    {
+      "id": "TEST-741E4E6C8D6C",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.不正な追加と移動は既存作業に影響しない",
+      "title": "不正な追加と移動は既存作業に影響しない",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.不正な追加と移動は既存作業に影響しない"
+      ]
+    },
+    {
+      "id": "TEST-F564C102C1A5",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.複数記録の画像を同時生成してもPNGとして保存できる",
+      "title": "複数記録の画像を同時生成してもPNGとして保存できる",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.複数記録の画像を同時生成してもPNGとして保存できる"
+      ]
+    },
+    {
+      "id": "TEST-0D33FF715CEB",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.複数行移動は元の相対順を維持する",
+      "title": "複数行移動は元の相対順を維持する",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.複数行移動は元の相対順を維持する"
+      ]
+    },
+    {
+      "id": "TEST-8B90109A14DC",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.文章のみの記録を完成でき除外は復帰できる",
+      "title": "文章のみの記録を完成でき除外は復帰できる",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.文章のみの記録を完成でき除外は復帰できる"
+      ]
+    },
+    {
+      "id": "TEST-A30CF94B279C",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.保存済み画像の欠落と変更を検出して不完全な完成記録を残さない",
+      "title": "保存済み画像の欠落と変更を検出して不完全な完成記録を残さない",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.保存済み画像の欠落と変更を検出して不完全な完成記録を残さない"
+      ]
+    },
+    {
+      "id": "TEST-19E038D5D92D",
+      "fullName": "OperationRecorderApp.Tests.CompositionEngineTests.保存先がロック中なら前回の作業ファイルを保持する",
+      "title": "保存先がロック中なら前回の作業ファイルを保持する",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEngineTests.保存先がロック中なら前回の作業ファイルを保持する"
+      ]
+    },
+    {
+      "id": "TEST-6CB2E7CBC13F",
+      "fullName": "OperationRecorderApp.Tests.CompositionEntryTests.一覧を更新しても未保存の記録名と手順本文を保持する",
+      "title": "一覧を更新しても未保存の記録名と手順本文を保持する",
+      "featureIds": [
+        "F-SESSION-LIST"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実フォーム、画像と記録は専用fixture",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEntryTests.一覧を更新しても未保存の記録名と手順本文を保持する"
+      ]
+    },
+    {
+      "id": "TEST-AAA8CED3092A",
+      "fullName": "OperationRecorderApp.Tests.CompositionEntryTests.選択記録の合成をモーダルで開いている間は管理停止を拒否し原記録を保持する",
+      "title": "選択記録の合成をモーダルで開いている間は管理停止を拒否し原記録を保持する",
+      "featureIds": [
+        "F-SESSION-LIST"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実フォーム、画像と記録は専用fixture",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEntryTests.選択記録の合成をモーダルで開いている間は管理停止を拒否し原記録を保持する"
+      ]
+    },
+    {
+      "id": "TEST-331AE6A25A0F",
+      "fullName": "OperationRecorderApp.Tests.CompositionEntryTests.複数記録の選択では合成だけを有効にし単独選択で編集を戻す",
+      "title": "複数記録の選択では合成だけを有効にし単独選択で編集を戻す",
+      "featureIds": [
+        "F-SESSION-LIST"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実フォーム、画像と記録は専用fixture",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionEntryTests.複数記録の選択では合成だけを有効にし単独選択で編集を戻す"
+      ]
+    },
+    {
+      "id": "TEST-9908B64953D3",
+      "fullName": "OperationRecorderApp.Tests.CompositionFormTests.三記録の画像比較と範囲挿入移動除外を途中保存から完成できる",
+      "title": "三記録の画像比較と範囲挿入移動除外を途中保存から完成できる",
+      "featureIds": [
+        "F-COMPOSITION-FORM"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionFormTests.三記録の画像比較と範囲挿入移動除外を途中保存から完成できる"
+      ]
+    },
+    {
+      "id": "TEST-E2A0995678A2",
+      "fullName": "OperationRecorderApp.Tests.CompositionFormTests.初回表示とハンドル再生成は採否を変えずチェック変更後も連続番号になる",
+      "title": "初回表示とハンドル再生成は採否を変えずチェック変更後も連続番号になる",
+      "featureIds": [
+        "F-COMPOSITION-FORM"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionFormTests.初回表示とハンドル再生成は採否を変えずチェック変更後も連続番号になる"
+      ]
+    },
+    {
+      "id": "TEST-952B5ACBB252",
+      "fullName": "OperationRecorderApp.Tests.CompositionFormTests.入力中の文章は選択変更時に保持され元に戻してやり直せる",
+      "title": "入力中の文章は選択変更時に保持され元に戻してやり直せる",
+      "featureIds": [
+        "F-COMPOSITION-FORM"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionFormTests.入力中の文章は選択変更時に保持され元に戻してやり直せる"
+      ]
+    },
+    {
+      "id": "TEST-6C0B7E0BF20D",
+      "fullName": "OperationRecorderApp.Tests.CompositionFormTests.未編集で閉じられ最小画面でも保存と完成の操作が到達できる",
+      "title": "未編集で閉じられ最小画面でも保存と完成の操作が到達できる",
+      "featureIds": [
+        "F-COMPOSITION-FORM"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionFormTests.未編集で閉じられ最小画面でも保存と完成の操作が到達できる"
+      ]
+    },
+    {
+      "id": "COMP-UI-001",
+      "fullName": "OperationRecorderApp.Tests.CompositionSessionUiTests.画面から閉じる三択は共有サービスと保存済みの記録に反映する",
+      "title": "画面から閉じる三択は共有サービスと保存済みの記録に反映する",
+      "featureIds": [
+        "F-COMPOSITION-FORM"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionSessionUiTests.画面から閉じる三択は共有サービスと保存済みの記録に反映する(answer: Cancel)",
+        "OperationRecorderApp.Tests.CompositionSessionUiTests.画面から閉じる三択は共有サービスと保存済みの記録に反映する(answer: No)",
+        "OperationRecorderApp.Tests.CompositionSessionUiTests.画面から閉じる三択は共有サービスと保存済みの記録に反映する(answer: Yes)"
+      ]
+    },
+    {
+      "id": "COMP-UI-004",
+      "fullName": "OperationRecorderApp.Tests.CompositionSessionUiTests.記録追加はフォルダー取消と失敗を通常の選択画面なしで検証する",
+      "title": "記録追加はフォルダー取消と失敗を通常の選択画面なしで検証する",
+      "featureIds": [
+        "F-COMPOSITION-FORM"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionSessionUiTests.記録追加はフォルダー取消と失敗を通常の選択画面なしで検証する"
+      ]
+    },
+    {
+      "id": "COMP-UI-003",
+      "fullName": "OperationRecorderApp.Tests.CompositionSessionUiTests.元手順と完成順の範囲選択を公開セッションへ伝え不足選択の案内も差し替えられる",
+      "title": "元手順と完成順の範囲選択を公開セッションへ伝え不足選択の案内も差し替えられる",
+      "featureIds": [
+        "F-COMPOSITION-FORM"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionSessionUiTests.元手順と完成順の範囲選択を公開セッションへ伝え不足選択の案内も差し替えられる"
+      ]
+    },
+    {
+      "id": "COMP-UI-002",
+      "fullName": "OperationRecorderApp.Tests.CompositionSessionUiTests.閉じる際の保存失敗は画面を残してエラーを返し再選択できる",
+      "title": "閉じる際の保存失敗は画面を残してエラーを返し再選択できる",
+      "featureIds": [
+        "F-COMPOSITION-FORM"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.CompositionSessionUiTests.閉じる際の保存失敗は画面を残してエラーを返し再選択できる"
+      ]
+    },
+    {
+      "id": "TEST-B751134457EA",
+      "fullName": "OperationRecorderApp.Tests.DragArrowTests.ほとんど動いていなければ描かない",
+      "title": "ほとんど動いていなければ描かない",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.DragArrowTests.ほとんど動いていなければ描かない"
+      ]
+    },
+    {
+      "id": "TEST-6D0433E48AC5",
+      "fullName": "OperationRecorderApp.Tests.DragArrowTests.丸の縁から離した位置へ",
+      "title": "丸の縁から離した位置へ",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.DragArrowTests.丸の縁から離した位置へ"
+      ]
+    },
+    {
+      "id": "TEST-7A7248A87668",
+      "fullName": "OperationRecorderApp.Tests.DragArrowTests.矢印の先は離した位置で底辺は線に直角",
+      "title": "矢印の先は離した位置で底辺は線に直角",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.DragArrowTests.矢印の先は離した位置で底辺は線に直角"
+      ]
+    },
+    {
+      "id": "TEST-54D7EDA87185",
+      "fullName": "OperationRecorderApp.Tests.ExportCommandTests.exeから出力できる",
+      "title": "exeから出力できる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportCommandTests.exeから出力できる"
+      ]
+    },
+    {
+      "id": "TEST-BD31CF04A83D",
+      "fullName": "OperationRecorderApp.Tests.ExportCommandTests.exeは引数の誤りを終了コード2で返す",
+      "title": "exeは引数の誤りを終了コード2で返す",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportCommandTests.exeは引数の誤りを終了コード2で返す"
+      ]
+    },
+    {
+      "id": "TEST-AD3F49AD425C",
+      "fullName": "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる",
+      "title": "引数の誤りを知らせる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\", \"a\", \"--format\", \"pdf\"], expected: \"--format\")",
+        "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\", \"a\", \"--layout\", \"side\"], expected: \"知らない引数\")",
+        "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\", \"a\", \"--out\"], expected: \"値がありません\")",
+        "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\", \"a\", \"--unknown\"], expected: \"知らない引数\")",
+        "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\", \"a\", \"b\"], expected: \"1 つだけ\")",
+        "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\"], expected: \"記録フォルダ\")"
+      ]
+    },
+    {
+      "id": "TEST-C357BDAD90A8",
+      "fullName": "OperationRecorderApp.Tests.ExportCommandTests.引数を読む",
+      "title": "引数を読む",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportCommandTests.引数を読む"
+      ]
+    },
+    {
+      "id": "TEST-B35441100F33",
+      "fullName": "OperationRecorderApp.Tests.ExportCommandTests.記録フォルダが無ければ失敗する",
+      "title": "記録フォルダが無ければ失敗する",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportCommandTests.記録フォルダが無ければ失敗する"
+      ]
+    },
+    {
+      "id": "TEST-C8B0FD749AC3",
+      "fullName": "OperationRecorderApp.Tests.ExportCommandTests.出力先を指定できる",
+      "title": "出力先を指定できる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportCommandTests.出力先を指定できる"
+      ]
+    },
+    {
+      "id": "TEST-68803226257A",
+      "fullName": "OperationRecorderApp.Tests.ExportCommandTests.省略時はuserでmdとHTMLの両方",
+      "title": "省略時はuserでmdとHTMLの両方",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportCommandTests.省略時はuserでmdとHTMLの両方"
+      ]
+    },
+    {
+      "id": "TEST-54EDE971177D",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.imagesBlockは以前のテンプレートとの互換で左右に並べる",
+      "title": "imagesBlockは以前のテンプレートとの互換で左右に並べる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.imagesBlockは以前のテンプレートとの互換で左右に並べる"
+      ]
+    },
+    {
+      "id": "TEST-A021EE0AE7C8",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.userは操作前と操作後を左右に並べる",
+      "title": "userは操作前と操作後を左右に並べる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.userは操作前と操作後を左右に並べる"
+      ]
+    },
+    {
+      "id": "TEST-EEB01A38465F",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.テキスト手順書は画像を載せない",
+      "title": "テキスト手順書は画像を載せない",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.テキスト手順書は画像を載せない"
+      ]
+    },
+    {
+      "id": "TEST-4A7A1BA4FD70",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.ホイールの手順は向きと目盛りの数を書く",
+      "title": "ホイールの手順は向きと目盛りの数を書く",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.ホイールの手順は向きと目盛りの数を書く"
+      ]
+    },
+    {
+      "id": "TEST-E92B02FD9D2A",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.以前のテンプレート名はuserとして出力する",
+      "title": "以前のテンプレート名はuserとして出力する",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.以前のテンプレート名はuserとして出力する(legacy: \"user-table\")"
+      ]
+    },
+    {
+      "id": "TEST-82E147C186D3",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.画像のあるテンプレートは左右に並べる",
+      "title": "画像のあるテンプレートは左右に並べる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.画像のあるテンプレートは左右に並べる(template: \"ai\")",
+        "OperationRecorderApp.Tests.ExportTests.画像のあるテンプレートは左右に並べる(template: \"psr\")",
+        "OperationRecorderApp.Tests.ExportTests.画像のあるテンプレートは左右に並べる(template: \"user\")"
+      ]
+    },
+    {
+      "id": "TEST-EFA533D1E200",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.画像を埋め込むとファイルを参照しない",
+      "title": "画像を埋め込むとファイルを参照しない",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.画像を埋め込むとファイルを参照しない"
+      ]
+    },
+    {
+      "id": "TEST-304D49C9B791",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.形式を選べる",
+      "title": "形式を選べる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.形式を選べる"
+      ]
+    },
+    {
+      "id": "TEST-EBBCB7A4E46B",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.左右に並べる",
+      "title": "左右に並べる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.左右に並べる"
+      ]
+    },
+    {
+      "id": "TEST-075E15E81EA9",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.指定側の画像がない手順に反対側を差し込まない",
+      "title": "指定側の画像がない手順に反対側を差し込まない",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.指定側の画像がない手順に反対側を差し込まない(side: \"after\", opposite: \"before\")",
+        "OperationRecorderApp.Tests.ExportTests.指定側の画像がない手順に反対側を差し込まない(side: \"before\", opposite: \"after\")"
+      ]
+    },
+    {
+      "id": "TEST-9C76C5E1D3B8",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.手順の文章の手直しが反映される",
+      "title": "手順の文章の手直しが反映される",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.手順の文章の手直しが反映される"
+      ]
+    },
+    {
+      "id": "TEST-6E7792A9A10E",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.縦に並べる",
+      "title": "縦に並べる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.縦に並べる"
+      ]
+    },
+    {
+      "id": "TEST-660A1315D8EF",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.操作後だけ",
+      "title": "操作後だけ",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.操作後だけ"
+      ]
+    },
+    {
+      "id": "TEST-CF2A178DDD54",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.操作前だけ",
+      "title": "操作前だけ",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.操作前だけ"
+      ]
+    },
+    {
+      "id": "TEST-B52C17C37D08",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.操作前専用は最初の操作後が欠けても全手順を操作前だけで出力する",
+      "title": "操作前専用は最初の操作後が欠けても全手順を操作前だけで出力する",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.操作前専用は最初の操作後が欠けても全手順を操作前だけで出力する"
+      ]
+    },
+    {
+      "id": "TEST-2704560D1A54",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.同じ画面なら1枚にまとめる",
+      "title": "同じ画面なら1枚にまとめる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.同じ画面なら1枚にまとめる(variable: \"images.sideMerged\", twoImages: \"| 操作前 | 操作後 |\")",
+        "OperationRecorderApp.Tests.ExportTests.同じ画面なら1枚にまとめる(variable: \"images.verticalMerged\", twoImages: \"**操作後:**\")"
+      ]
+    },
+    {
+      "id": "TEST-D37EE8DD8323",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.独自フォルダーに操作前テンプレートがなければ両側へ読み替えない",
+      "title": "独自フォルダーに操作前テンプレートがなければ両側へ読み替えない",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.独自フォルダーに操作前テンプレートがなければ両側へ読み替えない"
+      ]
+    },
+    {
+      "id": "TEST-841A59BB63FE",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.名前と解説が見出しと冒頭に入る",
+      "title": "名前と解説が見出しと冒頭に入る",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.名前と解説が見出しと冒頭に入る"
+      ]
+    },
+    {
+      "id": "TEST-F6CD6B8989FB",
+      "fullName": "OperationRecorderApp.Tests.FormSmokeTests.テンプレートのエディタを表示できる",
+      "title": "テンプレートのエディタを表示できる",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.FormSmokeTests.テンプレートのエディタを表示できる"
+      ]
+    },
+    {
+      "id": "TEST-35B7311C8CB6",
+      "fullName": "OperationRecorderApp.Tests.FormSmokeTests.記録の合成の画面を表示できる",
+      "title": "記録の合成の画面を表示できる",
+      "featureIds": [
+        "F-COMPOSITION-FORM"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.FormSmokeTests.記録の合成の画面を表示できる"
+      ]
+    },
+    {
+      "id": "TEST-2624DAEA1DE1",
+      "fullName": "OperationRecorderApp.Tests.HotkeyTests.CtrlかAltかWinが要る",
+      "title": "CtrlかAltかWinが要る",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HotkeyTests.CtrlかAltかWinが要る(ctrl: False, shift: False, alt: False, win: False)",
+        "OperationRecorderApp.Tests.HotkeyTests.CtrlかAltかWinが要る(ctrl: False, shift: True, alt: False, win: False)"
+      ]
+    },
+    {
+      "id": "TEST-681B487E5C6E",
+      "fullName": "OperationRecorderApp.Tests.HotkeyTests.RegisterHotKeyに渡す修飾キー",
+      "title": "RegisterHotKeyに渡す修飾キー",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HotkeyTests.RegisterHotKeyに渡す修飾キー"
+      ]
+    },
+    {
+      "id": "TEST-86D23119631C",
+      "fullName": "OperationRecorderApp.Tests.HotkeyTests.キーが無いと使えない",
+      "title": "キーが無いと使えない",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HotkeyTests.キーが無いと使えない"
+      ]
+    },
+    {
+      "id": "TEST-34B8F90F5C17",
+      "fullName": "OperationRecorderApp.Tests.HotkeyTests.よく使うキーは使えない",
+      "title": "よく使うキーは使えない",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HotkeyTests.よく使うキーは使えない(ctrl: False, shift: False, alt: False, win: True, key: \"L\")",
+        "OperationRecorderApp.Tests.HotkeyTests.よく使うキーは使えない(ctrl: False, shift: False, alt: True, win: False, key: \"F4\")",
+        "OperationRecorderApp.Tests.HotkeyTests.よく使うキーは使えない(ctrl: True, shift: False, alt: False, win: False, key: \"S\")",
+        "OperationRecorderApp.Tests.HotkeyTests.よく使うキーは使えない(ctrl: True, shift: False, alt: True, win: False, key: \"Delete\")"
+      ]
+    },
+    {
+      "id": "TEST-EDCD78D4AACA",
+      "fullName": "OperationRecorderApp.Tests.HotkeyTests.既定はCtrlShiftF9からF12",
+      "title": "既定はCtrlShiftF9からF12",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HotkeyTests.既定はCtrlShiftF9からF12"
+      ]
+    },
+    {
+      "id": "TEST-9EAE33C70F7A",
+      "fullName": "OperationRecorderApp.Tests.HotkeyTests.修飾キーまで一致したときだけ操作キーになる",
+      "title": "修飾キーまで一致したときだけ操作キーになる",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HotkeyTests.修飾キーまで一致したときだけ操作キーになる"
+      ]
+    },
+    {
+      "id": "TEST-35BB730EF1A0",
+      "fullName": "OperationRecorderApp.Tests.HotkeyTests.選べるキーの一覧",
+      "title": "選べるキーの一覧",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HotkeyTests.選べるキーの一覧"
+      ]
+    },
+    {
+      "id": "TEST-E6EBC1718734",
+      "fullName": "OperationRecorderApp.Tests.HotkeyTests.同じキーを2つの操作に使えない",
+      "title": "同じキーを2つの操作に使えない",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HotkeyTests.同じキーを2つの操作に使えない"
+      ]
+    },
+    {
+      "id": "TEST-A88AC58E2BE6",
+      "fullName": "OperationRecorderApp.Tests.HotkeyTests.複製は元と独立している",
+      "title": "複製は元と独立している",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HotkeyTests.複製は元と独立している"
+      ]
+    },
+    {
+      "id": "TEST-F966D3E2CFA8",
+      "fullName": "OperationRecorderApp.Tests.HotkeyTests.変えたキーで判定する",
+      "title": "変えたキーで判定する",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HotkeyTests.変えたキーで判定する"
+      ]
+    },
+    {
+      "id": "TEST-36EA6EEB46C5",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.一枚にまとめた画像はどちらの表示でも出す",
+      "title": "一枚にまとめた画像はどちらの表示でも出す",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.一枚にまとめた画像はどちらの表示でも出す"
+      ]
+    },
+    {
+      "id": "TEST-56003DAB8F71",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.印刷では切り替えを隠して両方を出す",
+      "title": "印刷では切り替えを隠して両方を出す",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.印刷では切り替えを隠して両方を出す"
+      ]
+    },
+    {
+      "id": "TEST-0EA95B8FECCB",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.画像の無い手順書には切り替えを出さない",
+      "title": "画像の無い手順書には切り替えを出さない",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.画像の無い手順書には切り替えを出さない"
+      ]
+    },
+    {
+      "id": "TEST-256199504A04",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.画像はクリックで拡大できる",
+      "title": "画像はクリックで拡大できる",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.画像はクリックで拡大できる"
+      ]
+    },
+    {
+      "id": "TEST-B13986C238CC",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.左右に並べた表の列に印を付ける",
+      "title": "左右に並べた表の列に印を付ける",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.左右に並べた表の列に印を付ける"
+      ]
+    },
+    {
+      "id": "TEST-079A47E30B6D",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.縦に並べたときは見出しと画像に印を付ける",
+      "title": "縦に並べたときは見出しと画像に印を付ける",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.縦に並べたときは見出しと画像に印を付ける"
+      ]
+    },
+    {
+      "id": "TEST-DF5447F31B7F",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.切り替えのボタンは最初の手順の直前に置く",
+      "title": "切り替えのボタンは最初の手順の直前に置く",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.切り替えのボタンは最初の手順の直前に置く"
+      ]
+    },
+    {
+      "id": "TEST-61E9894F9AE5",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.別々の手順に片側ずつあるだけでは切り替えを出さない",
+      "title": "別々の手順に片側ずつあるだけでは切り替えを出さない",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.別々の手順に片側ずつあるだけでは切り替えを出さない"
+      ]
+    },
+    {
+      "id": "TEST-4E4F46A0A565",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.片側だけの全手順には切り替えを出さない",
+      "title": "片側だけの全手順には切り替えを出さない",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.片側だけの全手順には切り替えを出さない(side: \"after\")",
+        "OperationRecorderApp.Tests.HtmlViewTests.片側だけの全手順には切り替えを出さない(side: \"before\")"
+      ]
+    },
+    {
+      "id": "TEST-20928B67495D",
+      "fullName": "OperationRecorderApp.Tests.HtmlViewTests.埋め込んでも画像は増えない",
+      "title": "埋め込んでも画像は増えない",
+      "featureIds": [
+        "F-HTML"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外",
+      "displayNames": [
+        "OperationRecorderApp.Tests.HtmlViewTests.埋め込んでも画像は増えない"
+      ]
+    },
+    {
+      "id": "TEST-EB5BE5B91EE9",
+      "fullName": "OperationRecorderApp.Tests.ImageCompareTests.一ピクセルでも違えば別の画面",
+      "title": "一ピクセルでも違えば別の画面",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ImageCompareTests.一ピクセルでも違えば別の画面"
+      ]
+    },
+    {
+      "id": "TEST-2E0CD7836FE7",
+      "fullName": "OperationRecorderApp.Tests.ImageCompareTests.大きさが違えば別の画面",
+      "title": "大きさが違えば別の画面",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ImageCompareTests.大きさが違えば別の画面"
+      ]
+    },
+    {
+      "id": "TEST-0BF60EB93A11",
+      "fullName": "OperationRecorderApp.Tests.ImageCompareTests.同じ画面",
+      "title": "同じ画面",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ImageCompareTests.同じ画面"
+      ]
+    },
+    {
+      "id": "TEST-FA13CCB43501",
+      "fullName": "OperationRecorderApp.Tests.LaunchTests.startupだけが画面を出さずに起動する",
+      "title": "startupだけが画面を出さずに起動する",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.LaunchTests.startupだけが画面を出さずに起動する"
+      ]
+    },
+    {
+      "id": "TEST-D8E7165AFE86",
+      "fullName": "OperationRecorderApp.Tests.LaunchTests.引数を読む",
+      "title": "引数を読む",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.LaunchTests.引数を読む(args: [\"--hide\"], settings: False, startup: False, record: False)",
+        "OperationRecorderApp.Tests.LaunchTests.引数を読む(args: [\"--record\"], settings: False, startup: False, record: True)",
+        "OperationRecorderApp.Tests.LaunchTests.引数を読む(args: [\"--settings\"], settings: True, startup: False, record: False)",
+        "OperationRecorderApp.Tests.LaunchTests.引数を読む(args: [\"--startup\"], settings: False, startup: True, record: False)",
+        "OperationRecorderApp.Tests.LaunchTests.引数を読む(args: [\"-startup\"], settings: False, startup: True, record: False)",
+        "OperationRecorderApp.Tests.LaunchTests.引数を読む(args: [\"/STARTUP\"], settings: False, startup: True, record: False)",
+        "OperationRecorderApp.Tests.LaunchTests.引数を読む(args: [\"startup\"], settings: False, startup: True, record: False)",
+        "OperationRecorderApp.Tests.LaunchTests.引数を読む(args: [], settings: False, startup: False, record: False)"
+      ]
+    },
+    {
+      "id": "TEST-8F06EDDAF8C1",
+      "fullName": "OperationRecorderApp.Tests.LaunchTests.何もしないときは合図を送らない",
+      "title": "何もしないときは合図を送らない",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.LaunchTests.何もしないときは合図を送らない"
+      ]
+    },
+    {
+      "id": "TEST-1B9F0F28D2BA",
+      "fullName": "OperationRecorderApp.Tests.LaunchTests.起動済みのときの動き",
+      "title": "起動済みのときの動き",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.LaunchTests.起動済みのときの動き(args: [\"--record\"], expected: StartRecording)",
+        "OperationRecorderApp.Tests.LaunchTests.起動済みのときの動き(args: [\"--settings\"], expected: ShowMain)",
+        "OperationRecorderApp.Tests.LaunchTests.起動済みのときの動き(args: [\"--startup\", \"--settings\"], expected: ShowMain)",
+        "OperationRecorderApp.Tests.LaunchTests.起動済みのときの動き(args: [\"--startup\"], expected: None)",
+        "OperationRecorderApp.Tests.LaunchTests.起動済みのときの動き(args: [], expected: ShowMain)"
+      ]
+    },
+    {
+      "id": "TEST-1FBB9A51BFC5",
+      "fullName": "OperationRecorderApp.Tests.LaunchTests.起動中のアプリに合図が届く",
+      "title": "起動中のアプリに合図が届く",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.LaunchTests.起動中のアプリに合図が届く"
+      ]
+    },
+    {
+      "id": "TEST-B76A16825A19",
+      "fullName": "OperationRecorderApp.Tests.LaunchTests.旧スタートアップ登録を読み取っても書き換えない",
+      "title": "旧スタートアップ登録を読み取っても書き換えない",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.LaunchTests.旧スタートアップ登録を読み取っても書き換えない"
+      ]
+    },
+    {
+      "id": "TEST-4FA8857F12C1",
+      "fullName": "OperationRecorderApp.Tests.LaunchTests.正式版のショートカットは現在の実行パスと一致するときだけ初回提案を抑止する",
+      "title": "正式版のショートカットは現在の実行パスと一致するときだけ初回提案を抑止する",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.LaunchTests.正式版のショートカットは現在の実行パスと一致するときだけ初回提案を抑止する"
+      ]
+    },
+    {
+      "id": "TEST-332410611D67",
+      "fullName": "OperationRecorderApp.Tests.LaunchTests.待ち受けが無ければ送れない",
+      "title": "待ち受けが無ければ送れない",
+      "featureIds": [
+        "F-LAUNCH"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.LaunchTests.待ち受けが無ければ送れない"
+      ]
+    },
+    {
+      "id": "TEST-2E743FB65828",
+      "fullName": "OperationRecorderApp.Tests.ManagementTests.ダイアログを閉じるまで停止しない",
+      "title": "ダイアログを閉じるまで停止しない",
+      "featureIds": [
+        "F-MANAGEMENT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "管理停止方針と実フォーム・専用プロセス、既存アプリを停止しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ManagementTests.ダイアログを閉じるまで停止しない"
+      ]
+    },
+    {
+      "id": "TEST-803FD8D00F8E",
+      "fullName": "OperationRecorderApp.Tests.ManagementTests.記録と保存を中断する管理停止は拒否する",
+      "title": "記録と保存を中断する管理停止は拒否する",
+      "featureIds": [
+        "F-MANAGEMENT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "管理停止方針と実フォーム・専用プロセス、既存アプリを停止しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ManagementTests.記録と保存を中断する管理停止は拒否する(state: Recording)",
+        "OperationRecorderApp.Tests.ManagementTests.記録と保存を中断する管理停止は拒否する(state: Saving)"
+      ]
+    },
+    {
+      "id": "TEST-9A3B96856AE7",
+      "fullName": "OperationRecorderApp.Tests.ManagementTests.待機中は正常停止できる",
+      "title": "待機中は正常停止できる",
+      "featureIds": [
+        "F-MANAGEMENT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "管理停止方針と実フォーム・専用プロセス、既存アプリを停止しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ManagementTests.待機中は正常停止できる"
+      ]
+    },
+    {
+      "id": "TEST-DA0F2E7B19B3",
+      "fullName": "OperationRecorderApp.Tests.ManagementTests.未保存の記録編集は管理停止を拒否し保存すると解除する",
+      "title": "未保存の記録編集は管理停止を拒否し保存すると解除する",
+      "featureIds": [
+        "F-MANAGEMENT"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "管理停止方針と実フォーム・専用プロセス、既存アプリを停止しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ManagementTests.未保存の記録編集は管理停止を拒否し保存すると解除する(fieldName: \"txtSesCaption\", editedText: \"保存後の記録名\")",
+        "OperationRecorderApp.Tests.ManagementTests.未保存の記録編集は管理停止を拒否し保存すると解除する(fieldName: \"txtSesDescription\", editedText: \"保存後の解説\")",
+        "OperationRecorderApp.Tests.ManagementTests.未保存の記録編集は管理停止を拒否し保存すると解除する(fieldName: \"txtStepBody\", editedText: \"保存後の本文\\r\\n2行目\")",
+        "OperationRecorderApp.Tests.ManagementTests.未保存の記録編集は管理停止を拒否し保存すると解除する(fieldName: \"txtStepHeadline\", editedText: \"保存後の手順見出し\")"
+      ]
+    },
+    {
+      "id": "TEST-ADAE24FE7CC6",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.exeの引数で印を選べる",
+      "title": "exeの引数で印を選べる",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.exeの引数で印を選べる"
+      ]
+    },
+    {
+      "id": "TEST-1B90397688C1",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.マウスポインタを描く",
+      "title": "マウスポインタを描く",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.マウスポインタを描く"
+      ]
+    },
+    {
+      "id": "TEST-80FD6DB28EF5",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.印なしなら元の画像を参照する",
+      "title": "印なしなら元の画像を参照する",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.印なしなら元の画像を参照する"
+      ]
+    },
+    {
+      "id": "TEST-5F27A349F6A7",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.印の指定を読む",
+      "title": "印の指定を読む",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.印の指定を読む(text: \"\", expected: \"none\")",
+        "OperationRecorderApp.Tests.MarkTests.印の指定を読む(text: \"circle,arrow,frame\", expected: \"circle,arrow,frame\")",
+        "OperationRecorderApp.Tests.MarkTests.印の指定を読む(text: \"none\", expected: \"none\")",
+        "OperationRecorderApp.Tests.MarkTests.印の指定を読む(text: \"pointer, circle\", expected: \"pointer,circle\")"
+      ]
+    },
+    {
+      "id": "TEST-E04CFE5D7AD2",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.印を合成した画像は別のフォルダに作り元の画像は変えない",
+      "title": "印を合成した画像は別のフォルダに作り元の画像は変えない",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.印を合成した画像は別のフォルダに作り元の画像は変えない"
+      ]
+    },
+    {
+      "id": "TEST-2082C005CD23",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.印を描いて保存していた古い記録には重ねない",
+      "title": "印を描いて保存していた古い記録には重ねない",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.印を描いて保存していた古い記録には重ねない"
+      ]
+    },
+    {
+      "id": "TEST-A0511F283749",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.既定は丸と矢印と枠でポインタは描かない",
+      "title": "既定は丸と矢印と枠でポインタは描かない",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.既定は丸と矢印と枠でポインタは描かない"
+      ]
+    },
+    {
+      "id": "TEST-4011508A962E",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.記録一覧の表示用に印の位置を返す",
+      "title": "記録一覧の表示用に印の位置を返す",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.記録一覧の表示用に印の位置を返す"
+      ]
+    },
+    {
+      "id": "TEST-3BC736B11AED",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.知らない印は誤り",
+      "title": "知らない印は誤り",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.知らない印は誤り"
+      ]
+    },
+    {
+      "id": "TEST-E641E56527C3",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.部品の位置が無い記録はウィンドウ内の位置から求める",
+      "title": "部品の位置が無い記録はウィンドウ内の位置から求める",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.部品の位置が無い記録はウィンドウ内の位置から求める"
+      ]
+    },
+    {
+      "id": "TEST-24F961152EFC",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.部品の枠を描く",
+      "title": "部品の枠を描く",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.部品の枠を描く"
+      ]
+    },
+    {
+      "id": "TEST-75ED42EBB85C",
+      "fullName": "OperationRecorderApp.Tests.MarkTests.埋め込むときは印を描いた画像を埋め込む",
+      "title": "埋め込むときは印を描いた画像を埋め込む",
+      "featureIds": [
+        "F-MARKS"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MarkTests.埋め込むときは印を描いた画像を埋め込む"
+      ]
+    },
+    {
+      "id": "TEST-A0BC7E79D4DD",
+      "fullName": "OperationRecorderApp.Tests.MergeTests.クリック位置や入力した文字が違っても同じ操作とみなす",
+      "title": "クリック位置や入力した文字が違っても同じ操作とみなす",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MergeTests.クリック位置や入力した文字が違っても同じ操作とみなす"
+      ]
+    },
+    {
+      "id": "TEST-079807C991BE",
+      "fullName": "OperationRecorderApp.Tests.MergeTests.合成すると番号を振り直し画像と手直しを写す",
+      "title": "合成すると番号を振り直し画像と手直しを写す",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MergeTests.合成すると番号を振り直し画像と手直しを写す"
+      ]
+    },
+    {
+      "id": "TEST-BE71C679EC16",
+      "fullName": "OperationRecorderApp.Tests.MergeTests.重なる手順が無ければ両方を順につなぐ",
+      "title": "重なる手順が無ければ両方を順につなぐ",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MergeTests.重なる手順が無ければ両方を順につなぐ"
+      ]
+    },
+    {
+      "id": "TEST-5F562A26F592",
+      "fullName": "OperationRecorderApp.Tests.MergeTests.途中から取り直して続けたら_前の記録の残りは入れない",
+      "title": "途中から取り直して続けたら_前の記録の残りは入れない",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MergeTests.途中から取り直して続けたら_前の記録の残りは入れない"
+      ]
+    },
+    {
+      "id": "TEST-1E72112E955F",
+      "fullName": "OperationRecorderApp.Tests.MergeTests.途中だけ取り直したら_前の記録の続きを残す",
+      "title": "途中だけ取り直したら_前の記録の続きを残す",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MergeTests.途中だけ取り直したら_前の記録の続きを残す"
+      ]
+    },
+    {
+      "id": "TEST-32276C140360",
+      "fullName": "OperationRecorderApp.Tests.MergeTests.両方にある手順はどちらを採るか選べる",
+      "title": "両方にある手順はどちらを採るか選べる",
+      "featureIds": [
+        "F-COMPOSITION-ENGINE"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "生成画像を含む複数原記録のスナップショット、原本ハッシュ不変",
+      "displayNames": [
+        "OperationRecorderApp.Tests.MergeTests.両方にある手順はどちらを採るか選べる"
+      ]
+    },
+    {
+      "id": "TEST-EFA18BF0E5BA",
+      "fullName": "OperationRecorderApp.Tests.OutputChoicesTests.テンプレートの説明を取り出す",
+      "title": "テンプレートの説明を取り出す",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.OutputChoicesTests.テンプレートの説明を取り出す(line: \" 操作報告書テンプレート(ユーザー向けの手順書)  -Template user\", expected: \"(ユーザー向けの手順書)\")",
+        "OperationRecorderApp.Tests.OutputChoicesTests.テンプレートの説明を取り出す(line: \"社内様式\", expected: \"社内様式\")",
+        "OperationRecorderApp.Tests.OutputChoicesTests.テンプレートの説明を取り出す(line: null, expected: \"\")"
+      ]
+    },
+    {
+      "id": "TEST-E45245F918AA",
+      "fullName": "OperationRecorderApp.Tests.OutputChoicesTests.テンプレートはuserが先頭で説明を先に表示する",
+      "title": "テンプレートはuserが先頭で説明を先に表示する",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.OutputChoicesTests.テンプレートはuserが先頭で説明を先に表示する"
+      ]
+    },
+    {
+      "id": "TEST-3987001DA3EC",
+      "fullName": "OperationRecorderApp.Tests.OutputChoicesTests.説明の外側の括弧だけを外す",
+      "title": "説明の外側の括弧だけを外す",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.OutputChoicesTests.説明の外側の括弧だけを外す(desc: \"(ユーザー向けの手順書（操作前後画像）)\", expected: \"ユーザー向けの手順書（操作前後画像）\")",
+        "OperationRecorderApp.Tests.OutputChoicesTests.説明の外側の括弧だけを外す(desc: \"(前)と(後)\", expected: \"(前)と(後)\")",
+        "OperationRecorderApp.Tests.OutputChoicesTests.説明の外側の括弧だけを外す(desc: \"（全角で囲んだ説明）\", expected: \"全角で囲んだ説明\")",
+        "OperationRecorderApp.Tests.OutputChoicesTests.説明の外側の括弧だけを外す(desc: \"括弧なし\", expected: \"括弧なし\")"
+      ]
+    },
+    {
+      "id": "TEST-872EF3DA173C",
+      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.デスクトップとタスクバーからは逃げない",
+      "title": "デスクトップとタスクバーからは逃げない",
+      "featureIds": [
+        "F-OVERLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.OverlayPlacementTests.デスクトップとタスクバーからは逃げない"
+      ]
+    },
+    {
+      "id": "TEST-106D164B0750",
+      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.どこも重なるなら今より重なりが減るときだけ動く",
+      "title": "どこも重なるなら今より重なりが減るときだけ動く",
+      "featureIds": [
+        "F-OVERLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.OverlayPlacementTests.どこも重なるなら今より重なりが減るときだけ動く"
+      ]
+    },
+    {
+      "id": "TEST-6CE639BA7CAF",
+      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.重なっていなければ動かない",
+      "title": "重なっていなければ動かない",
+      "featureIds": [
+        "F-OVERLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.OverlayPlacementTests.重なっていなければ動かない"
+      ]
+    },
+    {
+      "id": "TEST-EDD58CB1BBCE",
+      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.重ならない隅のうち近いところへ動く",
+      "title": "重ならない隅のうち近いところへ動く",
+      "featureIds": [
+        "F-OVERLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.OverlayPlacementTests.重ならない隅のうち近いところへ動く"
+      ]
+    },
+    {
+      "id": "TEST-061235769AFE",
+      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.全画面のウィンドウなら別のディスプレイへ",
+      "title": "全画面のウィンドウなら別のディスプレイへ",
+      "featureIds": [
+        "F-OVERLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.OverlayPlacementTests.全画面のウィンドウなら別のディスプレイへ"
+      ]
+    },
+    {
+      "id": "TEST-8C0B8EFEA63D",
+      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.逃げる設定がオフなら調べない",
+      "title": "逃げる設定がオフなら調べない",
+      "featureIds": [
+        "F-OVERLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.OverlayPlacementTests.逃げる設定がオフなら調べない"
+      ]
+    },
+    {
+      "id": "TEST-F4E4EECC5F12",
+      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.動かした直後とオーバーレイの上では調べない",
+      "title": "動かした直後とオーバーレイの上では調べない",
+      "featureIds": [
+        "F-OVERLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.OverlayPlacementTests.動かした直後とオーバーレイの上では調べない"
+      ]
+    },
+    {
+      "id": "TEST-EEF881A19CF7",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.OSの切り取りを起動せず手動撮影とWinShiftSの同じ振り分けを検証する",
+      "title": "OSの切り取りを起動せず手動撮影とWinShiftSの同じ振り分けを検証する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.OSの切り取りを起動せず手動撮影とWinShiftSの同じ振り分けを検証する(trigger: Manual, record: True)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.OSの切り取りを起動せず手動撮影とWinShiftSの同じ振り分けを検証する(trigger: WindowsSnip, record: False)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.OSの切り取りを起動せず手動撮影とWinShiftSの同じ振り分けを検証する(trigger: WindowsSnip, record: True)"
+      ]
+    },
+    {
+      "id": "TEST-DB462A967245",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する",
+      "title": "ネイティブ入力フックで各操作種別を検出する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"arrow\", kind: \"key\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"combination\", kind: \"key\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"digit\", kind: \"key\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"doubleclick\", kind: \"doubleclick\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"drag\", kind: \"drag\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"function\", kind: \"key\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"letter\", kind: \"key\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"manual\", kind: \"capture\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"middleclick\", kind: \"middleclick\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"rightclick\", kind: \"rightclick\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"rightdrag\", kind: \"rightdrag\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"special\", kind: \"key\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"wheel\", kind: \"wheel\")"
+      ]
+    },
+    {
+      "id": "TEST-3EC1A96C7004",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.記録制御の取り直しは旧データを破棄して同じ対象で再開できる",
+      "title": "記録制御の取り直しは旧データを破棄して同じ対象で再開できる",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.記録制御の取り直しは旧データを破棄して同じ対象で再開できる"
+      ]
+    },
+    {
+      "id": "TEST-8F36C41270C5",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.記録中の専用操作キーは開始無視と取消と取り直しと終了を要求する",
+      "title": "記録中の専用操作キーは開始無視と取消と取り直しと終了を要求する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.記録中の専用操作キーは開始無視と取消と取り直しと終了を要求する"
+      ]
+    },
+    {
+      "id": "TEST-96704E16C788",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.五つの撮影範囲で操作前後のPNGとJSONと報告書を保存する",
+      "title": "五つの撮影範囲で操作前後のPNGとJSONと報告書を保存する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.五つの撮影範囲で操作前後のPNGとJSONと報告書を保存する(mode: Active)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.五つの撮影範囲で操作前後のPNGとJSONと報告書を保存する(mode: AllDesktops)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.五つの撮影範囲で操作前後のPNGとJSONと報告書を保存する(mode: App)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.五つの撮影範囲で操作前後のPNGとJSONと報告書を保存する(mode: Desktop)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.五つの撮影範囲で操作前後のPNGとJSONと報告書を保存する(mode: Window)"
+      ]
+    },
+    {
+      "id": "TEST-CE4CFD5A4A77",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.撮影ルールの記録と操作前後の指定が保存内容に反映される",
+      "title": "撮影ルールの記録と操作前後の指定が保存内容に反映される",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.撮影ルールの記録と操作前後の指定が保存内容に反映される(record: False, before: True, after: True)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.撮影ルールの記録と操作前後の指定が保存内容に反映される(record: True, before: False, after: False)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.撮影ルールの記録と操作前後の指定が保存内容に反映される(record: True, before: False, after: True)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.撮影ルールの記録と操作前後の指定が保存内容に反映される(record: True, before: True, after: False)"
+      ]
+    },
+    {
+      "id": "TEST-15BE316C73C9",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.専用ホットキーの受信と二重登録の競合と解放を検証する",
+      "title": "専用ホットキーの受信と二重登録の競合と解放を検証する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.専用ホットキーの受信と二重登録の競合と解放を検証する"
+      ]
+    },
+    {
+      "id": "TEST-373238ACEC62",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.前面指定と最初のクリック指定が専用対象を解決する",
+      "title": "前面指定と最初のクリック指定が専用対象を解決する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.前面指定と最初のクリック指定が専用対象を解決する(mode: App, pick: False)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.前面指定と最初のクリック指定が専用対象を解決する(mode: App, pick: True)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.前面指定と最初のクリック指定が専用対象を解決する(mode: Desktop, pick: False)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.前面指定と最初のクリック指定が専用対象を解決する(mode: Desktop, pick: True)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.前面指定と最初のクリック指定が専用対象を解決する(mode: Window, pick: False)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.前面指定と最初のクリック指定が専用対象を解決する(mode: Window, pick: True)"
+      ]
+    },
+    {
+      "id": "TEST-0A648757FD58",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.操作ゼロでも開始終了のメタデータを保存する",
+      "title": "操作ゼロでも開始終了のメタデータを保存する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.操作ゼロでも開始終了のメタデータを保存する"
+      ]
+    },
+    {
+      "id": "TEST-99021FC18EEE",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.直前取消がJSONとPNGを削除し次の記録は残せる",
+      "title": "直前取消がJSONとPNGを削除し次の記録は残せる",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.直前取消がJSONとPNGを削除し次の記録は残せる"
+      ]
+    },
+    {
+      "id": "TEST-ADE024D5C0DE",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.入力内容とpasswordと入力値保存OFFを実際の入力欄で検証する",
+      "title": "入力内容とpasswordと入力値保存OFFを実際の入力欄で検証する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.入力内容とpasswordと入力値保存OFFを実際の入力欄で検証する(password: False, recordValues: False)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.入力内容とpasswordと入力値保存OFFを実際の入力欄で検証する(password: False, recordValues: True)",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.入力内容とpasswordと入力値保存OFFを実際の入力欄で検証する(password: True, recordValues: True)"
+      ]
+    },
+    {
+      "id": "TEST-35C1CA7CF692",
+      "fullName": "OperationRecorderApp.Tests.RecordingDesktopTests.無効な一覧対象はフックを開始せずエラーへ戻る",
+      "title": "無効な一覧対象はフックを開始せずエラーへ戻る",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingDesktopTests.無効な一覧対象はフックを開始せずエラーへ戻る"
+      ]
+    },
+    {
+      "id": "TEST-6230BDA6E590",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.Passiveでは登録も開始も行わず通常の意味を維持する",
+      "title": "Passiveでは登録も開始も行わず通常の意味を維持する",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.Passiveでは登録も開始も行わず通常の意味を維持する"
+      ]
+    },
+    {
+      "id": "TEST-D8F962452829",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.エンジン作成失敗も通知して開始キーを残す",
+      "title": "エンジン作成失敗も通知して開始キーを残す",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.エンジン作成失敗も通知して開始キーを残す"
+      ]
+    },
+    {
+      "id": "TEST-1D779DE2870A",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.開始キー競合の表示と再登録成功を検証する",
+      "title": "開始キー競合の表示と再登録成功を検証する",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.開始キー競合の表示と再登録成功を検証する"
+      ]
+    },
+    {
+      "id": "TEST-F67AEA6CCE58",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.開始キー登録だけを抑止してボタン開始を試験できる",
+      "title": "開始キー登録だけを抑止してボタン開始を試験できる",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.開始キー登録だけを抑止してボタン開始を試験できる"
+      ]
+    },
+    {
+      "id": "TEST-2FD28CD937CF",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.開始キー登録の例外でも待機してボタンから記録できる",
+      "title": "開始キー登録の例外でも待機してボタンから記録できる",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.開始キー登録の例外でも待機してボタンから記録できる"
+      ]
+    },
+    {
+      "id": "TEST-5512B585D5F3",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.開始失敗は部分開始を停止し待機へ戻す",
+      "title": "開始失敗は部分開始を停止し待機へ戻す",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.開始失敗は部分開始を停止し待機へ戻す"
+      ]
+    },
+    {
+      "id": "TEST-F804E8CD88A7",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.開始取消停止保存の状態遷移をOSなしで検証する",
+      "title": "開始取消停止保存の状態遷移をOSなしで検証する",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.開始取消停止保存の状態遷移をOSなしで検証する"
+      ]
+    },
+    {
+      "id": "TEST-F3DBB4DD2EDF",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.撮影要求は開始前にOSへ触れず不正な種類を拒否する",
+      "title": "撮影要求は開始前にOSへ触れず不正な種類を拒否する",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.撮影要求は開始前にOSへ触れず不正な種類を拒否する"
+      ]
+    },
+    {
+      "id": "TEST-E2BF16DB6618",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.取り直しの削除失敗を隠さず元記録を残す",
+      "title": "取り直しの削除失敗を隠さず元記録を残す",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.取り直しの削除失敗を隠さず元記録を残す"
+      ]
+    },
+    {
+      "id": "TEST-7409A75329F1",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.取り直しは旧記録だけを削除し次の開始キーで対象を再利用する",
+      "title": "取り直しは旧記録だけを削除し次の開始キーで対象を再利用する",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.取り直しは旧記録だけを削除し次の開始キーで対象を再利用する"
+      ]
+    },
+    {
+      "id": "TEST-443FCEDCC3FA",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.取り直し後の明示開始ボタンは保存した対象を使い回さない",
+      "title": "取り直し後の明示開始ボタンは保存した対象を使い回さない",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.取り直し後の明示開始ボタンは保存した対象を使い回さない"
+      ]
+    },
+    {
+      "id": "TEST-A44DBEB1019C",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.手順の保存取消撮影通知は指定したdispatchを通す",
+      "title": "手順の保存取消撮影通知は指定したdispatchを通す",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.手順の保存取消撮影通知は指定したdispatchを通す"
+      ]
+    },
+    {
+      "id": "TEST-A7478B8110D1",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.終了した記録からの遅い通知を次の記録へ混入させない",
+      "title": "終了した記録からの遅い通知を次の記録へ混入させない",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.終了した記録からの遅い通知を次の記録へ混入させない"
+      ]
+    },
+    {
+      "id": "TEST-BA13ECAD4C33",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.出力失敗でも保存済み記録の通知と待機状態を保持する",
+      "title": "出力失敗でも保存済み記録の通知と待機状態を保持する",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.出力失敗でも保存済み記録の通知と待機状態を保持する"
+      ]
+    },
+    {
+      "id": "TEST-2B26B7F1FAAF",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.操作なし又は出力形式なしでは報告書を作らない",
+      "title": "操作なし又は出力形式なしでは報告書を作らない",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.操作なし又は出力形式なしでは報告書を作らない(count: 0, md: True, html: True)",
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.操作なし又は出力形式なしでは報告書を作らない(count: 2, md: False, html: False)"
+      ]
+    },
+    {
+      "id": "TEST-6D0910699CF2",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.停止処理失敗は成功した保存として通知しない",
+      "title": "停止処理失敗は成功した保存として通知しない",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.停止処理失敗は成功した保存として通知しない"
+      ]
+    },
+    {
+      "id": "TEST-BFE434D1184B",
+      "fullName": "OperationRecorderApp.Tests.RecordingLifecycleTests.破棄後は進行中保存の遅延通知と新規操作を行わない",
+      "title": "破棄後は進行中保存の遅延通知と新規操作を行わない",
+      "featureIds": [
+        "F-RECORDING"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
+      "displayNames": [
+        "OperationRecorderApp.Tests.RecordingLifecycleTests.破棄後は進行中保存の遅延通知と新規操作を行わない"
+      ]
+    },
+    {
+      "id": "TEST-D42083D58EAF",
+      "fullName": "OperationRecorderApp.Tests.ReplayCommandTests.interval監視は指定回数で終了しbusy中の発火を蓄積しない",
+      "title": "interval監視は指定回数で終了しbusy中の発火を蓄積しない",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCommandTests.interval監視は指定回数で終了しbusy中の発火を蓄積しない"
+      ]
+    },
+    {
+      "id": "TEST-516EB82192D7",
+      "fullName": "OperationRecorderApp.Tests.ReplayCommandTests.ps1の確認入口も同じ終了コードとJSONを返す",
+      "title": "ps1の確認入口も同じ終了コードとJSONを返す",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCommandTests.ps1の確認入口も同じ終了コードとJSONを返す"
+      ]
+    },
+    {
+      "id": "TEST-16B7D2C9E702",
+      "fullName": "OperationRecorderApp.Tests.ReplayCommandTests.アプリ待機とキー待機と日時待機も監視ループから発火する",
+      "title": "アプリ待機とキー待機と日時待機も監視ループから発火する",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCommandTests.アプリ待機とキー待機と日時待機も監視ループから発火する"
+      ]
+    },
+    {
+      "id": "TEST-A817446A8ED2",
+      "fullName": "OperationRecorderApp.Tests.ReplayCommandTests.トリガー待機の上限と遅すぎる日時は操作しない",
+      "title": "トリガー待機の上限と遅すぎる日時は操作しない",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCommandTests.トリガー待機の上限と遅すぎる日時は操作しない"
+      ]
+    },
+    {
+      "id": "TEST-875697B4063D",
+      "fullName": "OperationRecorderApp.Tests.ReplayCommandTests.実EXEで元記録を変換し入力なしの確認と結果JSONを返す",
+      "title": "実EXEで元記録を変換し入力なしの確認と結果JSONを返す",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCommandTests.実EXEで元記録を変換し入力なしの確認と結果JSONを返す"
+      ]
+    },
+    {
+      "id": "TEST-C3D291C9A52B",
+      "fullName": "OperationRecorderApp.Tests.ReplayCommandTests.修飾キーの順番を変えても非常停止との重複を見逃さない",
+      "title": "修飾キーの順番を変えても非常停止との重複を見逃さない",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCommandTests.修飾キーの順番を変えても非常停止との重複を見逃さない"
+      ]
+    },
+    {
+      "id": "TEST-8AEB84E28DF1",
+      "fullName": "OperationRecorderApp.Tests.ReplayCommandTests.不正なconfigや同一結果保存先は入力や上書きの前に拒否する",
+      "title": "不正なconfigや同一結果保存先は入力や上書きの前に拒否する",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCommandTests.不正なconfigや同一結果保存先は入力や上書きの前に拒否する"
+      ]
+    },
+    {
+      "id": "TEST-A2241BB7CA29",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.ウィンドウとクラスと画像を監視してから一度だけ実行する",
+      "title": "ウィンドウとクラスと画像を監視してから一度だけ実行する",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.ウィンドウとクラスと画像を監視してから一度だけ実行する"
+      ]
+    },
+    {
+      "id": "TEST-BA50DC5E7217",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.キーの再現可能性を入力前に確認する",
+      "title": "キーの再現可能性を入力前に確認する",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.キーの再現可能性を入力前に確認する(key: \"Ctrl\", valid: False)",
+        "OperationRecorderApp.Tests.ReplayCoreTests.キーの再現可能性を入力前に確認する(key: \"Ctrl+Alt+Delete\", valid: False)",
+        "OperationRecorderApp.Tests.ReplayCoreTests.キーの再現可能性を入力前に確認する(key: \"Ctrl+Alt+F20\", valid: True)",
+        "OperationRecorderApp.Tests.ReplayCoreTests.キーの再現可能性を入力前に確認する(key: \"Ctrl+unknown\", valid: False)",
+        "OperationRecorderApp.Tests.ReplayCoreTests.キーの再現可能性を入力前に確認する(key: \"Enter\", valid: True)",
+        "OperationRecorderApp.Tests.ReplayCoreTests.キーの再現可能性を入力前に確認する(key: \"Win+L\", valid: False)"
+      ]
+    },
+    {
+      "id": "TEST-A54203601D05",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.一致しないままの上限とキャンセルで一切操作しない",
+      "title": "一致しないままの上限とキャンセルで一切操作しない",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.一致しないままの上限とキャンセルで一切操作しない"
+      ]
+    },
+    {
+      "id": "TEST-D8A35754BE3B",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.画像比較は縮尺を合わせて一致を検証し不正範囲を拒否する",
+      "title": "画像比較は縮尺を合わせて一致を検証し不正範囲を拒否する",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.画像比較は縮尺を合わせて一致を検証し不正範囲を拒否する"
+      ]
+    },
+    {
+      "id": "TEST-7E0C9C5641CB",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.開始条件は一回だけ発火し繰返しの遅刻分を蓄積しない",
+      "title": "開始条件は一回だけ発火し繰返しの遅刻分を蓄積しない",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.開始条件は一回だけ発火し繰返しの遅刻分を蓄積しない"
+      ]
+    },
+    {
+      "id": "TEST-B7A994229248",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.既存記録の矢印記号とキーコードを再現できる",
+      "title": "既存記録の矢印記号とキーコードを再現できる",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.既存記録の矢印記号とキーコードを再現できる(key: \"→\", expected: 39)",
+        "OperationRecorderApp.Tests.ReplayCoreTests.既存記録の矢印記号とキーコードを再現できる(key: \"Ctrl+←\", expected: 37)",
+        "OperationRecorderApp.Tests.ReplayCoreTests.既存記録の矢印記号とキーコードを再現できる(key: \"Ctrl+VK_0xBB\", expected: 187)",
+        "OperationRecorderApp.Tests.ReplayCoreTests.既存記録の矢印記号とキーコードを再現できる(key: \"Num3\", expected: 99)"
+      ]
+    },
+    {
+      "id": "TEST-B707C440DD99",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.記録が変更された場合と不明なconfig項目を拒否する",
+      "title": "記録が変更された場合と不明なconfig項目を拒否する",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.記録が変更された場合と不明なconfig項目を拒否する"
+      ]
+    },
+    {
+      "id": "TEST-31424942FA27",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.記録を変えずに識別子と前後画像条件と元ハッシュを取り込む",
+      "title": "記録を変えずに識別子と前後画像条件と元ハッシュを取り込む",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.記録を変えずに識別子と前後画像条件と元ハッシュを取り込む"
+      ]
+    },
+    {
+      "id": "TEST-AB07DD10E7D0",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.後続手順が未確定なら最初のクリックも送らない",
+      "title": "後続手順が未確定なら最初のクリックも送らない",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.後続手順が未確定なら最初のクリックも送らない"
+      ]
+    },
+    {
+      "id": "TEST-6099F05AE390",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.事後条件も監視し操作を自動で二重実行しない",
+      "title": "事後条件も監視し操作を自動で二重実行しない",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.事後条件も監視し操作を自動で二重実行しない"
+      ]
+    },
+    {
+      "id": "TEST-A894326BEFE6",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.時計が戻っても単調時計で待機上限を守る",
+      "title": "時計が戻っても単調時計で待機上限を守る",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.時計が戻っても単調時計で待機上限を守る"
+      ]
+    },
+    {
+      "id": "TEST-0063B609F784",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.相対座標は縦横比とDPIの不一致を無条件に許可しない",
+      "title": "相対座標は縦横比とDPIの不一致を無条件に許可しない",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.相対座標は縦横比とDPIの不一致を無条件に許可しない"
+      ]
+    },
+    {
+      "id": "TEST-1225A4BB78AA",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.日時のoffsetと遅刻幅と日次timezoneを検証する",
+      "title": "日時のoffsetと遅刻幅と日次timezoneを検証する",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.日時のoffsetと遅刻幅と日次timezoneを検証する"
+      ]
+    },
+    {
+      "id": "TEST-06EFBD40CC55",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.負座標や寸法差を画面内の相対位置へ変換する",
+      "title": "負座標や寸法差を画面内の相対位置へ変換する",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.負座標や寸法差を画面内の相対位置へ変換する(x: -1000, y: 200, w: 1600, h: 900, rx: 0.5, ry: 0.5, expectedX: -200, expectedY: 650)",
+        "OperationRecorderApp.Tests.ReplayCoreTests.負座標や寸法差を画面内の相対位置へ変換する(x: 100, y: 50, w: 800, h: 600, rx: 0, ry: 1, expectedX: 100, expectedY: 649)"
+      ]
+    },
+    {
+      "id": "TEST-A0233FE69082",
+      "fullName": "OperationRecorderApp.Tests.ReplayCoreTests.明示skipした未対応の手順だけなら未使用bindingの不足で妨げない",
+      "title": "明示skipした未対応の手順だけなら未使用bindingの不足で妨げない",
+      "featureIds": [
+        "F-REPLAY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayCoreTests.明示skipした未対応の手順だけなら未使用bindingの不足で妨げない"
+      ]
+    },
+    {
+      "id": "TEST-59608A186998",
+      "fullName": "OperationRecorderApp.Tests.ReplayDesktopTests.ps1から実行しても状態表示をエラー扱いせずクリックを完了する",
+      "title": "ps1から実行しても状態表示をエラー扱いせずクリックを完了する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayDesktopTests.ps1から実行しても状態表示をエラー扱いせずクリックを完了する"
+      ]
+    },
+    {
+      "id": "TEST-379F4050CE74",
+      "fullName": "OperationRecorderApp.Tests.ReplayDesktopTests.ウィンドウと要素配置が変わってもUIAで再探索してクリックする",
+      "title": "ウィンドウと要素配置が変わってもUIAで再探索してクリックする",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayDesktopTests.ウィンドウと要素配置が変わってもUIAで再探索してクリックする"
+      ]
+    },
+    {
+      "id": "TEST-4F9B10E76F53",
+      "fullName": "OperationRecorderApp.Tests.ReplayDesktopTests.ホットキー発火とbusy破棄と非常停止と解放を確認する",
+      "title": "ホットキー発火とbusy破棄と非常停止と解放を確認する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayDesktopTests.ホットキー発火とbusy破棄と非常停止と解放を確認する"
+      ]
+    },
+    {
+      "id": "TEST-89FB166934DA",
+      "fullName": "OperationRecorderApp.Tests.ReplayDesktopTests.画像が一致するまで監視し変化後にだけ次へ進む",
+      "title": "画像が一致するまで監視し変化後にだけ次へ進む",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayDesktopTests.画像が一致するまで監視し変化後にだけ次へ進む"
+      ]
+    },
+    {
+      "id": "TEST-31CA66677827",
+      "fullName": "OperationRecorderApp.Tests.ReplayDesktopTests.記録した矢印キーを表示名ではなくキーコードで再現する",
+      "title": "記録した矢印キーを表示名ではなくキーコードで再現する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayDesktopTests.記録した矢印キーを表示名ではなくキーコードで再現する"
+      ]
+    },
+    {
+      "id": "TEST-02AF543B3FAB",
+      "fullName": "OperationRecorderApp.Tests.ReplayDesktopTests.実EXEのconfig監視でアプリ待ちと繰返しからクリックする",
+      "title": "実EXEのconfig監視でアプリ待ちと繰返しからクリックする",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayDesktopTests.実EXEのconfig監視でアプリ待ちと繰返しからクリックする(trigger: \"application\", runs: 1)",
+        "OperationRecorderApp.Tests.ReplayDesktopTests.実EXEのconfig監視でアプリ待ちと繰返しからクリックする(trigger: \"interval\", runs: 2)"
+      ]
+    },
+    {
+      "id": "TEST-31F13643AAD3",
+      "fullName": "OperationRecorderApp.Tests.ReplayDesktopTests.実記録からの再生は同じ要素と前後画像を確認してクリックする",
+      "title": "実記録からの再生は同じ要素と前後画像を確認してクリックする",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayDesktopTests.実記録からの再生は同じ要素と前後画像を確認してクリックする"
+      ]
+    },
+    {
+      "id": "TEST-FC96FCF21F01",
+      "fullName": "OperationRecorderApp.Tests.ReplayDesktopTests.入力欄へ環境変数で補完しpasswordをconfigへ埋め込まない",
+      "title": "入力欄へ環境変数で補完しpasswordをconfigへ埋め込まない",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayDesktopTests.入力欄へ環境変数で補完しpasswordをconfigへ埋め込まない(password: False)",
+        "OperationRecorderApp.Tests.ReplayDesktopTests.入力欄へ環境変数で補完しpasswordをconfigへ埋め込まない(password: True)"
+      ]
+    },
+    {
+      "id": "TEST-A59D09F3A811",
+      "fullName": "OperationRecorderApp.Tests.ReplayDesktopTests.不一致のウィンドウやクラスは監視だけを続け入力せず停止する",
+      "title": "不一致のウィンドウやクラスは監視だけを続け入力せず停止する",
+      "featureIds": [
+        "F-DESKTOP"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ReplayDesktopTests.不一致のウィンドウやクラスは監視だけを続け入力せず停止する(wrongClass: False)",
+        "OperationRecorderApp.Tests.ReplayDesktopTests.不一致のウィンドウやクラスは監視だけを続け入力せず停止する(wrongClass: True)"
+      ]
+    },
+    {
+      "id": "TEST-D1431F131CEA",
+      "fullName": "OperationRecorderApp.Tests.SessionEditorTests.画像の消し方を渡せる",
+      "title": "画像の消し方を渡せる",
+      "featureIds": [
+        "F-SESSION-DELETE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "OSごみ箱は差替え。画像移動失敗でも手順削除を続ける既存best effortを維持",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SessionEditorTests.画像の消し方を渡せる"
+      ]
+    },
+    {
+      "id": "TEST-45CE04DFDDCA",
+      "fullName": "OperationRecorderApp.Tests.SessionEditorTests.手順を消すと後ろの番号が繰り上がる",
+      "title": "手順を消すと後ろの番号が繰り上がる",
+      "featureIds": [
+        "F-SESSION-DELETE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "OSごみ箱は差替え。画像移動失敗でも手順削除を続ける既存best effortを維持",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SessionEditorTests.手順を消すと後ろの番号が繰り上がる"
+      ]
+    },
+    {
+      "id": "TEST-8BEDE10DDAE5",
+      "fullName": "OperationRecorderApp.Tests.SessionEditorTests.消したあとの出力にも反映される",
+      "title": "消したあとの出力にも反映される",
+      "featureIds": [
+        "F-SESSION-DELETE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "OSごみ箱は差替え。画像移動失敗でも手順削除を続ける既存best effortを維持",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SessionEditorTests.消したあとの出力にも反映される"
+      ]
+    },
+    {
+      "id": "TEST-750A7E010081",
+      "fullName": "OperationRecorderApp.Tests.SessionEditorTests.消した手順の画像と手直しを消し手順数を直す",
+      "title": "消した手順の画像と手直しを消し手順数を直す",
+      "featureIds": [
+        "F-SESSION-DELETE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "OSごみ箱は差替え。画像移動失敗でも手順削除を続ける既存best effortを維持",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SessionEditorTests.消した手順の画像と手直しを消し手順数を直す"
+      ]
+    },
+    {
+      "id": "TEST-E8E51A8F7553",
+      "fullName": "OperationRecorderApp.Tests.SessionEditorTests.無い手順は消さない",
+      "title": "無い手順は消さない",
+      "featureIds": [
+        "F-SESSION-DELETE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "OSごみ箱は差替え。画像移動失敗でも手順削除を続ける既存best effortを維持",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SessionEditorTests.無い手順は消さない"
+      ]
+    },
+    {
+      "id": "TEST-33183FAE1689",
+      "fullName": "OperationRecorderApp.Tests.TargetRulesTests.ウィンドウがいちばん広く映っているディスプレイ",
+      "title": "ウィンドウがいちばん広く映っているディスプレイ",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetRulesTests.ウィンドウがいちばん広く映っているディスプレイ"
+      ]
+    },
+    {
+      "id": "TEST-320571DD63EC",
+      "fullName": "OperationRecorderApp.Tests.TargetRulesTests.すべてのディスプレイを合わせた範囲",
+      "title": "すべてのディスプレイを合わせた範囲",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetRulesTests.すべてのディスプレイを合わせた範囲"
+      ]
+    },
+    {
+      "id": "TEST-B2D4B253221E",
+      "fullName": "OperationRecorderApp.Tests.TargetRulesTests.デスクトップとタスクバーの見分け",
+      "title": "デスクトップとタスクバーの見分け",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetRulesTests.デスクトップとタスクバーの見分け"
+      ]
+    },
+    {
+      "id": "TEST-7ACC68E28E7E",
+      "fullName": "OperationRecorderApp.Tests.TargetRulesTests.どのディスプレイにも映っていなければ近いもの",
+      "title": "どのディスプレイにも映っていなければ近いもの",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetRulesTests.どのディスプレイにも映っていなければ近いもの"
+      ]
+    },
+    {
+      "id": "TEST-0A4646F22F2C",
+      "fullName": "OperationRecorderApp.Tests.TargetRulesTests.記録の対象の名前",
+      "title": "記録の対象の名前",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetRulesTests.記録の対象の名前"
+      ]
+    },
+    {
+      "id": "TEST-0C3D455FE0A5",
+      "fullName": "OperationRecorderApp.Tests.TargetRulesTests.記録の対象の名前は報告書と記録一覧で同じ",
+      "title": "記録の対象の名前は報告書と記録一覧で同じ",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetRulesTests.記録の対象の名前は報告書と記録一覧で同じ(sessionJson: \"{\\\"mode\\\":\\\"Active\\\"}\", expected: \"操作したウィンドウ\")",
+        "OperationRecorderApp.Tests.TargetRulesTests.記録の対象の名前は報告書と記録一覧で同じ(sessionJson: \"{\\\"mode\\\":\\\"AllDesktops\\\",\\\"virtualScreen\\\":{\\\"w\\\"\"···, expected: \"すべてのディスプレイ(3840x1080)\")",
+        "OperationRecorderApp.Tests.TargetRulesTests.記録の対象の名前は報告書と記録一覧で同じ(sessionJson: \"{\\\"mode\\\":\\\"App\\\",\\\"targetProcess\\\":\\\"EXCEL\\\"}\", expected: \"EXCEL(アプリ全体)\")",
+        "OperationRecorderApp.Tests.TargetRulesTests.記録の対象の名前は報告書と記録一覧で同じ(sessionJson: \"{\\\"mode\\\":\\\"Desktop\\\",\\\"targetMonitor\\\":{\\\"index\\\"\"···, expected: \"ディスプレイ 2(2560x1440)\")",
+        "OperationRecorderApp.Tests.TargetRulesTests.記録の対象の名前は報告書と記録一覧で同じ(sessionJson: \"{\\\"mode\\\":\\\"Window\\\",\\\"targetWindow\\\":{\\\"title\\\":\\\"···, expected: \"販売管理\")"
+      ]
+    },
+    {
+      "id": "TEST-844AF2355D31",
+      "fullName": "OperationRecorderApp.Tests.TargetRulesTests.広い範囲は撮影の間隔を広げる",
+      "title": "広い範囲は撮影の間隔を広げる",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetRulesTests.広い範囲は撮影の間隔を広げる"
+      ]
+    },
+    {
+      "id": "TEST-925C0BD4C53B",
+      "fullName": "OperationRecorderApp.Tests.TargetRulesTests.撮影モードにAllDesktopsがある",
+      "title": "撮影モードにAllDesktopsがある",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetRulesTests.撮影モードにAllDesktopsがある"
+      ]
+    },
+    {
+      "id": "TEST-DE633E4234B5",
+      "fullName": "OperationRecorderApp.Tests.TargetRulesTests.自分とデスクトップとタスクバーは対象にしない",
+      "title": "自分とデスクトップとタスクバーは対象にしない",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetRulesTests.自分とデスクトップとタスクバーは対象にしない"
+      ]
+    },
+    {
+      "id": "TEST-F037CEF18F6B",
+      "fullName": "OperationRecorderApp.Tests.TargetRulesTests.全ディスプレイの記録の対象名",
+      "title": "全ディスプレイの記録の対象名",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetRulesTests.全ディスプレイの記録の対象名"
+      ]
+    },
+    {
+      "id": "TEST-7B937E174901",
+      "fullName": "OperationRecorderApp.Tests.TargetSettingsTests.以前のPickを対象の決め方に読み替える",
+      "title": "以前のPickを対象の決め方に読み替える",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetSettingsTests.以前のPickを対象の決め方に読み替える"
+      ]
+    },
+    {
+      "id": "TEST-ABE8F6190AFA",
+      "fullName": "OperationRecorderApp.Tests.TargetSettingsTests.壊れた操作キーは既定に戻す",
+      "title": "壊れた操作キーは既定に戻す",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetSettingsTests.壊れた操作キーは既定に戻す"
+      ]
+    },
+    {
+      "id": "TEST-1B046A292670",
+      "fullName": "OperationRecorderApp.Tests.TargetSettingsTests.撮影モード",
+      "title": "撮影モード",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetSettingsTests.撮影モード"
+      ]
+    },
+    {
+      "id": "TEST-A563C2F94B15",
+      "fullName": "OperationRecorderApp.Tests.TargetSettingsTests.操作キーを保存して読み直せる",
+      "title": "操作キーを保存して読み直せる",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TargetSettingsTests.操作キーを保存して読み直せる"
+      ]
+    },
+    {
+      "id": "TEST-C3F3D1F68CB0",
+      "fullName": "OperationRecorderApp.Tests.TemplateStoreTests.もとのテンプレートをもとに追加して一覧に出る",
+      "title": "もとのテンプレートをもとに追加して一覧に出る",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TemplateStoreTests.もとのテンプレートをもとに追加して一覧に出る"
+      ]
+    },
+    {
+      "id": "TEST-C42BF016CBF1",
+      "fullName": "OperationRecorderApp.Tests.TemplateStoreTests.空から追加すると骨組みが入り説明も出る",
+      "title": "空から追加すると骨組みが入り説明も出る",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TemplateStoreTests.空から追加すると骨組みが入り説明も出る"
+      ]
+    },
+    {
+      "id": "TEST-3EC461FE0D02",
+      "fullName": "OperationRecorderApp.Tests.TemplateStoreTests.誤りのある中身はプレビューしない",
+      "title": "誤りのある中身はプレビューしない",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TemplateStoreTests.誤りのある中身はプレビューしない"
+      ]
+    },
+    {
+      "id": "TEST-E27ABE35C6AF",
+      "fullName": "OperationRecorderApp.Tests.TemplateStoreTests.削除すると一覧から消える",
+      "title": "削除すると一覧から消える",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TemplateStoreTests.削除すると一覧から消える"
+      ]
+    },
+    {
+      "id": "TEST-61C60DB542CF",
+      "fullName": "OperationRecorderApp.Tests.TemplateStoreTests.使えない名前",
+      "title": "使えない名前",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TemplateStoreTests.使えない名前(name: \"\", expected: \"名前を入れて\")",
+        "OperationRecorderApp.Tests.TemplateStoreTests.使えない名前(name: \"a,b\", expected: \"使えない文字\")",
+        "OperationRecorderApp.Tests.TemplateStoreTests.使えない名前(name: \"a/b\", expected: \"使えない文字\")",
+        "OperationRecorderApp.Tests.TemplateStoreTests.使えない名前(name: \"user\", expected: \"もうあります\")"
+      ]
+    },
+    {
+      "id": "TEST-88FD163E75EC",
+      "fullName": "OperationRecorderApp.Tests.TemplateStoreTests.使える名前",
+      "title": "使える名前",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TemplateStoreTests.使える名前"
+      ]
+    },
+    {
+      "id": "TEST-7338976ADED4",
+      "fullName": "OperationRecorderApp.Tests.TemplateStoreTests.書き方の誤りは保存しない",
+      "title": "書き方の誤りは保存しない",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TemplateStoreTests.書き方の誤りは保存しない"
+      ]
+    },
+    {
+      "id": "TEST-22A16A61CBD9",
+      "fullName": "OperationRecorderApp.Tests.TemplateStoreTests.保存していない中身でプレビューできる",
+      "title": "保存していない中身でプレビューできる",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TemplateStoreTests.保存していない中身でプレビューできる"
+      ]
+    },
+    {
+      "id": "TEST-80329962EDC9",
+      "fullName": "OperationRecorderApp.Tests.TemplateStoreTests.保存できる",
+      "title": "保存できる",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TemplateStoreTests.保存できる"
+      ]
+    },
+    {
+      "id": "TEST-57081998C022",
+      "fullName": "OperationRecorderApp.Tests.UiTextsTests.オーバーレイに使えるキーの一覧を出す",
+      "title": "オーバーレイに使えるキーの一覧を出す",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiTextsTests.オーバーレイに使えるキーの一覧を出す"
+      ]
+    },
+    {
+      "id": "TEST-73AADEF6B373",
+      "fullName": "OperationRecorderApp.Tests.UiTextsTests.トレイの文字は127文字まで",
+      "title": "トレイの文字は127文字まで",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiTextsTests.トレイの文字は127文字まで"
+      ]
+    },
+    {
+      "id": "TEST-147B8FBCB661",
+      "fullName": "OperationRecorderApp.Tests.UiTextsTests.変えたキーが表示に出る",
+      "title": "変えたキーが表示に出る",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiTextsTests.変えたキーが表示に出る"
+      ]
+    },
+    {
+      "id": "TEST-9C9697EDA866",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.オーバーレイの状態ボタン直近十手取消消去と逃避無効を非表示で検証する",
+      "title": "オーバーレイの状態ボタン直近十手取消消去と逃避無効を非表示で検証する",
+      "featureIds": [
+        "F-OVERLAY"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.オーバーレイの状態ボタン直近十手取消消去と逃避無効を非表示で検証する"
+      ]
+    },
+    {
+      "id": "TEST-5C2491EAA43C",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.テンプレートの追加保存戻す削除と検証エラーを実コントロールから処理する",
+      "title": "テンプレートの追加保存戻す削除と検証エラーを実コントロールから処理する",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.テンプレートの追加保存戻す削除と検証エラーを実コントロールから処理する"
+      ]
+    },
+    {
+      "id": "TEST-9D746425EEBD",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.テンプレートの未保存プレビューは原本を変えず失敗を表示する",
+      "title": "テンプレートの未保存プレビューは原本を変えず失敗を表示する",
+      "featureIds": [
+        "F-PREVIEW"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実Markdown/HTMLと埋込画像、Guid一時領域の後始末、ブラウザー描画待ちを使わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.テンプレートの未保存プレビューは原本を変えず失敗を表示する"
+      ]
+    },
+    {
+      "id": "TEST-683BC119A512",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.テンプレートの未保存変更は保存破棄取消を選べる",
+      "title": "テンプレートの未保存変更は保存破棄取消を選べる",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.テンプレートの未保存変更は保存破棄取消を選べる(answer: Cancel)",
+        "OperationRecorderApp.Tests.UiWiringTests.テンプレートの未保存変更は保存破棄取消を選べる(answer: No)",
+        "OperationRecorderApp.Tests.UiWiringTests.テンプレートの未保存変更は保存破棄取消を選べる(answer: Yes)"
+      ]
+    },
+    {
+      "id": "TEST-8FE1A9B5B03D",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.テンプレートフォルダの反映失敗は以前の設定を保ち警告を返す",
+      "title": "テンプレートフォルダの反映失敗は以前の設定を保ち警告を返す",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.テンプレートフォルダの反映失敗は以前の設定を保ち警告を返す"
+      ]
+    },
+    {
+      "id": "TEST-55F33D0B5E57",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.プレビューを並列生成しても別々の内容になり成功失敗とも作業領域を残さない",
+      "title": "プレビューを並列生成しても別々の内容になり成功失敗とも作業領域を残さない",
+      "featureIds": [
+        "F-PREVIEW"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実Markdown/HTMLと埋込画像、Guid一時領域の後始末、ブラウザー描画待ちを使わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.プレビューを並列生成しても別々の内容になり成功失敗とも作業領域を残さない"
+      ]
+    },
+    {
+      "id": "TEST-DFF39C1DFE20",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.ヘルプ設定フォルダ参照と合成再開取消を差替え口から処理する",
+      "title": "ヘルプ設定フォルダ参照と合成再開取消を差替え口から処理する",
+      "featureIds": [
+        "F-INTERACTION"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "AppInteractionの要求/取消/失敗または隔離拒否、Explorer/UAC/本番ショートカットは実行しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.ヘルプ設定フォルダ参照と合成再開取消を差替え口から処理する"
+      ]
+    },
+    {
+      "id": "TEST-222612162CBF",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.各撮影モードと対象方式を保存する",
+      "title": "各撮影モードと対象方式を保存する",
+      "featureIds": [
+        "F-TARGET"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreは判断と設定、実OS撮影はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.各撮影モードと対象方式を保存する(modeControl: \"rbActive\", mode: \"Active\", targetControl: \"rbPick\", target: \"pick\")",
+        "OperationRecorderApp.Tests.UiWiringTests.各撮影モードと対象方式を保存する(modeControl: \"rbAllDesktops\", mode: \"AllDesktops\", targetControl: \"rbPick\", target: \"pick\")",
+        "OperationRecorderApp.Tests.UiWiringTests.各撮影モードと対象方式を保存する(modeControl: \"rbApp\", mode: \"App\", targetControl: \"rbChoose\", target: \"list\")",
+        "OperationRecorderApp.Tests.UiWiringTests.各撮影モードと対象方式を保存する(modeControl: \"rbDesktop\", mode: \"Desktop\", targetControl: \"rbForeground\", target: \"foreground\")",
+        "OperationRecorderApp.Tests.UiWiringTests.各撮影モードと対象方式を保存する(modeControl: \"rbDesktop\", mode: \"Desktop\", targetControl: \"rbPick\", target: \"pick\")",
+        "OperationRecorderApp.Tests.UiWiringTests.各撮影モードと対象方式を保存する(modeControl: \"rbWindow\", mode: \"Window\", targetControl: \"rbForeground\", target: \"foreground\")",
+        "OperationRecorderApp.Tests.UiWiringTests.各撮影モードと対象方式を保存する(modeControl: \"rbWindow\", mode: \"Window\", targetControl: \"rbPick\", target: \"pick\")"
+      ]
+    },
+    {
+      "id": "TEST-8731DA03E13D",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.記録削除の確認取消成功失敗をOSごみ箱へ触れず処理する",
+      "title": "記録削除の確認取消成功失敗をOSごみ箱へ触れず処理する",
+      "featureIds": [
+        "F-SESSION-DELETE"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "OSごみ箱は差替え。画像移動失敗でも手順削除を続ける既存best effortを維持",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.記録削除の確認取消成功失敗をOSごみ箱へ触れず処理する(confirm: False, fail: False)",
+        "OperationRecorderApp.Tests.UiWiringTests.記録削除の確認取消成功失敗をOSごみ箱へ触れず処理する(confirm: True, fail: False)",
+        "OperationRecorderApp.Tests.UiWiringTests.記録削除の確認取消成功失敗をOSごみ箱へ触れず処理する(confirm: True, fail: True)"
+      ]
+    },
+    {
+      "id": "TEST-BF68A7417D36",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.記録名解説と手順文章を保存し自動文章へ戻して出力する",
+      "title": "記録名解説と手順文章を保存し自動文章へ戻して出力する",
+      "featureIds": [
+        "F-SESSION-EDIT"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実session.json/edits.jsonとフォーム・共通サービス",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.記録名解説と手順文章を保存し自動文章へ戻して出力する"
+      ]
+    },
+    {
+      "id": "TEST-D37CD392555C",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.撮影規則とタイミング表示マーカー出力設定を画面から保存して復元する",
+      "title": "撮影規則とタイミング表示マーカー出力設定を画面から保存して復元する",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.撮影規則とタイミング表示マーカー出力設定を画面から保存して復元する"
+      ]
+    },
+    {
+      "id": "TEST-E39FC27E52CD",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.手順削除の確認取消と画像移動失敗でも手順削除を続ける既存契約を検証する",
+      "title": "手順削除の確認取消と画像移動失敗でも手順削除を続ける既存契約を検証する",
+      "featureIds": [
+        "F-SESSION-DELETE"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "OSごみ箱は差替え。画像移動失敗でも手順削除を続ける既存best effortを維持",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.手順削除の確認取消と画像移動失敗でも手順削除を続ける既存契約を検証する(confirm: False, fail: False)",
+        "OperationRecorderApp.Tests.UiWiringTests.手順削除の確認取消と画像移動失敗でも手順削除を続ける既存契約を検証する(confirm: True, fail: False)",
+        "OperationRecorderApp.Tests.UiWiringTests.手順削除の確認取消と画像移動失敗でも手順削除を続ける既存契約を検証する(confirm: True, fail: True)"
+      ]
+    },
+    {
+      "id": "TEST-987A5EED044F",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.出力しない形式は開く指定を解除し再有効化できる",
+      "title": "出力しない形式は開く指定を解除し再有効化できる",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.出力しない形式は開く指定を解除し再有効化できる"
+      ]
+    },
+    {
+      "id": "TEST-D1AA63BEF0C5",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.選択直前に消えたテンプレートは警告を出し編集していた内容を保持する",
+      "title": "選択直前に消えたテンプレートは警告を出し編集していた内容を保持する",
+      "featureIds": [
+        "F-TEMPLATE"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.選択直前に消えたテンプレートは警告を出し編集していた内容を保持する"
+      ]
+    },
+    {
+      "id": "TEST-0284CA005CF8",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.操作キーの画面変更は有効な値だけ保存してメニュー表示へ反映する",
+      "title": "操作キーの画面変更は有効な値だけ保存してメニュー表示へ反映する",
+      "featureIds": [
+        "F-HOTKEY"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "キー値と画面配線、実OS登録の失敗は差替えで検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.操作キーの画面変更は有効な値だけ保存してメニュー表示へ反映する"
+      ]
+    },
+    {
+      "id": "TEST-5F797BBB1A12",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.保存後に指定した成果物だけを開く",
+      "title": "保存後に指定した成果物だけを開く",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.保存後に指定した成果物だけを開く"
+      ]
+    },
+    {
+      "id": "TEST-152560B9ACEB",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.保存出力と外部起動の失敗を確認口へ返す",
+      "title": "保存出力と外部起動の失敗を確認口へ返す",
+      "featureIds": [
+        "F-SESSION-EDIT"
+      ],
+      "layer": "sta",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実session.json/edits.jsonとフォーム・共通サービス",
+      "displayNames": [
+        "OperationRecorderApp.Tests.UiWiringTests.保存出力と外部起動の失敗を確認口へ返す"
+      ]
+    },
+    {
+      "id": "TEST-B3249EFDE0B7",
+      "fullName": "OperationRecorderApp.Tests.WheelRulesTests.回して戻したら記録しない",
+      "title": "回して戻したら記録しない",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WheelRulesTests.回して戻したら記録しない"
+      ]
+    },
+    {
+      "id": "TEST-2764D45A3C09",
+      "fullName": "OperationRecorderApp.Tests.WheelRulesTests.間が空いたら別の手順",
+      "title": "間が空いたら別の手順",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WheelRulesTests.間が空いたら別の手順"
+      ]
+    },
+    {
+      "id": "TEST-82E50DAC002E",
+      "fullName": "OperationRecorderApp.Tests.WheelRulesTests.同じウィンドウで1秒以内ならまとめる",
+      "title": "同じウィンドウで1秒以内ならまとめる",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WheelRulesTests.同じウィンドウで1秒以内ならまとめる"
+      ]
+    },
+    {
+      "id": "TEST-B5EB808F2334",
+      "fullName": "OperationRecorderApp.Tests.WheelRulesTests.目盛りの数",
+      "title": "目盛りの数",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WheelRulesTests.目盛りの数(delta: -30, notches: -1)",
+        "OperationRecorderApp.Tests.WheelRulesTests.目盛りの数(delta: -360, notches: -3)",
+        "OperationRecorderApp.Tests.WheelRulesTests.目盛りの数(delta: 0, notches: 0)",
+        "OperationRecorderApp.Tests.WheelRulesTests.目盛りの数(delta: 120, notches: 1)",
+        "OperationRecorderApp.Tests.WheelRulesTests.目盛りの数(delta: 30, notches: 1)"
+      ]
+    },
+    {
+      "id": "TEST-2C7C6EDE23E0",
+      "fullName": "OperationRecorderApp.Tests.WheelRulesTests.戻しきらなければ差し引いた分だけ記録する",
+      "title": "戻しきらなければ差し引いた分だけ記録する",
+      "featureIds": [
+        "F-INPUT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WheelRulesTests.戻しきらなければ差し引いた分だけ記録する"
+      ]
+    }
+  ]
+}

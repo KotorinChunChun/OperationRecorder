@@ -51,7 +51,7 @@ public sealed class ReplayConfig
         try { File.WriteAllText(temporary, JsonSerializer.Serialize(this, JsonOptions)); File.Move(temporary, file, true); }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
-    public List<string> Validate(bool checkFiles = true)
+    public List<string> Validate(bool checkFiles = true, bool checkEnvironment = false)
     {
         var errors = new List<string>();
         if (SchemaVersion != 1) errors.Add("schemaVersionは1です。");
@@ -59,12 +59,14 @@ public sealed class ReplayConfig
         if (Steps.Count == 0 || Steps.Count > 10000) errors.Add("手順は1～10000件です。");
         if (PollMs < 25 || PollMs > 5000 || TimeoutMs < 0 || TimeoutMs > 1800000 || StableMs < 0 || StableMs > 30000 || StartDelayMs < 0 || StartDelayMs > 600000 || MaxRecordedGapMs < 0 || MaxRecordedGapMs > 600000 || !double.IsFinite(Speed) || Speed <= 0 || Speed > 100 || MaxRuns < 0 || TriggerTimeoutMs < 0 || TriggerTimeoutMs > 86400000) errors.Add("待機・速度・回数の設定が範囲外です。");
         try { ReplayKeys.Parse(StopKey, true); } catch (ArgumentException) { errors.Add("非常停止キーが不正です。"); }
-        foreach (var target in Targets)
+        var usedTargets = Steps.Where(s => s != null && !s.Skip).Select(s => s.Target).Concat(Triggers.Where(t => t != null && t.Type == "application").Select(t => t.Target)).ToHashSet();
+        foreach (var target in Targets.Where(t => usedTargets.Contains(t.Key)))
         {
             var t = target.Value;
             if (t == null || string.IsNullOrWhiteSpace(t.Executable) || !Path.IsPathFullyQualified(t.Executable)) errors.Add("対象 " + target.Key + " のexecutableに絶対パスが必要です。");
             else if (checkFiles && !File.Exists(t.Executable)) errors.Add("対象 " + target.Key + " のEXEがありません。");
             if (t != null && (t.ProcessId < 0 || t.RecordedWidth < 0 || t.RecordedHeight < 0 || t.RecordedDpi < 0 || !double.IsFinite(t.MaxAspectChange) || t.MaxAspectChange < 0 || t.MaxAspectChange > 1)) errors.Add("対象 " + target.Key + " の幾何条件が不正です。");
+            if (t != null && t.TitleMatch != "exact" && t.TitleMatch != "contains") errors.Add("対象 " + target.Key + " のtitleMatchはexact/containsです。");
         }
         for (int index = 0; index < Steps.Count; index++)
         {
@@ -85,6 +87,7 @@ public sealed class ReplayConfig
             {
                 if (s.Text == null || (s.Text.Literal == null && string.IsNullOrWhiteSpace(s.Text.Environment)) || (s.Text.Literal != null && !string.IsNullOrWhiteSpace(s.Text.Environment))) errors.Add(label + "入力値か環境変数を一方だけ補完してください。");
                 if (s.IsPassword && (s.Text == null || string.IsNullOrWhiteSpace(s.Text.Environment))) errors.Add(label + "passwordは環境変数参照が必要です。");
+                if (checkEnvironment && !string.IsNullOrWhiteSpace(s.Text?.Environment) && Environment.GetEnvironmentVariable(s.Text.Environment) == null) errors.Add(label + "入力用の環境変数が未設定です。");
             }
             if (s.Kind == "key") { try { ReplayKeys.Parse(s.Key); } catch (ArgumentException) { errors.Add(label + "再現できないキーです。"); } }
             if (s.Kind == "wheel" && (s.WheelNotches == 0 || Math.Abs((long)s.WheelNotches) > 100)) errors.Add(label + "ホイールは±1～100目盛りです。");
@@ -131,6 +134,7 @@ public sealed class ReplayTarget
 {
     public string Executable { get; set; } = "";
     public string Title { get; set; } = "";
+    public string TitleMatch { get; set; } = "exact";
     public string ClassPrefix { get; set; } = "";
     public int ProcessId { get; set; }
     public int RecordedWidth { get; set; }
@@ -138,6 +142,7 @@ public sealed class ReplayTarget
     public int RecordedDpi { get; set; }
     public bool AllowDpiChange { get; set; }
     public double MaxAspectChange { get; set; } = .1;
+    public bool MatchesTitle(string title) => string.IsNullOrEmpty(Title) || (TitleMatch == "contains" ? title.Contains(Title, StringComparison.Ordinal) : title == Title);
 }
 public sealed class ReplayElement
 {
@@ -188,7 +193,8 @@ public static class ReplayKeys
 {
     static readonly Dictionary<string, int> Special = new(StringComparer.OrdinalIgnoreCase)
     { ["Enter"] = 13, ["Tab"] = 9, ["Esc"] = 27, ["Escape"] = 27, ["Space"] = 32, ["Backspace"] = 8,
-      ["Left"] = 37, ["Up"] = 38, ["Right"] = 39, ["Down"] = 40, ["PrintScreen"] = 44 };
+      ["Left"] = 37, ["Up"] = 38, ["Right"] = 39, ["Down"] = 40, ["PrintScreen"] = 44,
+      ["←"] = 37, ["↑"] = 38, ["→"] = 39, ["↓"] = 40, ["Apps"] = 93 };
     public static int[] Parse(string text, bool hotkey = false)
     {
         if (string.IsNullOrWhiteSpace(text)) throw new ArgumentException("キーがありません。");
@@ -197,10 +203,16 @@ public static class ReplayKeys
         {
             var part = raw.Trim(); int key = part.ToUpperInvariant() switch { "CTRL" => 17, "SHIFT" => 16, "ALT" => 18, "WIN" => 91, _ => 0 };
             if (key != 0) { if (keys.Contains(key) || keys.Any(k => k != 16 && k != 17 && k != 18 && k != 91)) throw new ArgumentException("修飾キーの順序が不正です。"); }
-            else { key = Special.TryGetValue(part, out var value) ? value : HotkeyKeys.Parse(part); if (key == 0 || keys.Any(k => k != 16 && k != 17 && k != 18 && k != 91)) throw new ArgumentException("不明なキーです。"); }
+            else
+            {
+                key = Special.TryGetValue(part, out var value) ? value : HotkeyKeys.Parse(part);
+                if (key == 0 && part.Length == 4 && part.StartsWith("Num", StringComparison.OrdinalIgnoreCase) && char.IsAsciiDigit(part[3])) key = 0x60 + part[3] - '0';
+                if (key == 0 && part.StartsWith("VK_0x", StringComparison.OrdinalIgnoreCase) && int.TryParse(part.AsSpan(5), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int vk) && vk > 0 && vk < 255) key = vk;
+                if (key == 0 || keys.Any(k => k != 16 && k != 17 && k != 18 && k != 91)) throw new ArgumentException("不明なキーです。");
+            }
             keys.Add(key);
         }
-        if (keys.Count == 0 || new[] { 16, 17, 18, 91 }.Contains(keys.Last()) || (keys.Contains(91) && keys.Last() == 76) || (keys.Contains(17) && keys.Contains(18) && keys.Last() == 46)) throw new ArgumentException("再現できないシステムキーです。");
+        if (keys.Count == 0 || new[] { 16, 17, 18, 91, 92, 160, 161, 162, 163, 164, 165 }.Contains(keys.Last()) || (keys.Contains(91) && keys.Last() == 76) || (keys.Contains(17) && keys.Contains(18) && keys.Last() == 46)) throw new ArgumentException("再現できないシステムキーです。");
         if (hotkey && !keys.Take(keys.Count - 1).Any(k => k == 17 || k == 18)) throw new ArgumentException("開始/停止にはCtrlかAltが必要です。");
         return keys.ToArray();
     }

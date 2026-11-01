@@ -35,6 +35,7 @@ $features = @(
     [ordered]@{ id = 'F-EXPORT'; title = 'Markdown/HTMLの出力形式・画像・本文と旧CLI互換'; boundary = '実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない' },
     [ordered]@{ id = 'F-MARKS'; title = '丸・矢印・部品枠・ポインタの画像合成'; boundary = '生成画像の色・座標と原画像不変、古い記録への二重描画を防ぐ' },
     [ordered]@{ id = 'F-HTML'; title = 'HTMLの操作前後切替・拡大・印刷'; boundary = 'CoreでHTML/CSS構造、別のTest-ReportHtml.cjsでヘッドレスブラウザーの表示/ボタン/Escを検証。物理印刷機は対象外' },
+    [ordered]@{ id = 'F-REPLAY'; title = '記録変換・条件監視・時刻/キー/アプリ開始とリプレイ'; boundary = 'Coreでconfig/状態/時刻/実EXEの入力なし経路、Desktopで専用別PIDの実入力・UIA・画像待ち・非常停止。OS予約の登録は行わない' },
     [ordered]@{ id = 'F-LAUNCH'; title = '通常/無表示起動・既存インスタンスへの合図'; boundary = '起動引数・専用Mutex/イベント/管理pipe、通常常駐を変更しない' },
     [ordered]@{ id = 'F-MANAGEMENT'; title = '本体からの表示・停止・記録中/未保存の停止拒否'; boundary = '管理停止方針と実フォーム・専用プロセス、既存アプリを停止しない' },
     [ordered]@{ id = 'F-INTERACTION'; title = 'ヘルプ・外部起動・ショートカット・管理者再起動'; boundary = 'AppInteractionの要求/取消/失敗または隔離拒否、Explorer/UAC/本番ショートカットは実行しない' },
@@ -54,6 +55,7 @@ $classFeature = @{
     MarkTests = 'F-MARKS'; DragArrowTests = 'F-MARKS'; HtmlViewTests = 'F-HTML'
     LaunchTests = 'F-LAUNCH'; AutomationInstanceTests = 'F-LAUNCH'; ManagementTests = 'F-MANAGEMENT'
     AppInteractionTests = 'F-INTERACTION'; AutomationCommandTests = 'F-AUTOMATION'
+    ReplayCoreTests = 'F-REPLAY'; ReplayCommandTests = 'F-REPLAY'
 }
 
 function Get-FeatureId([string]$ClassName, [string]$MethodName) {
@@ -80,6 +82,7 @@ function Get-FeatureId([string]$ClassName, [string]$MethodName) {
 }
 
 function Get-Layer([string]$ClassName, [string]$MethodName) {
+    if ($ClassName -eq 'ReplayCommandTests' -and $MethodName -match '実EXE|ps1|不正なconfig') { return 'cli' }
     if ($ClassName -match 'Desktop') { return 'desktop' }
     if ($ClassName -match '^UiWiringTests$|^CompositionFormTests$|^CompositionSessionUiTests$|^CompositionEntryTests$|^FormSmokeTests$') { return 'sta' }
     if ($ClassName -eq 'ManagementTests' -and $MethodName -match '未保存') { return 'sta' }

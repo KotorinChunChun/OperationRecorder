@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "window1": {
+      "executable": "C:\\Apps\\Example\\Example.exe",
+      "title": "サンプル画面",
+      "classPrefix": "",
+      "recordedWidth": 1280,
+      "recordedHeight": 720,
+      "recordedDpi": 96
+    }
+  },
+  "steps": [
+    {
+      "sourceSeq": 1,
+      "kind": "click",
+      "target": "window1",
+      "element": { "automationId": "executeButton", "controlType": "Button" },
+      "positionMode": "element",
+      "x": 0.5,
+      "y": 0.5
+    }
+  ],
+  "triggers": [ { "type": "immediate" } ],
+  "timeoutMs": 30000,
+  "triggerTimeoutMs": 0,
+  "stableMs": 200,
+  "startDelayMs": 1000,
+  "maxRuns": 1,
+  "stopKey": "Ctrl+Alt+Pause"
+}

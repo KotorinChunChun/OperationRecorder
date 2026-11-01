@@ -58,6 +58,7 @@ internal static class Program
         readonly Label state = new() { Location = new Point(30, 310), AutoSize = true, Text = "操作前" };
         readonly List<Form> covers = new();
         int actions;
+        int lastKey;
         public FixtureForm(string token)
         {
             Text = "OperationRecorder fixture " + token;
@@ -69,6 +70,8 @@ internal static class Program
             Controls.Add(new Label { Text = "通常入力", AutoSize = true, Location = new Point(30, 120) });
             Controls.Add(new Label { Text = "password試験用", AutoSize = true, Location = new Point(30, 185) });
             action.Click += (_, _) => { actions++; state.Text = "操作後 " + actions; BackColor = actions % 2 == 0 ? Color.LightGoldenrodYellow : Color.LightSteelBlue; };
+            action.KeyDown += (_, e) => lastKey = (int)e.KeyCode;
+            action.PreviewKeyDown += (_, e) => { if (e.KeyCode is Keys.Left or Keys.Up or Keys.Right or Keys.Down) e.IsInputKey = true; };
             drag.MouseDown += (_, _) => { drag.Focus(); drag.BackColor = Color.Salmon; };
             drag.MouseUp += (_, _) => drag.BackColor = Color.MediumPurple;
             wheel.MouseEnter += (_, _) => wheel.Focus();
@@ -105,7 +108,7 @@ internal static class Program
                 try { BringWindowToTop(Handle); SetForegroundWindow(Handle); }
                 finally { if (attached) AttachThreadInput(currentThread, foregroundThread, false); }
             }
-            if (command == "reset") { input.Text = password.Text = ""; actions = 0; state.Text = "操作前"; BackColor = Color.FromArgb(246, 242, 220); }
+            if (command == "reset") { input.Text = password.Text = ""; actions = 0; lastKey = 0; state.Text = "操作前"; BackColor = Color.FromArgb(246, 242, 220); }
             if (command == "action") action.PerformClick();
             if (command == "shift-layout")
             {
@@ -115,7 +118,7 @@ internal static class Program
             if (command == "close") return new { ok = true };
             return new { ok = true, pid = Environment.ProcessId, hwnd = Handle.ToInt64(), title = Text,
                 action = RectangleOf(action), input = RectangleOf(input), password = RectangleOf(password),
-                drag = RectangleOf(drag), wheel = RectangleOf(wheel), actions, value = input.Text, passwordLength = password.Text.Length };
+                drag = RectangleOf(drag), wheel = RectangleOf(wheel), actions, lastKey, value = input.Text, passwordLength = password.Text.Length };
         }
 
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();

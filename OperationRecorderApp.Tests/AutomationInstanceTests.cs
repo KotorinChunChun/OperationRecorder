@@ -51,7 +51,7 @@ namespace OperationRecorderApp.Tests
             var status = first.Request("status");
             Assert.True(status["ready"].GetValue<bool>());
             Assert.Equal(first.Process.Id, status["pid"].GetValue<int>());
-            Assert.Equal("0.1.4", status["version"].GetValue<string>());
+            Assert.Equal("0.1.5", status["version"].GetValue<string>());
             Assert.Equal("refused", first.Request("stop", second.Process.Id)["result"].GetValue<string>());
             Assert.False(first.Process.HasExited); Assert.False(second.Process.HasExited);
             Assert.Equal("unsupported", first.Request("unknown")["result"].GetValue<string>());

@@ -29,7 +29,7 @@ KotorinToysの一覧でOperationRecorderを選び、「起動」でタスクト�
 正式インストーラーで導入後、本体の「本体設定・自動起動」から設定できます。開発EXEやzipの展開先は正式導入として扱いません。
 旧版のスタートアップ登録が見つかった場合は案内を表示し、アプリはその登録を上書き・削除しません。
 
-開発ソースの製品版は0.1.3、識別子は `operation-recorder` / `KotorinToys.OperationRecorder` です。公開済みインストーラーの版はGitHub Releasesを確認してください。
+識別子は `operation-recorder` / `KotorinToys.OperationRecorder` です。公開済みインストーラーの版はGitHub Releasesを確認してください。
 公開リポジトリは[OperationRecorder](https://github.com/KotorinChunChun/OperationRecorder)、正式インストーラーは[Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)から入手できます。公開カタログにはインストーラーの版・サイズ・SHA-256を登録します。
 
 ## 開発版のビルドと起動

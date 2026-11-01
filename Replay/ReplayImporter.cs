@@ -43,6 +43,13 @@ public static class ReplayImporter
             string kind = Text(e["kind"]) ?? "unsupported";
             long time = Number(e["tMs"]);
             var step = new ReplayStep { SourceSeq = Number(e["seq"]), Kind = kind, Target = targetId, DelayMs = (int)Math.Clamp(time - previous, 0, 600000), Key = Text(e["key"]) };
+            if (kind == "key" && e["keyCode"] != null)
+            {
+                var modifiers = (step.Key ?? "").Split('+').Where(p => new[] { "Ctrl", "Alt", "Shift", "Win" }.Contains(p));
+                step.Key = string.Join("+", modifiers.Append("VK_0x" + Number(e["keyCode"]).ToString("X2")));
+            }
+            bool mouse = new[] { "click", "rightclick", "middleclick", "doubleclick", "drag", "rightdrag", "wheel" }.Contains(kind);
+            if (mouse) step.X = step.Y = step.EndX = step.EndY = -1;
             previous = time;
             if (e["uia"] is JsonObject uia)
             {
@@ -52,8 +59,9 @@ public static class ReplayImporter
                 double width = Number(r?["w"]), height = Number(r?["h"]);
                 if (width > 0 && height > 0 && e["pointInWindow"] != null)
                 {
-                    step.X = Math.Clamp((Number(e["pointInWindow"]?["x"]) - Number(r?["x"])) / width, 0, 1);
-                    step.Y = Math.Clamp((Number(e["pointInWindow"]?["y"]) - Number(r?["y"])) / height, 0, 1);
+                    step.X = (Number(e["pointInWindow"]?["x"]) - Number(r?["x"])) / width;
+                    step.Y = (Number(e["pointInWindow"]?["y"]) - Number(r?["y"])) / height;
+                    if (!kind.EndsWith("drag", StringComparison.Ordinal)) { step.EndX = step.X; step.EndY = step.Y; }
                     if (e["dragEndInWindow"] != null)
                     {
                         step.EndX = (Number(e["dragEndInWindow"]?["x"]) - Number(r?["x"])) / width;

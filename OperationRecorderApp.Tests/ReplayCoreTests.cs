@@ -59,6 +59,27 @@ public class ReplayCoreTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new ReplayEngine(new Runtime("ready")).Run(Config(), cancelled.Token));
     }
     [Fact]
+    public async Task 時計が戻っても単調時計で待機上限を守る()
+    {
+        var runtime = new Runtime("waitingForImage") { WallClockBackwards = true };
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        await Assert.ThrowsAsync<TimeoutException>(() => new ReplayEngine(runtime).Run(Config(), cancellation.Token));
+        Assert.Equal(0, runtime.Executed);
+    }
+    [Theory]
+    [InlineData("→", 39)]
+    [InlineData("Ctrl+←", 37)]
+    [InlineData("Num3", 99)]
+    [InlineData("Ctrl+VK_0xBB", 187)]
+    public void 既存記録の矢印記号とキーコードを再現できる(string key, int expected) => Assert.Equal(expected, ReplayKeys.Parse(key).Last());
+    [Fact]
+    public void 明示skipした未対応の手順だけなら未使用bindingの不足で妨げない()
+    {
+        var config = Config(); config.Targets["app"].Executable = ""; config.Steps[0].Skip = true; config.Steps[0].SkipReason = "記録の説明だけ";
+        Assert.Empty(config.Validate());
+        config.Steps[0].SkipReason = ""; Assert.NotEmpty(config.Validate());
+    }
+    [Fact]
     public async Task 後続手順が未確定なら最初のクリックも送らない()
     {
         var config = Config(); config.Steps.Add(new() { Kind = "input", Target = "app", Element = new() { AutomationId = "input" } });
@@ -139,10 +160,11 @@ public class ReplayCoreTests
     {
         readonly Queue<string> states; string state = "ready";
         public int Executed;
+        public bool WallClockBackwards;
         public Runtime(params string[] states) { this.states = new(states); }
         public DateTimeOffset Now { get; private set; } = DateTimeOffset.UtcNow;
         public long ElapsedMilliseconds { get; private set; }
-        public Task Delay(int milliseconds, CancellationToken cancellation) { cancellation.ThrowIfCancellationRequested(); Now = Now.AddMilliseconds(milliseconds); ElapsedMilliseconds += milliseconds; return Task.CompletedTask; }
+        public Task Delay(int milliseconds, CancellationToken cancellation) { cancellation.ThrowIfCancellationRequested(); Now = Now.AddMilliseconds(WallClockBackwards ? -milliseconds : milliseconds); ElapsedMilliseconds += milliseconds; return Task.CompletedTask; }
         public Task<ReplayObservation> Observe(ReplayConfig config, ReplayStep step, ReplayImage image, bool after, CancellationToken cancellation)
         { if (states.Count > 0) state = states.Dequeue(); return Task.FromResult(new ReplayObservation { Ready = state == "ready", State = state, Message = state }); }
         public Task Execute(ReplayConfig config, ReplayStep step, ReplayObservation observation, CancellationToken cancellation) { Executed++; return Task.CompletedTask; }

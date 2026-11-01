@@ -12,7 +12,7 @@
     <RootNamespace>OperationRecorderApp</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <Version>0.1.4</Version>
+    <Version>0.1.5</Version>
     <Product>OperationRecorder</Product>
     <Company>OperationRecorder</Company>
     <Description>PC の操作を記録して、スクリーンショット付きの操作手順書(md)を作るツール</Description>
@@ -34,6 +34,7 @@
     <Compile Remove="OperationRecorderApp.Tests\**\*.cs;operation-recorder\**\*.cs" />
     <Compile Include="$(SkillDir)\scripts\src\*.cs" Link="Engine\%(Filename)%(Extension)" />
     <None Include="tool.json;config\shortcuts.json;docs\**\*.md;README.md;THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="config\replay-example.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(SkillDir)\templates\*.md" Link="templates\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(SkillDir)\MANUAL.md" Link="MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('$(SkillDir)\MANUAL.md')" />
