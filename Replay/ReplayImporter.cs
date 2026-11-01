@@ -42,7 +42,7 @@ public static class ReplayImporter
             }
             string kind = Text(e["kind"]) ?? "unsupported";
             long time = Number(e["tMs"]);
-            var step = new ReplayStep { SourceSeq = Number(e["seq"]), Kind = kind, Target = targetId, DelayMs = (int)Math.Clamp(time - previous, 0, config.MaxRecordedGapMs), Key = Text(e["key"]) };
+            var step = new ReplayStep { SourceSeq = Number(e["seq"]), Kind = kind, Target = targetId, DelayMs = (int)Math.Clamp(time - previous, 0, 600000), Key = Text(e["key"]) };
             previous = time;
             if (e["uia"] is JsonObject uia)
             {

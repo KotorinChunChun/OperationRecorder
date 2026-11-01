@@ -105,7 +105,13 @@ internal static class Program
                 try { BringWindowToTop(Handle); SetForegroundWindow(Handle); }
                 finally { if (attached) AttachThreadInput(currentThread, foregroundThread, false); }
             }
-            if (command == "reset") { input.Text = password.Text = ""; actions = 0; state.Text = "操作前"; }
+            if (command == "reset") { input.Text = password.Text = ""; actions = 0; state.Text = "操作前"; BackColor = Color.FromArgb(246, 242, 220); }
+            if (command == "action") action.PerformClick();
+            if (command == "shift-layout")
+            {
+                Bounds = new Rectangle(Screen.PrimaryScreen!.WorkingArea.Location + new Size(40, 40), new Size(1000, 720));
+                action.Location = new Point(600, 450);
+            }
             if (command == "close") return new { ok = true };
             return new { ok = true, pid = Environment.ProcessId, hwnd = Handle.ToInt64(), title = Text,
                 action = RectangleOf(action), input = RectangleOf(input), password = RectangleOf(password),

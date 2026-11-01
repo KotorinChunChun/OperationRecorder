@@ -699,6 +699,7 @@ namespace OpRec
                 { "processName", WinUtil.ProcName(pid) },
                 { "pid", pid },
                 { "frame", WinUtil.Rc(WinUtil.GetFrame(root)) },
+                { "dpi", N.GetDpiForWindow(root) },
                 { "program", WinUtil.ProgramInfo(pid) },
             };
         }

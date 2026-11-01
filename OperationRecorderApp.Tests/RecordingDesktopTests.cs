@@ -334,7 +334,7 @@ namespace OperationRecorderApp.Tests
             Assert.Equal(System.Drawing.Imaging.ImageFormat.Png.Guid, bitmap.RawFormat.Guid);
         }
 
-        sealed class DesktopCase : IDisposable
+        internal sealed class DesktopCase : IDisposable
         {
             public readonly FixtureProcess Fixture;
             public readonly NativeInput Input;
@@ -437,7 +437,7 @@ namespace OperationRecorderApp.Tests
             finally { foreach (var process in existing) process.Dispose(); }
         }
 
-        sealed class FixtureProcess : IDisposable
+        internal sealed class FixtureProcess : IDisposable
         {
             readonly Process process;
             readonly string executable, token;
@@ -498,7 +498,7 @@ namespace OperationRecorderApp.Tests
         }
 
         // OS入力を送るコードは試験専用。送信直前に毎回、専用hostのPID・実体・前面を確認する。
-        sealed class NativeInput : IDisposable
+        internal sealed class NativeInput : IDisposable
         {
             readonly FixtureProcess fixture;
             readonly Point originalCursor;

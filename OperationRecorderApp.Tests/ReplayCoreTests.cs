@@ -94,6 +94,16 @@ public class ReplayCoreTests
         Assert.True(ReplayGeometry.Similarity(a, new(0, 0, 100, 80), b) < .5);
         Assert.Throws<ArgumentException>(() => ReplayGeometry.Similarity(a, new(90, 0, 100, 80), b));
     }
+    [Fact]
+    public void 相対座標は縦横比とDPIの不一致を無条件に許可しない()
+    {
+        var target = new ReplayTarget { RecordedWidth = 800, RecordedHeight = 600, RecordedDpi = 96 };
+        Assert.True(ReplayGeometry.Compatible(target, new(100, 50, 1600, 1200), 96));
+        Assert.False(ReplayGeometry.Compatible(target, new(100, 50, 1600, 900), 96));
+        Assert.False(ReplayGeometry.Compatible(target, new(100, 50, 1600, 1200), 144));
+        target.AllowDpiChange = true;
+        Assert.True(ReplayGeometry.Compatible(target, new(100, 50, 1600, 1200), 144));
+    }
     [Theory]
     [InlineData("Ctrl+Alt+F20", true)]
     [InlineData("Enter", true)]
