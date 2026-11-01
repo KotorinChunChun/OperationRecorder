@@ -25,6 +25,7 @@ public sealed class ReplayConfig
     public int MaxRecordedGapMs { get; set; } = 2000;
     public double Speed { get; set; } = 1;
     public int MaxRuns { get; set; } = 1;
+    public int TriggerTimeoutMs { get; set; }
     public string StopKey { get; set; } = "Ctrl+Alt+Pause";
     [JsonIgnore] public string BaseDirectory { get; set; } = Environment.CurrentDirectory;
     public static JsonSerializerOptions JsonOptions => new()
@@ -56,7 +57,7 @@ public sealed class ReplayConfig
         if (SchemaVersion != 1) errors.Add("schemaVersionは1です。");
         if (Targets == null || Steps == null || Triggers == null) { errors.Add("targets/steps/triggersが必要です。"); return errors; }
         if (Steps.Count == 0 || Steps.Count > 10000) errors.Add("手順は1～10000件です。");
-        if (PollMs < 25 || PollMs > 5000 || TimeoutMs < 0 || TimeoutMs > 1800000 || StableMs < 0 || StableMs > 30000 || StartDelayMs < 0 || StartDelayMs > 600000 || MaxRecordedGapMs < 0 || MaxRecordedGapMs > 600000 || !double.IsFinite(Speed) || Speed <= 0 || Speed > 100 || MaxRuns < 0) errors.Add("待機・速度・回数の設定が範囲外です。");
+        if (PollMs < 25 || PollMs > 5000 || TimeoutMs < 0 || TimeoutMs > 1800000 || StableMs < 0 || StableMs > 30000 || StartDelayMs < 0 || StartDelayMs > 600000 || MaxRecordedGapMs < 0 || MaxRecordedGapMs > 600000 || !double.IsFinite(Speed) || Speed <= 0 || Speed > 100 || MaxRuns < 0 || TriggerTimeoutMs < 0 || TriggerTimeoutMs > 86400000) errors.Add("待機・速度・回数の設定が範囲外です。");
         try { ReplayKeys.Parse(StopKey, true); } catch (ArgumentException) { errors.Add("非常停止キーが不正です。"); }
         foreach (var target in Targets)
         {
@@ -94,7 +95,8 @@ public sealed class ReplayConfig
             }
         }
         if (Triggers.Count == 0) errors.Add("開始条件がありません。");
-        var hotkeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { StopKey ?? "" };
+        var hotkeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try { hotkeys.Add(string.Join(",", ReplayKeys.Parse(StopKey, true).OrderBy(x => x))); } catch { }
         foreach (var t in Triggers)
         {
             if (t == null) { errors.Add("開始条件が空です。"); continue; }
@@ -109,10 +111,13 @@ public sealed class ReplayConfig
             }
             if (t.Type == "hotkey")
             {
-                try { ReplayKeys.Parse(t.Key, true); } catch { errors.Add("開始キーが不正です。"); }
-                if (!hotkeys.Add(t.Key ?? "")) errors.Add("開始キーと非常停止キーが重複しています。");
+                try { if (!hotkeys.Add(string.Join(",", ReplayKeys.Parse(t.Key, true).OrderBy(x => x)))) errors.Add("開始キーと非常停止キーが重複しています。"); } catch { errors.Add("開始キーが不正です。"); }
             }
             if (t.Type == "application" && (t.Target == null || !Targets.ContainsKey(t.Target))) errors.Add("applicationのtargetがありません。");
+        }
+        foreach (var step in Steps.Where(s => s != null && !s.Skip && s.Kind == "key"))
+        {
+            try { if (hotkeys.Contains(string.Join(",", ReplayKeys.Parse(step.Key).OrderBy(x => x)))) errors.Add("操作キーが開始/非常停止キーと重複しています。"); } catch { }
         }
         if (!string.IsNullOrEmpty(SourceDirectory) && checkFiles)
         {

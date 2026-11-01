@@ -37,6 +37,7 @@
     <None Update="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(SkillDir)\templates\*.md" Link="templates\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(SkillDir)\MANUAL.md" Link="MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('$(SkillDir)\MANUAL.md')" />
+    <None Include="$(SkillDir)\scripts\Invoke-OperationReplay.ps1" Link="scripts\Invoke-OperationReplay.ps1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="operation-recorder\MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 

@@ -141,7 +141,8 @@ public class ReplayCoreTests
         public int Executed;
         public Runtime(params string[] states) { this.states = new(states); }
         public DateTimeOffset Now { get; private set; } = DateTimeOffset.UtcNow;
-        public Task Delay(int milliseconds, CancellationToken cancellation) { cancellation.ThrowIfCancellationRequested(); Now = Now.AddMilliseconds(milliseconds); return Task.CompletedTask; }
+        public long ElapsedMilliseconds { get; private set; }
+        public Task Delay(int milliseconds, CancellationToken cancellation) { cancellation.ThrowIfCancellationRequested(); Now = Now.AddMilliseconds(milliseconds); ElapsedMilliseconds += milliseconds; return Task.CompletedTask; }
         public Task<ReplayObservation> Observe(ReplayConfig config, ReplayStep step, ReplayImage image, bool after, CancellationToken cancellation)
         { if (states.Count > 0) state = states.Dequeue(); return Task.FromResult(new ReplayObservation { Ready = state == "ready", State = state, Message = state }); }
         public Task Execute(ReplayConfig config, ReplayStep step, ReplayObservation observation, CancellationToken cancellation) { Executed++; return Task.CompletedTask; }

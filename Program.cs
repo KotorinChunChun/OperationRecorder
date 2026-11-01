@@ -17,6 +17,7 @@ namespace OperationRecorderApp
         [STAThread]
         static int Main(string[] args)
         {
+            if (Replay.ReplayCommand.IsReplay(args)) return Replay.ReplayCommand.Execute(args);
             if (AutomationCommand.IsAutomation(args)) return AutomationCommand.Execute(args);
             // 出力だけならホットキーもフックも使わないので、起動中のアプリがあっても動かしてよい
             if (ExportCommand.IsExport(args)) return ExportCommand.Execute(args);

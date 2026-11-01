@@ -43,4 +43,9 @@ public sealed class ReplayTriggerClock
         if (token == null || fired.TryGetValue(index, out var old) && old == token) return false;
         fired[index] = token; return true;
     }
+    public void DiscardBusy(int index, ReplayTrigger trigger, DateTimeOffset now, string applicationIdentity = null)
+    {
+        if (trigger.Type == "interval") next[index] = now.AddSeconds(trigger.IntervalSeconds);
+        else Due(index, trigger, now, applicationIdentity: applicationIdentity);
+    }
 }

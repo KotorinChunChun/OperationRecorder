@@ -18,6 +18,7 @@ public sealed class ReplayObservation
 public interface IReplayRuntime
 {
     DateTimeOffset Now { get; }
+    long ElapsedMilliseconds { get; }
     Task Delay(int milliseconds, CancellationToken cancellation);
     Task<ReplayObservation> Observe(ReplayConfig config, ReplayStep step, ReplayImage image, bool after, CancellationToken cancellation);
     Task Execute(ReplayConfig config, ReplayStep step, ReplayObservation observation, CancellationToken cancellation);
@@ -49,21 +50,21 @@ public sealed class ReplayEngine
     }
     async Task<ReplayObservation> Wait(ReplayConfig config, ReplayStep step, ReplayImage image, int index, bool after, CancellationToken cancellation)
     {
-        var started = runtime.Now; DateTimeOffset? stable = null; DateTimeOffset lastReport = DateTimeOffset.MinValue; string state = null;
+        long started = runtime.ElapsedMilliseconds; long? stable = null; long lastReport = long.MinValue / 2; string state = null;
         while (true)
         {
             cancellation.ThrowIfCancellationRequested();
             var found = await runtime.Observe(config, step, image, after, cancellation);
             if (found.Ready)
             {
-                stable ??= runtime.Now;
-                if ((runtime.Now - stable.Value).TotalMilliseconds >= config.StableMs) return found;
+                stable ??= runtime.ElapsedMilliseconds;
+                if (runtime.ElapsedMilliseconds - stable.Value >= config.StableMs) return found;
             }
             else stable = null;
-            if (found.State != state || (runtime.Now - lastReport).TotalSeconds >= 1)
-            { progress(new(index, found.Ready ? "stabilizing" : found.State, found.Ready ? "一致状態が安定するのを待っています。" : found.Message)); state = found.State; lastReport = runtime.Now; }
+            if (found.State != state || runtime.ElapsedMilliseconds - lastReport >= 1000)
+            { progress(new(index, found.Ready ? "stabilizing" : found.State, found.Ready ? "一致状態が安定するのを待っています。" : found.Message)); state = found.State; lastReport = runtime.ElapsedMilliseconds; }
             int timeout = step.TimeoutMs ?? config.TimeoutMs;
-            if (timeout != 0 && (runtime.Now - started).TotalMilliseconds >= timeout) throw new TimeoutException("手順 " + index + ": " + found.Message + "（待機上限）");
+            if (timeout != 0 && runtime.ElapsedMilliseconds - started >= timeout) throw new TimeoutException("手順 " + index + ": " + found.Message + "（待機上限）");
             await runtime.Delay(config.PollMs, cancellation);
         }
     }

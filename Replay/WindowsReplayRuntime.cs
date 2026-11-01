@@ -19,8 +19,10 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
     readonly ReplayConfig config;
     volatile bool started;
     public DateTimeOffset Now => DateTimeOffset.UtcNow;
+    public long ElapsedMilliseconds => Environment.TickCount64;
     sealed record Match(IntPtr Window, int Pid, Rectangle Frame, Rectangle Bounds, AutomationElement Element);
     public WindowsReplayRuntime(ReplayConfig config) { this.config = config; }
+    public void EndRun() { started = false; }
     public async Task Delay(int milliseconds, CancellationToken cancellation)
     {
         for (int remaining = milliseconds; remaining > 0; remaining -= 50)

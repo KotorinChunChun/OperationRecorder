@@ -100,4 +100,21 @@ public class ReplayDesktopTests
         config.Steps[0].Element = new() { AutomationId = "fixtureAction", ControlType = "Button" };
         return config;
     }
+
+    [Theory]
+    [InlineData("application", 1)]
+    [InlineData("interval", 2)]
+    public void 実EXEのconfig監視でアプリ待ちと繰返しからクリックする(string trigger, int runs)
+    {
+        using var test = new RecordingDesktopTests.DesktopCase("replay-exe-" + trigger);
+        using var scope = new AutomationScope(); var config = ForFixture(test);
+        config.StopKey = "Ctrl+Alt+Shift+F24"; config.MaxRuns = runs; config.TriggerTimeoutMs = 5000;
+        config.Triggers = new() { new() { Type = trigger, Target = "app", IntervalSeconds = 1 } };
+        string file = scope.Workspace.Resolve("plan.json"); config.Save(file);
+        var executed = scope.Process("--replay", "watch", "--config", file, "--logs", Path.Combine(test.Root, "cli-logs"));
+        Assert.Equal(0, executed.Code); var response = System.Text.Json.Nodes.JsonNode.Parse(executed.Output);
+        Assert.Equal(runs, response["runs"].GetValue<int>());
+        Assert.Equal(runs, test.Fixture.Command("status").GetProperty("actions").GetInt32());
+        Assert.True(File.Exists(Path.Combine(response["logDirectory"].GetValue<string>(), "progress.jsonl"))); test.Complete();
+    }
 }
