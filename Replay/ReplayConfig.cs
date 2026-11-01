@@ -15,6 +15,8 @@ public sealed class ReplayConfig
     public int SchemaVersion { get; set; } = 1;
     public string SourceDirectory { get; set; }
     public string SourceSha256 { get; set; }
+    public List<ReplaySource> Sources { get; set; } = new();
+    public ReplayLearningReview LearningReview { get; set; }
     public Dictionary<string, ReplayTarget> Targets { get; set; } = new();
     public List<ReplayStep> Steps { get; set; } = new();
     public List<ReplayTrigger> Triggers { get; set; } = new() { new() };
@@ -51,11 +53,17 @@ public sealed class ReplayConfig
         try { File.WriteAllText(temporary, JsonSerializer.Serialize(this, JsonOptions)); File.Move(temporary, file, true); }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
-    public List<string> Validate(bool checkFiles = true, bool checkEnvironment = false)
+    public List<string> Validate(bool checkFiles = true, bool checkEnvironment = false, bool allowUnreviewed = false)
     {
         var errors = new List<string>();
         if (SchemaVersion != 1) errors.Add("schemaVersionは1です。");
         if (Targets == null || Steps == null || Triggers == null) { errors.Add("targets/steps/triggersが必要です。"); return errors; }
+        if (LearningReview != null)
+        {
+            if (!allowUnreviewed && (!LearningReview.Accepted || LearningReview.AcceptedConfigSha256 != ReviewHash())) errors.Add("AI条件案は未確認または確認後に変更されています。learn-acceptで内容確認を確定してください。");
+            if (LearningReview.Unresolved == null || LearningReview.Unresolved.Count > 0) errors.Add("AI条件案に未解決項目があります。内容を確認・修正してください。");
+        }
+        if (Sources == null || Sources.Count > 20) errors.Add("sourcesは20件までの配列です。");
         if (Steps.Count == 0 || Steps.Count > 10000) errors.Add("手順は1～10000件です。");
         if (PollMs < 25 || PollMs > 5000 || TimeoutMs < 0 || TimeoutMs > 1800000 || StableMs < 0 || StableMs > 30000 || StartDelayMs < 0 || StartDelayMs > 600000 || MaxRecordedGapMs < 0 || MaxRecordedGapMs > 600000 || !double.IsFinite(Speed) || Speed <= 0 || Speed > 100 || MaxRuns < 0 || TriggerTimeoutMs < 0 || TriggerTimeoutMs > 86400000) errors.Add("待機・速度・回数の設定が範囲外です。");
         try { ReplayKeys.Parse(StopKey, true); } catch (ArgumentException) { errors.Add("非常停止キーが不正です。"); }
@@ -67,6 +75,7 @@ public sealed class ReplayConfig
             else if (checkFiles && !File.Exists(t.Executable)) errors.Add("対象 " + target.Key + " のEXEがありません。");
             if (t != null && (t.ProcessId < 0 || t.RecordedWidth < 0 || t.RecordedHeight < 0 || t.RecordedDpi < 0 || !double.IsFinite(t.MaxAspectChange) || t.MaxAspectChange < 0 || t.MaxAspectChange > 1)) errors.Add("対象 " + target.Key + " の幾何条件が不正です。");
             if (t != null && t.TitleMatch != "exact" && t.TitleMatch != "contains") errors.Add("対象 " + target.Key + " のtitleMatchはexact/containsです。");
+            if (t?.Condition != null) errors.AddRange(t.Condition.Validate(true).Select(e => "対象 " + target.Key + ": " + e));
         }
         for (int index = 0; index < Steps.Count; index++)
         {
@@ -89,6 +98,7 @@ public sealed class ReplayConfig
                 if (s.IsPassword && (s.Text == null || string.IsNullOrWhiteSpace(s.Text.Environment))) errors.Add(label + "passwordは環境変数参照が必要です。");
                 if (checkEnvironment && !string.IsNullOrWhiteSpace(s.Text?.Environment) && Environment.GetEnvironmentVariable(s.Text.Environment) == null) errors.Add(label + "入力用の環境変数が未設定です。");
             }
+            if (s.Element?.Condition != null) errors.AddRange(s.Element.Condition.Validate(false).Select(e => label + e));
             if (s.Kind == "key") { try { ReplayKeys.Parse(s.Key); } catch (ArgumentException) { errors.Add(label + "再現できないキーです。"); } }
             if (s.Kind == "wheel" && (s.WheelNotches == 0 || Math.Abs((long)s.WheelNotches) > 100)) errors.Add(label + "ホイールは±1～100目盛りです。");
             foreach (var gate in new[] { s.BeforeImage, s.AfterImage }.Where(x => x != null))
@@ -127,7 +137,19 @@ public sealed class ReplayConfig
             try { if (!string.Equals(SourceSha256, ReplayImporter.SourceHash(PathOf(SourceDirectory)), StringComparison.OrdinalIgnoreCase)) errors.Add("元の記録が変更されています。configを作り直してください。"); }
             catch (Exception) { errors.Add("元の記録を確認できません。"); }
         }
+        if (checkFiles && Sources != null) foreach (var source in Sources)
+        {
+            try { if (source == null || !string.Equals(source.Sha256, ReplayImporter.SourceHash(PathOf(source.Directory)), StringComparison.OrdinalIgnoreCase)) errors.Add("比較元の記録が変更されています。条件案を作り直してください。"); }
+            catch (Exception) { errors.Add("比較元の記録を確認できません。"); }
+        }
         return errors;
+    }
+    // 確認後の編集でも自動的に再生可能な状態にしない。
+    public string ReviewHash()
+    {
+        var copy = JsonSerializer.Deserialize<ReplayConfig>(JsonSerializer.Serialize(this, JsonOptions), JsonOptions);
+        if (copy.LearningReview != null) { copy.LearningReview.Accepted = false; copy.LearningReview.AcceptedConfigSha256 = null; }
+        return Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(copy, JsonOptions))));
     }
 }
 public sealed class ReplayTarget
@@ -142,7 +164,10 @@ public sealed class ReplayTarget
     public int RecordedDpi { get; set; }
     public bool AllowDpiChange { get; set; }
     public double MaxAspectChange { get; set; } = .1;
+    public ReplayCondition Condition { get; set; }
     public bool MatchesTitle(string title) => string.IsNullOrEmpty(Title) || (TitleMatch == "contains" ? title.Contains(Title, StringComparison.Ordinal) : title == Title);
+    public bool MatchesClass(string className) => className.StartsWith(ClassPrefix ?? "", StringComparison.Ordinal);
+    public bool MatchesWindow(string title, string className) => MatchesTitle(title) && MatchesClass(className) && (Condition?.Matches(ReplayCondition.Window(title, className)) ?? true);
 }
 public sealed class ReplayElement
 {
@@ -150,7 +175,15 @@ public sealed class ReplayElement
     public string Name { get; set; } = "";
     public string ControlType { get; set; } = "";
     public string ClassPrefix { get; set; } = "";
-    [JsonIgnore] public bool IsSpecific => !string.IsNullOrWhiteSpace(AutomationId) || (!string.IsNullOrWhiteSpace(Name) && !string.IsNullOrWhiteSpace(ControlType));
+    public ReplayCondition Condition { get; set; }
+    [JsonIgnore] public bool IsSpecific => !string.IsNullOrWhiteSpace(AutomationId) || (!string.IsNullOrWhiteSpace(Name) && !string.IsNullOrWhiteSpace(ControlType)) ||
+        (!string.IsNullOrWhiteSpace(ControlType) && (Condition?.Positive.Any(p => p != null && (p.Field == "name" || p.Field == "automationId") && !string.IsNullOrWhiteSpace(p.Value)) ?? false));
+    public bool Matches(string id, string name, string className, string type) =>
+        (string.IsNullOrEmpty(AutomationId) || AutomationId == id) &&
+        (string.IsNullOrEmpty(AutomationId) && !string.IsNullOrEmpty(Name) ? Name == name : true) &&
+        (string.IsNullOrEmpty(ControlType) || ControlType.Replace("ControlType.", "") == (type ?? "").Replace("ControlType.", "")) &&
+        (className ?? "").StartsWith(ClassPrefix ?? "", StringComparison.Ordinal) &&
+        (Condition?.Matches(ReplayCondition.Element(id, name, className, type)) ?? true);
 }
 public sealed class ReplayStep
 {

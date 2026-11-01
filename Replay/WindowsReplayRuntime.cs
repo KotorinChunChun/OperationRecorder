@@ -20,7 +20,7 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
     volatile bool started;
     public DateTimeOffset Now => DateTimeOffset.UtcNow;
     public long ElapsedMilliseconds => Environment.TickCount64;
-    sealed record Match(IntPtr Window, int Pid, Rectangle Frame, Rectangle Bounds, AutomationElement Element);
+    sealed record Match(IntPtr Window, int Pid, Rectangle Frame, Rectangle Bounds, AutomationElement Element, ReplayElement Selector);
     public WindowsReplayRuntime(ReplayConfig config) { this.config = config; }
     public void EndRun() { started = false; }
     public async Task Delay(int milliseconds, CancellationToken cancellation)
@@ -47,10 +47,12 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
         var target = c.Targets[step.Target];
         var windows = Windows(target).ToArray();
         if (windows.Length == 0) return Waiting("waitingForWindow", "ウィンドウを探しています。");
-        windows = windows.Where(h => WinUtil.ClassOf(h).StartsWith(target.ClassPrefix ?? "", StringComparison.Ordinal)).ToArray();
+        windows = windows.Where(h => target.MatchesClass(WinUtil.ClassOf(h))).ToArray();
         if (windows.Length == 0) return Waiting("waitingForClass", "クラスを探しています。");
         windows = windows.Where(h => target.MatchesTitle(WinUtil.TextOf(h))).ToArray();
         if (windows.Length == 0) return Waiting("waitingForWindow", "指定タイトルのウィンドウを探しています。");
+        windows = windows.Where(h => target.MatchesWindow(WinUtil.TextOf(h), WinUtil.ClassOf(h))).ToArray();
+        if (windows.Length == 0) return Waiting("waitingForCondition", "ウィンドウの条件式が一致するのを待っています。");
         if (windows.Length != 1) throw new InvalidOperationException("ウィンドウ候補が複数あります。bindingを絞ってください。");
         cancellation.ThrowIfCancellationRequested();
         IntPtr window = windows[0]; int pid = checked((int)WinUtil.PidOf(window));
@@ -70,10 +72,9 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
             var root = AutomationElement.FromHandle(window);
             Condition condition = !string.IsNullOrWhiteSpace(selector.AutomationId)
                 ? new PropertyCondition(AutomationElement.AutomationIdProperty, selector.AutomationId)
-                : new PropertyCondition(AutomationElement.NameProperty, selector.Name);
+                : !string.IsNullOrEmpty(selector.Name) ? new PropertyCondition(AutomationElement.NameProperty, selector.Name) : Condition.TrueCondition;
             var matches = root.FindAll(TreeScope.Subtree, condition).Cast<AutomationElement>()
-                .Where(e => string.IsNullOrEmpty(selector.ControlType) || e.Current.ControlType.ProgrammaticName == "ControlType." + selector.ControlType.Replace("ControlType.", ""))
-                .Where(e => string.IsNullOrEmpty(selector.ClassPrefix) || e.Current.ClassName.StartsWith(selector.ClassPrefix, StringComparison.Ordinal)).ToArray();
+                .Where(e => selector.Matches(e.Current.AutomationId, e.Current.Name, e.Current.ClassName, e.Current.ControlType.ProgrammaticName)).Take(10001).ToArray();
             if (matches.Length == 0) return Waiting("waitingForElement", "該当するUI要素を探しています。");
             if (matches.Length != 1) throw new InvalidOperationException("UI要素の候補が複数あります。AutomationId/名前/クラスを絞ってください。");
             element = matches[0]; var value = element.Current;
@@ -96,7 +97,7 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
             if (similarity < image.Threshold) return Waiting("waitingForImage", (after ? "操作後の画像が一致するのを待っています。" : "該当画像になるのを待っています。") + $"（一致度 {similarity:F3} / 条件 {image.Threshold:F3}）");
         }
         cancellation.ThrowIfCancellationRequested();
-        return new() { Ready = true, State = "ready", Message = "実行条件が揃いました。", Context = new Match(window, pid, frame, bounds, element) };
+        return new() { Ready = true, State = "ready", Message = "実行条件が揃いました。", Context = new Match(window, pid, frame, bounds, element, step.Element) };
     }
     public async Task Execute(ReplayConfig c, ReplayStep step, ReplayObservation observation, CancellationToken cancellation)
     {
@@ -160,7 +161,7 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
     }
     public string ApplicationIdentity(ReplayTarget target)
     {
-        return string.Join(",", Windows(target).Where(h => IsWindowEnabled(h) && !IsIconic(h)).Select(h =>
+        return string.Join(",", Windows(target).Where(h => IsWindowEnabled(h) && !IsIconic(h) && target.MatchesWindow(WinUtil.TextOf(h), WinUtil.ClassOf(h))).Select(h =>
         {
             using var process = Process.GetProcessById(checked((int)WinUtil.PidOf(h)));
             return process.Id + ":" + process.StartTime.ToUniversalTime().Ticks;
@@ -193,8 +194,7 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
             using var process = Process.GetProcessById(pid);
             IntPtr foreground = GetForegroundWindow();
             if (config.Targets.Values.Any(t => t != null && !string.IsNullOrEmpty(t.Executable) && string.Equals(Path.GetFullPath(t.Executable), process.MainModule?.FileName, StringComparison.OrdinalIgnoreCase) &&
-                (t.ProcessId == 0 || t.ProcessId == pid) && t.MatchesTitle(WinUtil.TextOf(foreground)) &&
-                WinUtil.ClassOf(foreground).StartsWith(t.ClassPrefix ?? "", StringComparison.Ordinal))) return;
+                (t.ProcessId == 0 || t.ProcessId == pid) && t.MatchesWindow(WinUtil.TextOf(foreground), WinUtil.ClassOf(foreground)))) return;
         }
         catch (Exception) { }
         throw new InvalidOperationException("前面が対象アプリから離れたため停止しました。");
@@ -205,7 +205,9 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
         if (!IsWindow(match.Window) || GetForegroundWindow() != match.Window || WinUtil.PidOf(match.Window) != match.Pid || WinUtil.GetFrame(match.Window) != match.Frame || !IsWindowEnabled(match.Window) || IsIconic(match.Window)) throw new InvalidOperationException("実行直前に対象ウィンドウの状態が変わりました。");
         using var p = Process.GetProcessById(match.Pid);
         if (!string.Equals(p.MainModule?.FileName, Path.GetFullPath(target.Executable), StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("対象EXEが変わりました。");
+        if (!target.MatchesWindow(WinUtil.TextOf(match.Window), WinUtil.ClassOf(match.Window))) throw new InvalidOperationException("実行直前にウィンドウ条件が変わりました。");
         if (match.Element != null && (!match.Element.Current.IsEnabled || match.Element.Current.IsOffscreen ||
+            !match.Selector.Matches(match.Element.Current.AutomationId, match.Element.Current.Name, match.Element.Current.ClassName, match.Element.Current.ControlType.ProgrammaticName) ||
             (match.Element.Current.NativeWindowHandle == match.Window.ToInt64() ? match.Frame : RectangleOf(match.Element.Current.BoundingRectangle)) != match.Bounds)) throw new InvalidOperationException("実行直前にUI要素の状態が変わりました。");
     }
     static void VerifyPoint(Match match, Point point)
