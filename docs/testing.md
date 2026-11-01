@@ -19,7 +19,7 @@ pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite Core
 | `-Configuration Debug\|Release` | 既定はRelease |
 | `-OutputDirectory <フォルダー>` | 対象版の`dev/history/vX.Y.Z/logs/`以下へ結果を保存する。省略時はその下の`automated-<GUID>` |
 | `-NoBuild` | 既にビルドした同じ構成を使う |
-| `-List` | [ケース対応表](../dev/history/v0.1.5/test-cases.json)をJSONで表示する。ビルド・試験は実行しない |
+| `-List` | [ケース対応表](../dev/history/v0.1.6/test-cases.json)をJSONで表示する。ビルド・試験は実行しない |
 
 ```powershell
 # ケース一覧だけ表示
@@ -27,12 +27,14 @@ pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -List
 
 # 保存場所を指定して全層を実行
 pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite All `
-  -OutputDirectory .\dev\history\v0.1.5\logs\automated-local
+  -OutputDirectory .\dev\history\v0.1.6\logs\automated-local
 ```
 
 DesktopはWindowsの対話デスクトップと前面ウィンドウの一致を必要とする。通常のOperationRecorderが起動中の場合は、既存の記録やフックへ干渉するため実行を拒否し、既存プロセスを終了しない。専用fixtureだけへ入力を送り、撮影するディスプレイはfixtureが覆う。条件を満たせない場合は`blocked`となる。Coreの合格だけでDesktopの実施済みを意味しない。
 
 [リプレイ](replay.md)も同じ入口で試験する。Coreはconfig変換・原本不変・待機上限・単調時計・日時/繰り返し/キー/アプリ条件・CLI/ps1の入力なし経路、DesktopはUIAによる再探索・前後画像の待機・通常/password入力・実キー・開始/非常停止キー・実EXE/ps1からの再生を検証する。専用fixtureの結果は、すべての外部アプリや物理DPI環境での成功を意味しない。
+
+0.1.6の`ReplayLearningTests`は、正規表現と条件式、共有データの入力値除外、原本/操作の保持、複数根拠・確認後編集・出典変更を扱う。Codex CLIの外部モデルや実UIは呼び出さない。[複数記録からの条件作成](replay-learning.md)の実モデルによる生成・再生は別の確認範囲となる。ケースの存在と、その版で実際に動作テストを実行したかは分けて版別報告へ記録する。
 
 ## 結果の読み方
 
@@ -41,7 +43,7 @@ DesktopはWindowsの対話デスクトップと前面ウィンドウの一致を
 ```json
 {
   "schemaVersion": 1,
-  "version": "0.1.5",
+  "version": "0.1.6",
   "status": "passed",
   "exitCode": 0,
   "startedUtc": "...",
@@ -72,7 +74,7 @@ dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
   --artifacts-path .\artifacts\automation-ui `
   --filter 'FullyQualifiedName~UiWiringTests|FullyQualifiedName~AppInteractionTests' `
   --logger 'trx;LogFileName=ui-wiring.trx' `
-  --results-directory .\dev\history\v0.1.5\logs\ui
+  --results-directory .\dev\history\v0.1.6\logs\ui
 
 # 1ケースだけ指定（Theoryはすべての引数行を実行）
 dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
@@ -182,11 +184,11 @@ Node.js、Playwright、Edgeを用意する。既存の利用者ブラウザー�
 
 ```powershell
 cd C:\develop\KotorinToys\tools\OperationRecorder
-$env:OPREC_HTML_TEST_ARTIFACTS = Join-Path (Get-Location) 'dev/history/v0.1.5/logs/html-local/fixtures'
+$env:OPREC_HTML_TEST_ARTIFACTS = Join-Path (Get-Location) 'dev/history/v0.1.6/logs/html-local/fixtures'
 dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj -c Release `
   --artifacts-path .\artifacts\html-tests --filter 'FullyQualifiedName~HtmlViewTests'
 node .\dev\scripts\Test-ReportHtml.cjs `
-  .\dev\history\v0.1.5\logs\html-local\fixtures .\dev\history\v0.1.5\logs\html-local\browser
+  .\dev\history\v0.1.6\logs\html-local\fixtures .\dev\history\v0.1.6\logs\html-local\browser
 Remove-Item Env:OPREC_HTML_TEST_ARTIFACTS
 ```
 
@@ -197,7 +199,7 @@ Remove-Item Env:OPREC_HTML_TEST_ARTIFACTS
 1. GUI固有の確認・ファイル選択・OS副作用は`AppInteraction`へ、記録OS境界は`RecordingRuntime`へ集約する。
 2. GUIとCLIは共通の処理を呼ぶ。新しいフォーム操作は安定した`Control.Name`を付け、STAで実コントロールのイベントを検証する。
 3. 入力・保存結果・原本不変・失敗/取消・後始末を検証する。対話デスクトップを使うテストには`Category=Desktop`を付ける。
-4. [ケース対応表](../dev/history/v0.1.5/test-cases.json)を更新してからCore、必要に応じDesktopを実行する。未分類機能や未実施の層を合格として扱わない。
+4. [ケース対応表](../dev/history/v0.1.6/test-cases.json)を更新してからCore、必要に応じDesktopを実行する。未分類機能や未実施の層を合格として扱わない。
 
 ケース表はビルド済みテストDLLから再生成する。全テストメソッドとTheoryの引数行を取得し、既知の機能へ対応付ける。新しい試験クラスを分類し忘れると生成を失敗させる。`automated`は実行入口があるという意味であり、今回実行済みの意味ではない。
 

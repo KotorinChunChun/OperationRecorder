@@ -55,7 +55,7 @@ $classFeature = @{
     MarkTests = 'F-MARKS'; DragArrowTests = 'F-MARKS'; HtmlViewTests = 'F-HTML'
     LaunchTests = 'F-LAUNCH'; AutomationInstanceTests = 'F-LAUNCH'; ManagementTests = 'F-MANAGEMENT'
     AppInteractionTests = 'F-INTERACTION'; AutomationCommandTests = 'F-AUTOMATION'
-    ReplayCoreTests = 'F-REPLAY'; ReplayCommandTests = 'F-REPLAY'
+    ReplayCoreTests = 'F-REPLAY'; ReplayCommandTests = 'F-REPLAY'; ReplayLearningTests = 'F-REPLAY'
 }
 
 function Get-FeatureId([string]$ClassName, [string]$MethodName) {
