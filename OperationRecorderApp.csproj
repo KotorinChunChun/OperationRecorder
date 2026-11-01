@@ -25,7 +25,7 @@
 
   <ItemGroup>
     <!-- 自己完結配布に同梱する.NETを固定する。WinFormsとWPFの両方を使用するため全Desktopを対象にする -->
-    <FrameworkReference Update="Microsoft.NETCore.App;Microsoft.WindowsDesktop.App" RuntimeFrameworkVersion="10.0.13" Condition="'$(SelfContained)' == 'true'" />
+    <FrameworkReference Update="Microsoft.NETCore.App;Microsoft.WindowsDesktop.App" RuntimeFrameworkVersion="10.0.14" Condition="'$(SelfContained)' == 'true'" />
     <!-- md → HTML の変換(表・画像・コードブロック) -->
     <PackageReference Include="Markdig" Version="0.38.0" />
   </ItemGroup>
