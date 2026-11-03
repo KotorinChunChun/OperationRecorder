@@ -24,7 +24,7 @@
     <None Include="../../tool.json;../../README.md;../../THIRD-PARTY-NOTICES.md" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../docs/**/*.md" Link="docs/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../config/shortcuts.json;../../config/replay-example.json;../../config/replay-learning-prompt.md;../../config/replay-learning-response.schema.json" Link="config/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <None Include="../../Assets/app.ico" Link="Assets/app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../Assets/app.ico" Link="Assets/app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <None Include="../../templates/*.md" Link="templates/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../scripts/Invoke-OperationReplay.ps1;../../scripts/New-OperationReplayWithCodex.ps1" Link="scripts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!-- 正本はdocs。アプリ内表示と既存の配布リンクのため、出力時だけ互換コピーを作る。 -->

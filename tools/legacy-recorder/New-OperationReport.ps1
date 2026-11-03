@@ -5,7 +5,7 @@ Start-OperationRecording.ps1 の記録フォルダから、テンプレートに
 記録には、ユーザー向け・AI 向けのどちらに必要な情報もすべて入っている。何を載せるか(文章と画像だけか、
 ウィンドウ名・コントロールID・相対座標まで載せるか)は、使うテンプレートだけで決まる。
 
-md を作る処理そのものは src\ReportGenerator.cs / src\TemplateEngine.cs(C#)にあり、OperationRecorder アプリと
+md を作る処理そのものは src/OperationRecorder/Engine/ReportGenerator.cs / TemplateEngine.cs(C#)にあり、OperationRecorder アプリと
 共通。このスクリプトは引数を整えて呼び出すだけ(初回は C# のコンパイルに数秒かかる)。
 
 .PARAMETER Template
@@ -26,7 +26,7 @@ frame = 操作した部品の枠 / none = 描かない。既定は circle, arrow
 クリック位置の丸の半径(px)。既定 14
 
 .PARAMETER TemplateDir
-テンプレートを置いたフォルダ。省略時はスキルの templates フォルダ
+テンプレートを置いたフォルダ。省略時はリポジトリ直下の templates フォルダ
 
 .PARAMETER OutFile
 出力する md のパス。テンプレートを 1 つだけ指定したときに使える。

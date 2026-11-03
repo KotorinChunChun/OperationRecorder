@@ -13,7 +13,7 @@
 記録フォルダ(session-日時…)が並んでいるフォルダ。最初の質問の既定値になる。省略時は ドキュメント\OperationRecords
 
 .PARAMETER TemplateDir
-テンプレートを置いたフォルダ。省略時はスキルの templates フォルダ
+テンプレートを置いたフォルダ。省略時はリポジトリ直下の templates フォルダ
 
 .EXAMPLE
 pwsh -File Reissue-OperationReport.ps1

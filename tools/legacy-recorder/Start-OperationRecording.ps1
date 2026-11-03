@@ -108,7 +108,7 @@ param(
     [switch]$Open,
     [string]$OutDir,
     [string]$ReportDir,
-    # テンプレートを置いたフォルダ。省略時はスキルの templates フォルダ
+    # テンプレートを置いたフォルダ。省略時はリポジトリ直下の templates フォルダ
     [string]$TemplateDir,
     [int]$BeforeMs = 200,
     [int]$AfterMs = 500,
