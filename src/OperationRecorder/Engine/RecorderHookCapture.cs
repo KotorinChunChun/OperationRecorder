@@ -14,6 +14,8 @@ namespace OpRec
         N.HookProc mouseDel, keyDel;   // GC に回収されないようフィールドで保持する
         N.WinEventProc focusDel;
         IntPtr focusHook;
+        N.WinEventProc windowDel;
+        IntPtr foregroundHook, windowObjectHook;
         readonly HashSet<int> keysDown = new HashSet<int>();
         bool hShift, hCtrl, hAlt, hWin;
         // Ctrl+Shift だけを押して離したら手動キャプチャ。途中で他のキーやクリックがあれば取りやめる
@@ -46,14 +48,28 @@ namespace OpRec
             focusDel = (h, evt, hwnd, idObject, idChild, thread, time) =>
                 Enqueue(new Raw { Type = 4, Fg = hwnd, Ts = sw.ElapsedMilliseconds });
             focusHook = N.SetWinEventHook(0x8005 /*EVENT_OBJECT_FOCUS*/, 0x8005, IntPtr.Zero, focusDel, 0, 0, 0x0000 | 0x0002 /*OUTOFCONTEXT|SKIPOWNPROCESS*/);
+            if (Rule(CaptureRules.WindowChange).Record)
+            {
+                windowDel = (h, evt, hwnd, obj, child, thread, time) =>
+                {
+                    if (evt == 3 || (obj == 0 && child == 0))
+                        Enqueue(new Raw { Type = evt == 3 ? 9 : evt == 0x8001 ? 10 : 8, Fg = hwnd, Ts = sw.ElapsedMilliseconds });
+                };
+                foregroundHook = N.SetWinEventHook(3, 3, IntPtr.Zero, windowDel, 0, 0, 2);
+                windowObjectHook = N.SetWinEventHook(0x8001, 0x8002, IntPtr.Zero, windowDel, 0, 0, 2);
+                if (foregroundHook == IntPtr.Zero || windowObjectHook == IntPtr.Zero)
+                    error = "ウィンドウの表示・切り替えの監視を設定できませんでした。";
+            }
             ready.Set();
 
             N.MSG msg;
-            while (N.GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) { }
+            while (error == null && N.GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) { }
 
             N.UnhookWindowsHookEx(mouseHook);
             N.UnhookWindowsHookEx(keyHook);
             if (focusHook != IntPtr.Zero) N.UnhookWinEvent(focusHook);
+            if (foregroundHook != IntPtr.Zero) N.UnhookWinEvent(foregroundHook);
+            if (windowObjectHook != IntPtr.Zero) N.UnhookWinEvent(windowObjectHook);
         }
 
         IntPtr MouseProc(int nCode, IntPtr w, IntPtr l)
@@ -317,8 +333,8 @@ namespace OpRec
                     if (ev.After == null && ev.AfterDue != long.MaxValue && now > ev.AfterDue + 1500)
                     {
                         ev.AfterMissing = true;
-                        TrySendLocked(ev);
                     }
+                    TrySendLocked(ev);
                 }
             }
         }

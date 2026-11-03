@@ -40,6 +40,7 @@ namespace OpRec
                             case 5: UndoLast(); break;
                             case 6: OnSnapshot(r); break;
                             case 7: OnWheel(r); break;
+                            case 8: case 9: case 10: OnWindowChange(r); break;
                         }
                     }
                     catch (Exception ex) { Log("振り分けエラー: " + ex.Message); }
@@ -47,8 +48,10 @@ namespace OpRec
                 else if (rawQ.IsCompleted) break;
 
                 try { InputDebounce(); } catch { }
+                try { FlushWindowChanges(sw.ElapsedMilliseconds, false); } catch (Exception ex) { Log("画面変化の確定に失敗: " + ex.Message); }
             }
 
+            FlushWindowChanges(sw.ElapsedMilliseconds, true);
             try { FinishCandidate(sw.ElapsedMilliseconds); } catch (Exception ex) { Log("入力の確定に失敗: " + ex.Message); }
             lock (pendingLock)
             {
@@ -66,6 +69,9 @@ namespace OpRec
             composing = false;
             IntPtr hwnd = N.WindowFromPoint(new N.POINT { X = r.X, Y = r.Y });
             IntPtr root = WinUtil.Root(hwnd);
+
+            taskbarClick = null;
+            if (TargetReady.WaitOne(0) && RememberTaskbarClick(r, root)) return;
 
             if (!TargetReady.WaitOne(0))
             {
@@ -129,6 +135,7 @@ namespace OpRec
             ev.X = ev.EndX = r.X;
             ev.Y = ev.EndY = r.Y;
             ev.Root = root;
+            HoldForWindowChange(ev);
             ev.Before = mrule.Before ? PickBefore(r.Ts) : null;
             ev.WantAfter = mrule.After;
             lock (pendingLock) pending.Add(ev);
@@ -142,10 +149,12 @@ namespace OpRec
 
         void OnMouseUp(Raw r)
         {
+            ReleaseTaskbarClick(r);
             if (swallowPickUp && r.Button == 0) { swallowPickUp = false; return; }
             var ev = openDown[r.Button];
             openDown[r.Button] = null;
             if (ev == null) return;
+            if (Rule(CaptureRules.WindowChange).Record) ev.ObserveUntil = r.Ts + WindowChangeTracker.AssociationMs + WindowChangeTracker.SettleMs;
             lock (pendingLock)
             {
                 if (ev.Sent) return;
@@ -326,6 +335,9 @@ namespace OpRec
             if (!krule.Record) return;
             var ev = NewEv(r.Ts);
             ev.Kind = "key";
+            ev.WantAfter = krule.After;
+            ev.Root = root;
+            HoldForWindowChange(ev);
             ev.Before = krule.Before ? PickBefore(r.Ts) : null;
             if (krule.After) ev.AfterDue = r.Ts + AfterMs;
             else ev.AfterMissing = true;

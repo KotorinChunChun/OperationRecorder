@@ -44,6 +44,7 @@ namespace OpRec
         public Dictionary<string, object> Rec = new Dictionary<string, object>();
         public Frame Before, After;
         public long AfterDue = long.MaxValue;
+        public long ObserveUntil;          // 操作直後のウィンドウ変化を待つ保存猶予
         public bool InfoDone, Sent, AfterMissing;
         public bool WantAfter = true;      // 撮影ルールで「操作後を撮る」が切られていれば false
         public int WheelNet;               // ホイール: まとめた回転の合計(上 = 正 / 下 = 負。目盛りの数)。0 なら元に戻したので記録しない

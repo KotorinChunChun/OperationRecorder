@@ -103,6 +103,8 @@ namespace OpRec
             }
             WriteSession(false);
 
+            InitializeWindowChanges();
+
             captureThread = StartThread(CaptureLoop, "capture");
             dispatchThread = StartThread(DispatchLoop, "dispatch");
             saverThread = StartThread(SaverLoop, "saver");
@@ -188,7 +190,7 @@ namespace OpRec
 
             lock (pendingLock)
             {
-                foreach (var ev in pending.ToArray()) { ev.AfterMissing = true; ev.InfoDone = true; TrySendLocked(ev); }
+                foreach (var ev in pending.ToArray()) { ev.ObserveUntil = 0; ev.AfterMissing = true; ev.InfoDone = true; TrySendLocked(ev); }
             }
             saverQ.CompleteAdding();
             if (saverThread != null) saverThread.Join(60000);
@@ -392,6 +394,7 @@ namespace OpRec
 
         void TrySendLocked(Ev ev)
         {
+            if (ev.ObserveUntil > sw.ElapsedMilliseconds) return;
             // ホイールを回して元に戻した(合計 0)ものは、手順にせず捨てる
             if (!ev.Sent && ev.Kind == "wheel" && WheelRules.IsCancelled(ev.WheelNet) && ev.InfoDone && (ev.After != null || ev.AfterMissing))
             {
