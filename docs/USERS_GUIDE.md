@@ -406,8 +406,8 @@ Word にしたいときは、これらのアプリの出力機能や pandoc を�
 
 ## 付録: コマンドで使う(PowerShell 7)
 
-ツールの画面を使わず、コマンドでも記録・出力できます(Claude Code の operation-recorder スキルとして入っている場合)。
-スクリプトは `%USERPROFILE%\.claude\skills\operation-recorder\scripts\` にあります。
+ソースチェックアウトの `tools/legacy-recorder/` には、画面を使わず記録・出力する旧PowerShell入口があります。
+同じチェックアウトの記録エンジンとテンプレートを使います。配布版のEXEからの出力は後述の `--export` を使用できます。
 
 | 目的 | コマンド |
 |---|---|
@@ -418,3 +418,29 @@ Word にしたいときは、これらのアプリの出力機能や pandoc を�
 | 記録フォルダを指定して md を作る | `pwsh -File New-OperationReport.ps1 -SessionDir <記録フォルダ> -Template user,ai` |
 
 パラメータの一覧は `Get-Help <スクリプトのパス> -Full` で表示できます。
+
+## 画面を出さずに出力する(--export)
+
+```powershell
+& .\OperationRecorder.exe --export <記録フォルダ> --template user,psr --format html,md | Write-Output
+```
+
+| 引数 | 内容 | 省略時 |
+|---|---|---|
+| `--template` | テンプレート(カンマ区切り) | `user` |
+
+| `--format` | `html` / `md`(カンマ区切りで両方) | 両方 |
+| `--embed` | 画像を埋め込む | PNG を参照 |
+| `--marks` | 操作前の画像に描く印。`pointer`(マウスポインタ)/ `circle`(丸)/ `arrow`(ドラッグの矢印)/ `frame`(部品の枠)/ `none` | `circle,arrow,frame` |
+| `--radius` | 丸の半径(px) | 14 |
+| `--out` | 出力先のフォルダ | 記録フォルダの中 |
+| `--template-dir` / `--caption` / `--description` | テンプレートのフォルダ / 名前・解説の上書き | exe の隣の templates / 記録時のもの |
+| `--result` | 出力したファイルのパスを書くファイル | なし |
+
+利用者の設定(settings.json)は読まない。出力したファイルのフルパスを 1 行ずつ標準出力に書き、終了コードは
+0 = 成功 / 1 = 出力に失敗 / 2 = 引数の誤り。WinExe なので、pwsh ではパイプ(`| Write-Output` など)に
+つながないと終わるのを待たない。起動中のアプリがあっても動く(同時起動の制限を受けない)。
+
+KotorinToysの管理上の停止は、記録中・保存中には拒否して記録を守る。先に記録を保存し、待機状態にしてから停止する。
+画面の×はタスクトレイへの格納であり、アプリの終了ではない。
+

@@ -19,7 +19,7 @@ pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite Core
 | `-Configuration Debug\|Release` | 既定はRelease |
 | `-OutputDirectory <フォルダー>` | 対象版の`dev/history/vX.Y.Z/logs/`以下へ結果を保存する。省略時はその下の`automated-<GUID>` |
 | `-NoBuild` | 既にビルドした同じ構成を使う |
-| `-List` | [ケース対応表](../dev/history/v0.1.6/test-cases.json)をJSONで表示する。ビルド・試験は実行しない |
+| `-List` | [ケース対応表](https://github.com/KotorinChunChun/OperationRecorder/blob/main/dev/history/v0.1.6/test-cases.json)をJSONで表示する。ビルド・試験は実行しない |
 
 ```powershell
 # ケース一覧だけ表示
@@ -70,14 +70,14 @@ DesktopはWindowsの対話デスクトップと前面ウィンドウの一致を
 
 ```powershell
 # UIの値受渡し・確認分岐を非表示STAで検証
-dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
+dotnet test .\tests\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
   --artifacts-path .\artifacts\automation-ui `
   --filter 'FullyQualifiedName~UiWiringTests|FullyQualifiedName~AppInteractionTests' `
   --logger 'trx;LogFileName=ui-wiring.trx' `
   --results-directory .\dev\history\v0.1.6\logs\ui
 
 # 1ケースだけ指定（Theoryはすべての引数行を実行）
-dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
+dotnet test .\tests\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
   --filter 'FullyQualifiedName=OperationRecorderApp.Tests.UiWiringTests.操作キーの画面変更は有効な値だけ保存してメニュー表示へ反映する'
 ```
 
@@ -174,7 +174,7 @@ Desktopテストを直接起動する場合はrunnerと同じfixture/環境条�
 
 `text`は入力中文章を共有バッファへ置き、選択変更・保存等で確定する。結果の`operations`には各命令のdirty/履歴/行数を残し、`close`とUndo/Redoには`accepted`を返す。途中保存は`result.draft`を次の入力の`draft`へ渡して再開できる。
 
-正確な必須項目・上限・拒否規則は[CompositionAutomation.cs](../CompositionAutomation.cs)、[BasicAutomation.cs](../BasicAutomation.cs)とその実行可能なテストを参照する。全操作を順に動かすfixtureは`CompositionAutomationTests`にある。
+正確な必須項目・上限・拒否規則は[CompositionAutomation.cs](https://github.com/KotorinChunChun/OperationRecorder/blob/main/src/OperationRecorder/Automation/CompositionAutomation.cs)、[BasicAutomation.cs](https://github.com/KotorinChunChun/OperationRecorder/blob/main/src/OperationRecorder/Automation/BasicAutomation.cs)とその実行可能なテストを参照する。全操作を順に動かすfixtureは`CompositionAutomationTests`にある。
 
 ## ケースを追加するとき
 
@@ -185,7 +185,7 @@ Node.js、Playwright、Edgeを用意する。既存の利用者ブラウザー�
 ```powershell
 cd C:\develop\KotorinToys\tools\OperationRecorder
 $env:OPREC_HTML_TEST_ARTIFACTS = Join-Path (Get-Location) 'dev/history/v0.1.6/logs/html-local/fixtures'
-dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj -c Release `
+dotnet test .\tests\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj -c Release `
   --artifacts-path .\artifacts\html-tests --filter 'FullyQualifiedName~HtmlViewTests'
 node .\dev\scripts\Test-ReportHtml.cjs `
   .\dev\history\v0.1.6\logs\html-local\fixtures .\dev\history\v0.1.6\logs\html-local\browser
@@ -199,7 +199,7 @@ Remove-Item Env:OPREC_HTML_TEST_ARTIFACTS
 1. GUI固有の確認・ファイル選択・OS副作用は`AppInteraction`へ、記録OS境界は`RecordingRuntime`へ集約する。
 2. GUIとCLIは共通の処理を呼ぶ。新しいフォーム操作は安定した`Control.Name`を付け、STAで実コントロールのイベントを検証する。
 3. 入力・保存結果・原本不変・失敗/取消・後始末を検証する。対話デスクトップを使うテストには`Category=Desktop`を付ける。
-4. [ケース対応表](../dev/history/v0.1.6/test-cases.json)を更新してからCore、必要に応じDesktopを実行する。未分類機能や未実施の層を合格として扱わない。
+4. [ケース対応表](https://github.com/KotorinChunChun/OperationRecorder/blob/main/dev/history/v0.1.6/test-cases.json)を更新してからCore、必要に応じDesktopを実行する。未分類機能や未実施の層を合格として扱わない。
 
 ケース表はビルド済みテストDLLから再生成する。全テストメソッドとTheoryの引数行を取得し、既知の機能へ対応付ける。新しい試験クラスを分類し忘れると生成を失敗させる。`automated`は実行入口があるという意味であり、今回実行済みの意味ではない。
 

@@ -1,3 +1,8 @@
+# 旧operation-recorderスキルの来歴資料
+
+以下は旧スキルの説明を保存した資料であり、現在の開発・実行への指示ではありません。記載されたフォルダー構成は当時のものです。現在の配置と実行方法は[開発者ガイド](../DEVELOPERS_GUIDE.md)を参照してください。
+
+---
 ---
 name: operation-recorder
 description: >
