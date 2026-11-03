@@ -32,7 +32,7 @@ if ([Console]::IsInputRedirected) {
     throw "対話入力できない環境です。記録から md を作るだけなら New-OperationReport.ps1 -SessionDir <記録フォルダ> を使ってください"
 }
 if (-not $OutDir) { $OutDir = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'OperationRecords' }
-if (-not $TemplateDir) { $TemplateDir = Join-Path (Split-Path $PSScriptRoot -Parent) 'templates' }
+if (-not $TemplateDir) { $TemplateDir = Join-Path $PSScriptRoot '../../templates' }
 
 function Get-Sessions([string]$root) {
     @(Get-ChildItem -LiteralPath $root -Directory -Filter 'session-*' -ErrorAction SilentlyContinue |

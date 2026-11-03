@@ -16,7 +16,7 @@ if ($Suite -notin @('Core', 'Desktop', 'All') -or $Configuration -notin @('Debug
     exit 2
 }
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
-[xml]$project = Get-Content -LiteralPath (Join-Path $repoRoot 'OperationRecorderApp.csproj') -Raw
+[xml]$project = Get-Content -LiteralPath (Join-Path $repoRoot 'src/OperationRecorder/OperationRecorderApp.csproj') -Raw
 $version = [string]($project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)
 $history = Join-Path $repoRoot "dev/history/v$version"
 if ($List) {
@@ -82,8 +82,8 @@ try {
     [void][IO.Directory]::CreateDirectory($runRoot)
     foreach ($name in @('OPREC_DESKTOP_TESTS', 'OPREC_FIXTURE_EXE', 'OPREC_RECORDING_ARTIFACTS')) { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
     $artifacts = Join-Path $repoRoot 'artifacts/automation-runner'
-    $testProject = Join-Path $repoRoot 'OperationRecorderApp.Tests/OperationRecorderApp.Tests.csproj'
-    $fixtureProject = Join-Path $repoRoot 'OperationRecorderApp.Tests/FixtureHost/OperationRecorder.RecordingFixture.csproj'
+    $testProject = Join-Path $repoRoot 'tests/OperationRecorderApp.Tests/OperationRecorderApp.Tests.csproj'
+    $fixtureProject = Join-Path $repoRoot 'tests/OperationRecorder.RecordingFixture/OperationRecorder.RecordingFixture.csproj'
     $fixture = Join-Path $artifacts "bin/OperationRecorder.RecordingFixture/$($Configuration.ToLowerInvariant())/OperationRecorder.RecordingFixture.exe"
     if (-not $NoBuild) {
         if ((Invoke-Dotnet @('build', $testProject, '-c', $Configuration, '--artifacts-path', $artifacts, '-p:NuGetAudit=false') 'build.log') -ne 0) { throw 'アプリとテストのビルドに失敗しました。' }

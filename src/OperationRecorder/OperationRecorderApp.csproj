@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>OperationRecorder</AssemblyName>
+    <RootNamespace>OperationRecorderApp</RootNamespace>
+    <ApplicationIcon>../../Assets/app.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <Version>0.1.6</Version>
+    <Product>OperationRecorder</Product>
+    <Company>OperationRecorder</Company>
+    <Description>PC の操作を記録して、スクリーンショット付きの操作手順書(md)を作るツール</Description>
+    <SatelliteResourceLanguages>ja</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Update="Microsoft.NETCore.App;Microsoft.WindowsDesktop.App" RuntimeFrameworkVersion="10.0.14" Condition="'$(SelfContained)' == 'true'" />
+    <PackageReference Include="Markdig" Version="0.38.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../tool.json;../../README.md;../../THIRD-PARTY-NOTICES.md" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../docs/**/*.md" Link="docs/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../config/shortcuts.json;../../config/replay-example.json;../../config/replay-learning-prompt.md;../../config/replay-learning-response.schema.json" Link="config/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../Assets/app.ico" Link="Assets/app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../templates/*.md" Link="templates/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../scripts/Invoke-OperationReplay.ps1;../../scripts/New-OperationReplayWithCodex.ps1" Link="scripts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- 正本はdocs。アプリ内表示と既存の配布リンクのため、出力時だけ互換コピーを作る。 -->
+    <None Include="../../docs/USERS_GUIDE.md" Link="MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../docs/USERS_GUIDE.md" Link="operation-recorder/MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

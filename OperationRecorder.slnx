@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OperationRecorder/OperationRecorderApp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OperationRecorderApp.Tests/OperationRecorderApp.Tests.csproj" />
+    <Project Path="tests/OperationRecorder.RecordingFixture/OperationRecorder.RecordingFixture.csproj" />
+  </Folder>
+</Solution>

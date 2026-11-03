@@ -64,7 +64,7 @@ $o = [OpRec.ReportGenerator+Options]::new()
 $o.SessionDir = (Resolve-Path -LiteralPath $SessionDir).Path
 $o.Templates = [string[]]@($Template | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ } |
     ForEach-Object { if ($_ -match '[\\/]') { Get-FullPath $_ } else { $_ } })
-$o.TemplateDir = if ($TemplateDir) { Get-FullPath $TemplateDir } else { Join-Path (Split-Path $PSScriptRoot -Parent) 'templates' }
+$o.TemplateDir = if ($TemplateDir) { Get-FullPath $TemplateDir } else { Join-Path $PSScriptRoot '../../templates' }
 $o.OutFile = Get-FullPath $OutFile
 $o.ReportDir = Get-FullPath $ReportDir
 $o.EmbedImages = $ImageStyle -eq 'Embed'

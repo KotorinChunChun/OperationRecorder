@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- 操作記録ツールの自動テスト。画面を操作せずに、出力(md / HTML)・記録の判断・設定の読み込みを確かめる。
-       実行: dotnet test apps\OperationRecorderApp.Tests -->
+  <!-- アプリと同じサービス・フォーム・CLIを通す機能試験。入口はdev/scripts/Test-OperationRecorder.ps1。 -->
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
@@ -19,8 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="FixtureHost\**\*.cs" />
-    <ProjectReference Include="..\OperationRecorderApp.csproj" />
+    <ProjectReference Include="../../src/OperationRecorder/OperationRecorderApp.csproj" />
   </ItemGroup>
 
 </Project>

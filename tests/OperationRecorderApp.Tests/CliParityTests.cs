@@ -22,11 +22,8 @@ namespace OperationRecorderApp.Tests
         {
             for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
             {
-                foreach (var relative in new[] { "operation-recorder", Path.Combine("skills", "operation-recorder") })
-                {
-                    string p = Path.Combine(d.FullName, relative, "scripts");
-                    if (File.Exists(Path.Combine(p, "New-OperationReport.ps1"))) return p;
-                }
+                string p = Path.Combine(d.FullName, "tools", "legacy-recorder");
+                if (File.Exists(Path.Combine(p, "New-OperationReport.ps1"))) return p;
             }
             return null;
         }
@@ -63,7 +60,7 @@ namespace OperationRecorderApp.Tests
             }
 
             var mds = new List<string>();
-            RecordingController.Export(Path.Combine(scripts, "..", "templates"), s.Dir, new[] { "user", "psr", "ai", "text" }, outCs, embed,
+            RecordingController.Export(Path.Combine(scripts, "..", "..", "templates"), s.Dir, new[] { "user", "psr", "ai", "text" }, outCs, embed,
                 true, false, null, null, mds, new List<string>());
 
             foreach (var cs in mds)
