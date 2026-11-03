@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
-[xml]$project = Get-Content -LiteralPath (Join-Path $repositoryRoot 'OperationRecorderApp.csproj') -Raw
+[xml]$project = Get-Content -LiteralPath (Join-Path $repositoryRoot 'src/OperationRecorder/OperationRecorderApp.csproj') -Raw
 $version = [string]($project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)
 if (-not $OutputFile) { $OutputFile = Join-Path $repositoryRoot "dev/history/v$version/test-cases.json" }
 $assemblyPath = (Resolve-Path -LiteralPath $TestAssembly).Path
@@ -100,7 +100,7 @@ $discovered = @($listing | ForEach-Object { if ($_ -match '^\s{4}(\S.+)$') { $Ma
 if ($discovered.Count -eq 0) { throw 'テストを1件も取得できませんでした。' }
 $groups = $discovered | Group-Object { ($_ -split '\(', 2)[0] }
 $traitIds = @{}
-foreach ($file in Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'OperationRecorderApp.Tests') -Filter '*Tests.cs') {
+foreach ($file in Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'tests/OperationRecorderApp.Tests') -Filter '*Tests.cs') {
     $source = Get-Content -LiteralPath $file.FullName -Raw
     foreach ($match in [regex]::Matches($source, '\[(?:Fact|Theory),\s*Trait\("CaseId",\s*"([^"]+)"\)\][\s\S]*?public\s+(?:async\s+)?(?:void|Task)\s+([^\s(]+)\(')) {
         $traitIds[$match.Groups[2].Value] = $match.Groups[1].Value

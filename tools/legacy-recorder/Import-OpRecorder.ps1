@@ -1,9 +1,9 @@
-# 記録エンジン(src/*.cs)をコンパイルして読み込む。Start-OperationRecording.ps1 から呼ばれる。
+# アプリと共通のsrc/OperationRecorder/Engineを読み込む。ソースの複製は置かない。
 if ('OpRec.Recorder' -as [type]) { return }
 
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, WindowsBase, System.Drawing
 
-$src = Get-ChildItem (Join-Path $PSScriptRoot 'src') -Filter *.cs | ForEach-Object FullName
+$src = Get-ChildItem (Join-Path $PSScriptRoot '../../src/OperationRecorder/Engine') -Filter *.cs | ForEach-Object FullName
 Add-Type -Path $src -ReferencedAssemblies @(
     'UIAutomationClient', 'UIAutomationTypes',
     # 名前で 'WindowsBase' と書くと System.Windows.Point を含まない参照用のアセンブリに解決されるので、実体のパスを渡す

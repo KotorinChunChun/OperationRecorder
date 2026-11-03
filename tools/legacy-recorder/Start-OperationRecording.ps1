@@ -355,7 +355,7 @@ if ($needPrompt) {
             When = { $true }
             Ask = {
                 # テンプレートは templates フォルダにある md を凡例に出して選ばせる(複数可)。説明は各ファイル冒頭コメントの 3 行目
-                $tplDir = if ($TemplateDir) { $TemplateDir } else { Join-Path (Split-Path $PSScriptRoot -Parent) 'templates' }
+                $tplDir = if ($TemplateDir) { $TemplateDir } else { Join-Path $PSScriptRoot '../../templates' }
                 $tplItems = @(Get-TemplateItems $tplDir)
                 $tplItems += @{ Key = 'none'; Desc = 'md は出さない(画像と events.jsonl だけ。後から New-OperationReport.ps1 で作れる)' }
                 $a = Read-MultiChoice '報告書(md)にするテンプレート' $tplItems @($Template)
