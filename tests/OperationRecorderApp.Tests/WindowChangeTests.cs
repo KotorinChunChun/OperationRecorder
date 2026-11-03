@@ -11,6 +11,14 @@ namespace OperationRecorderApp.Tests
     public class WindowChangeTests
     {
         [Theory]
+        [InlineData("editor.editor", "editor.editor", true)]
+        [InlineData("editor.editor.exe", "EDITOR.EDITOR", true)]
+        [InlineData("editor.exe", "other", false)]
+        [InlineData(null, "editor", false)]
+        public void アプリのプロセス名のドットを拡張子と誤認しない(string configured, string actual, bool expected)
+            => Assert.Equal(expected, WindowChangeTracker.ProcessMatches(configured, actual));
+
+        [Theory]
         [InlineData("Alt+Tab", true)]
         [InlineData("Alt+Shift+Tab", true)]
         [InlineData("Win+Tab", true)]

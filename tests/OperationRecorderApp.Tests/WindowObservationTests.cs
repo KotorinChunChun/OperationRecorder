@@ -13,9 +13,9 @@ namespace OperationRecorderApp.Tests
     public class WindowObservationTests
     {
         [Theory, Trait("Category", "Desktop")]
-        [InlineData(CaptureMode.App, 3)]
-        [InlineData(CaptureMode.Window, 1)]
-        public void 別PIDの表示と切り替えを実通知で記録し対象外を除外する(CaptureMode mode, int expected)
+        [InlineData(CaptureMode.App, 3, true)]
+        [InlineData(CaptureMode.Window, 1, false)]
+        public void 別PIDの表示と切り替えを実通知で記録し対象外を除外する(CaptureMode mode, int expected, bool images)
         {
             if (Environment.GetEnvironmentVariable("OPREC_PASSIVE_WINDOW_TESTS") != "1")
                 throw new InvalidOperationException("DESKTOP_BLOCKED: OPREC_PASSIVE_WINDOW_TESTS=1の専用fixture環境が必要です。");
@@ -23,8 +23,9 @@ namespace OperationRecorderApp.Tests
             fixture.Command("foreground");
             string root = Path.Combine(Path.GetTempPath(), "oprec-window-" + Guid.NewGuid().ToString("N"));
             var rules = CaptureRules.Defaults(); foreach (var rule in rules.Values) rule.Record = false;
-            rules[CaptureRules.WindowChange] = new CaptureRule(true, false, false);
-            var recorder = new Recorder { Mode = mode, TargetHwnd = fixture.Hwnd, Hotkeys = null, Rules = rules, IntervalMs = 200 };
+            rules[CaptureRules.WindowChange] = new CaptureRule(true, images, images);
+            var recorder = new Recorder { Mode = mode, TargetHwnd = fixture.Hwnd, Hotkeys = null, Rules = rules,
+                IntervalMs = 50, BeforeMs = 50, AfterMs = 150 };
             try
             {
                 recorder.Start(root); Thread.Sleep(350); Assert.Equal(0, recorder.SavedCount);
@@ -42,7 +43,29 @@ namespace OperationRecorderApp.Tests
                 Assert.Equal(expected, events.Length);
                 Assert.All(events, e => Assert.Equal(fixture.Pid, e["window"]["pid"].GetValue<int>()));
                 Assert.Equal(mode == CaptureMode.App ? "window-open" : "window-switch", events[0]["kind"].GetValue<string>());
-                Assert.All(events, e => { Assert.Null(e["before"]); Assert.Null(e["after"]); });
+                Assert.All(events, e =>
+                {
+                    foreach (string side in new[] { "before", "after" })
+                    {
+                        if (!images) Assert.Null(e[side]);
+                        else
+                        {
+                            string file = Path.Combine(recorder.SessionDir, e[side]["file"].GetValue<string>());
+                            using var image = System.Drawing.Image.FromFile(file);
+                            Assert.True(image.Width > 0 && image.Height > 0);
+                        }
+                    }
+                });
+                string evidence = Environment.GetEnvironmentVariable("OPREC_RECORDING_ARTIFACTS");
+                if (!string.IsNullOrEmpty(evidence))
+                {
+                    string destination = Path.Combine(evidence, "window-" + mode + "-" + Guid.NewGuid().ToString("N"));
+                    foreach (string file in Directory.GetFiles(recorder.SessionDir, "*", SearchOption.AllDirectories))
+                    {
+                        string target = Path.Combine(destination, Path.GetRelativePath(recorder.SessionDir, file));
+                        Directory.CreateDirectory(Path.GetDirectoryName(target)); File.Copy(file, target);
+                    }
+                }
             }
             finally
             {

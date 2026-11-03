@@ -62,7 +62,7 @@ namespace OpRec
             if (root == IntPtr.Zero || !N.IsWindow(root) || WinUtil.Root(root) != root) return;
             string cls = WinUtil.ClassOf(root);
             if (Mode == CaptureMode.App && TargetProcessName != null && !pids.Contains(WinUtil.PidOf(root))
-                && string.Equals(WinUtil.ProcName(WinUtil.PidOf(root)), System.IO.Path.GetFileNameWithoutExtension(TargetProcessName), StringComparison.OrdinalIgnoreCase)) RefreshPids();
+                && WindowChangeTracker.ProcessMatches(TargetProcessName, WinUtil.ProcName(WinUtil.PidOf(root)))) RefreshPids();
             bool eligible = TargetReady.WaitOne(0) && N.IsWindowVisible(root) && !N.IsIconic(root)
                 && TargetRules.IsUsableForeground(root, WinUtil.PidOf(root), OwnPid, cls)
                 && cls != "#32768" && (N.GetWindowLongPtr(root, -20).ToInt64() & 0x80) == 0 && InScope(root);

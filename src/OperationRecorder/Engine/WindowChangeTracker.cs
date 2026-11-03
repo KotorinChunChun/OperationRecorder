@@ -61,5 +61,12 @@ namespace OpRec
             return (parts.Contains("Alt") && (parts.Contains("Tab") || parts.Contains("Esc")))
                 || (parts.Contains("Win") && (parts.Contains("Tab") || (parts.Last().Length == 1 && char.IsDigit(parts.Last()[0]))));
         }
+
+        public static bool ProcessMatches(string configured, string actual)
+        {
+            if (string.IsNullOrEmpty(configured)) return false;
+            if (configured.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) configured = configured.Substring(0, configured.Length - 4);
+            return string.Equals(configured, actual, StringComparison.OrdinalIgnoreCase);
+        }
     }
 }
