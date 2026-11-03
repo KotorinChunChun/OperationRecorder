@@ -1,5 +1,7 @@
 # OperationRecorder
 
+[製品版の番号と訂正履歴](docs/version-numbering.md)
+
 PC の操作を記録して、スクリーンショット付きの操作手順書(md)を作るデスクトップアプリ。
 このリポジトリ内の `operation-recorder/` にある記録エンジンとテンプレートを使用する。
 KotorinToysのコレクションからインストール・起動・表示・停止ができる。配布物はGitHub Releasesから入手できる。
