@@ -367,6 +367,8 @@ namespace OperationRecorderApp.Tests
             public Recorder NewRecorder(CaptureMode mode)
             {
                 var rules = CaptureRules.Defaults(); foreach (var rule in rules.Values) rule.Record = true;
+                // 既存の入力/画像ケースは表示・切り替えを混ぜない。実通知はWindowObservationTestsで別に検証する。
+                rules[CaptureRules.WindowChange].Record = false;
                 return new Recorder { Mode = mode, TargetHwnd = Fixture.Hwnd, TargetMonitor = Monitors.OfWindow(Fixture.Hwnd),
                     Hotkeys = TestKeys(), IntervalMs = 50, BeforeMs = 50, AfterMs = 150, RetainMs = 1000, Rules = rules };
             }

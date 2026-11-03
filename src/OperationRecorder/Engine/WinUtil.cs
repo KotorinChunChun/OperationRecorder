@@ -22,7 +22,7 @@ namespace OpRec
 
     internal sealed class Raw
     {
-        public int Type;            // 1=マウス押下 2=マウス解放 3=キー押下 4=フォーカス移動 5=直前1手取消 6=Ctrl+Shift キャプチャ 7=ホイール(Vk に回転量)
+        public int Type;            // 1=マウス押下 2=マウス解放 3=キー押下 4=フォーカス移動 5=取消 6=撮影 7=ホイール 8=画面表示 9=前面変更 10=破棄
         public int Button;          // 0=左 1=右 2=中
         public int X, Y, Vk, Scan;
         public bool Extended, Ctrl, Shift, Alt, Win, Repeat;

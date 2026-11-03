@@ -4,6 +4,14 @@ OperationRecorder 0.1.5以降は、画面を手で操作せず、PowerShellか�
 
 ## 一括実行
 
+ウィンドウの表示・切り替えはCoreで重複抑止・操作関連付け・手順文・リプレイ変換を確認する。`WindowObservationTests`は専用の別PID fixtureへパイプ命令だけを送り、実WinEventを確認する。キー/マウス入力は送らない。
+
+```powershell
+pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite WindowEvents
+```
+
+この専用suiteはfixtureのビルドと環境設定も行い、利用者のOperationRecorderを停止しない。通常のDesktop一括試験では、従来どおり起動中アプリや前面の安全確認が必要になる。xUnitのケースを直接選択する場合は`OPREC_PASSIVE_WINDOW_TESTS=1`とビルド済みfixtureの絶対パス`OPREC_FIXTURE_EXE`を明示する。
+
 Windowsと.NET 10 SDK、PowerShell 7（`pwsh`）を使用する。
 
 ```powershell
@@ -15,6 +23,7 @@ pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite Core
 |---|---|
 | `-Suite Core` | 既定。単体/API、STAの実フォーム、実EXEのCLI・起動管理を実行する。OSの入力送信はしない |
 | `-Suite Desktop` | 専用の別プロセスを対象に、実記録エンジンとWindowsの撮影・入力連携を検証する |
+| `-Suite WindowEvents` | 表示・切り替えの判断/出力と、専用fixtureからの実WinEventを検証する。OS入力は送らない |
 | `-Suite All` | Coreに続けてDesktopを実行する |
 | `-Configuration Debug\|Release` | 既定はRelease |
 | `-OutputDirectory <フォルダー>` | 対象版の`dev/history/vX.Y.Z/logs/`以下へ結果を保存する。省略時はその下の`automated-<GUID>` |

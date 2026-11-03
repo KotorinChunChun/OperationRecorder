@@ -57,6 +57,7 @@ internal static class Program
         readonly Panel wheel = new() { Name = "fixtureWheel", Location = new Point(330, 185), Size = new Size(230, 170), BackColor = Color.LightGreen, TabStop = true };
         readonly Label state = new() { Location = new Point(30, 310), AutoSize = true, Text = "操作前" };
         readonly List<Form> covers = new();
+        Form? secondary;
         int actions;
         int lastKey;
         public FixtureForm(string token)
@@ -110,6 +111,17 @@ internal static class Program
             }
             if (command == "reset") { input.Text = password.Text = ""; actions = 0; lastKey = 0; state.Text = "操作前"; BackColor = Color.FromArgb(246, 242, 220); }
             if (command == "action") action.PerformClick();
+            if (command == "window-open")
+            {
+                secondary?.Dispose();
+                secondary = new Form { Text = "追加画面 " + Name, Name = "FixtureSecondary", StartPosition = FormStartPosition.Manual,
+                    Bounds = new Rectangle(Left + 70, Top + 70, 340, 180) };
+                secondary.Controls.Add(new Label { Text = "ウィンドウ監視の専用画面", AutoSize = true });
+                secondary.Show(this);
+            }
+            if (command == "window-main") Activate();
+            if (command == "window-secondary") secondary?.Activate();
+            if (command == "window-close") { secondary?.Dispose(); secondary = null; }
             if (command == "shift-layout")
             {
                 Bounds = new Rectangle(Screen.PrimaryScreen!.WorkingArea.Location + new Size(40, 40), new Size(1000, 720));
@@ -117,6 +129,7 @@ internal static class Program
             }
             if (command == "close") return new { ok = true };
             return new { ok = true, pid = Environment.ProcessId, hwnd = Handle.ToInt64(), title = Text,
+                secondaryHwnd = secondary?.Handle.ToInt64() ?? 0,
                 action = RectangleOf(action), input = RectangleOf(input), password = RectangleOf(password),
                 drag = RectangleOf(drag), wheel = RectangleOf(wheel), actions, lastKey, value = input.Text, passwordLength = password.Text.Length };
         }

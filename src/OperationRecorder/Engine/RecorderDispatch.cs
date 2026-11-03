@@ -37,7 +37,7 @@ namespace OpRec
                             case 2: OnMouseUp(r); break;
                             case 3: OnKeyDown(r); break;
                             case 4: OnFocus(r); break;
-                            case 5: UndoLast(); break;
+                            case 5: FlushWindowChanges(r.Ts, true); UndoLast(); break;
                             case 6: OnSnapshot(r); break;
                             case 7: OnWheel(r); break;
                             case 8: case 9: case 10: OnWindowChange(r); break;
@@ -92,6 +92,7 @@ namespace OpRec
                 WriteSession(false);
                 swallowPickUp = true;
                 TargetReady.Set();
+                InitializeWindowChanges(root);
                 return;
             }
 
@@ -115,7 +116,7 @@ namespace OpRec
             {
                 var lc = lastClick;
                 int dcx = N.GetSystemMetrics(36), dcy = N.GetSystemMetrics(37);
-                if (lc != null && r.Button == 0 && !lc.Sent && lc.Kind == "click"
+                if (lc != null && r.Button == 0 && !lc.Sent && lc.Kind == "click" && lc.Root == root
                     && r.Ts - lc.Ts <= N.GetDoubleClickTime()
                     && Math.Abs(r.X - lc.X) <= dcx && Math.Abs(r.Y - lc.Y) <= dcy)
                 {

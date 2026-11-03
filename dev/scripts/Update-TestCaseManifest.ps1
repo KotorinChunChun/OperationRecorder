@@ -17,6 +17,7 @@ if (-not $outputPath.StartsWith($historyRoot + [IO.Path]::DirectorySeparatorChar
 
 # 機能の正本。新しい試験クラスを分類しなければ生成を失敗させ、漏れを残さない。
 $features = @(
+    [ordered]@{ id = 'F-WINDOW'; title = 'ウィンドウの表示・切り替えと操作後の観測'; boundary = 'Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証' },
     [ordered]@{ id = 'F-SETTINGS'; title = '設定の既定・移行・保存復元'; boundary = '専用設定JSON、通常設定は変更しない' },
     [ordered]@{ id = 'F-TARGET'; title = '撮影モードと対象ウィンドウ・プロセス・ディスプレイ'; boundary = 'Coreは判断と設定、実OS撮影はDesktopの別ケース' },
     [ordered]@{ id = 'F-INPUT'; title = '入力分類・ホイール集約・撮影規則・画像同一判定'; boundary = '合成イベントと専用生成画像、実入力はDesktopの別ケース' },
@@ -43,6 +44,7 @@ $features = @(
     [ordered]@{ id = 'F-DESKTOP'; title = '別PID fixtureを使った実OS入力・撮影・保存'; boundary = 'Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証' }
 )
 $classFeature = @{
+    WindowChangeTests = 'F-WINDOW'; WindowObservationTests = 'F-WINDOW'
     AppSettingsTests = 'F-SETTINGS'; TargetSettingsTests = 'F-SETTINGS'; TargetRulesTests = 'F-TARGET'
     CaptureRulesTests = 'F-INPUT'; WheelRulesTests = 'F-INPUT'; ImageCompareTests = 'F-INPUT'
     HotkeyTests = 'F-HOTKEY'; UiTextsTests = 'F-HOTKEY'; OverlayPlacementTests = 'F-OVERLAY'
@@ -82,6 +84,7 @@ function Get-FeatureId([string]$ClassName, [string]$MethodName) {
 }
 
 function Get-Layer([string]$ClassName, [string]$MethodName) {
+    if ($ClassName -eq 'WindowObservationTests') { return 'desktop' }
     if ($ClassName -eq 'ReplayCommandTests' -and $MethodName -match '実EXE|ps1|不正なconfig') { return 'cli' }
     if ($ClassName -match 'Desktop') { return 'desktop' }
     if ($ClassName -match '^UiWiringTests$|^CompositionFormTests$|^CompositionSessionUiTests$|^CompositionEntryTests$|^FormSmokeTests$') { return 'sta' }

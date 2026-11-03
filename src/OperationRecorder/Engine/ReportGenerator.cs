@@ -276,6 +276,46 @@ namespace OpRec
 
         static string ActionSentence(JsonObject e)
         {
+            return WindowSentence(e, false) ?? BasicActionSentence(e);
+        }
+
+        static string ScreenName(JsonObject window)
+        {
+            string title = Regex.Replace(Str(window?["title"]) ?? "", @"\s+", " ").Trim();
+            return title.Length > 0 ? "「" + title + "」画面" : "画面名不明の画面";
+        }
+
+        static string WindowSentence(JsonObject e, bool quoteOperation)
+        {
+            string kind = Str(e["kind"]) ?? "";
+            var change = e["windowEvent"] as JsonObject;
+            if (change == null && kind != "window-open" && kind != "window-switch") return null;
+            string screen = ScreenName(change?["window"] as JsonObject ?? e["window"] as JsonObject);
+            string origin = Str(change?["origin"]);
+            bool switching = Str(change?["type"]) == "switch" || kind == "window-switch";
+            if (origin == "taskbar")
+            {
+                string label = Regex.Replace(Str(change["label"]) ?? "", @"\s+", " ").Trim();
+                string item = label.Length > 0 ? "「" + label + "」" : "対象の項目";
+                return "タスクバーから" + item + "を" + (quoteOperation ? "「クリック」" : "クリック") + "します。" + screen + "が表示されます。";
+            }
+            if (origin == "switch" || kind == "window-switch") return screen + "に切り替えます。";
+            string action = BasicActionSentence(e);
+            if (action != null)
+            {
+                if (quoteOperation)
+                {
+                    string verb;
+                    if (Verbs.TryGetValue(kind, out verb)) action = TargetPhrase(e["uia"] as JsonObject) + "を「" + verb + "」します。";
+                    action = ScreenName(e["window"] as JsonObject) + "の" + action;
+                }
+                return action + screen + (switching ? "に切り替えます。" : "が表示されます。");
+            }
+            return screen + (switching ? "に切り替えます。" : "が表示されます。");
+        }
+
+        static string BasicActionSentence(JsonObject e)
+        {
             string kind = Str(e["kind"]) ?? "";
             var uia = e["uia"] as JsonObject;
             if (Verbs.ContainsKey(kind)) return TargetPhrase(uia) + "を" + Verbs[kind] + "します。";
@@ -396,7 +436,8 @@ namespace OpRec
                 elem = n.Length > 0 && !string.IsNullOrEmpty(lt) ? n + " (" + lt + ")" : n.Length > 0 ? n : lt ?? "";
             }
             string op;
-            if (Verbs.ContainsKey(kind)) op = (elem.Length > 0 ? "「" + elem + "」を" : "") + Verbs[kind];
+            if (e["windowEvent"] != null || kind == "window-open" || kind == "window-switch") op = Regex.Replace(ActionSentence(e) ?? "", "。$", "");
+            else if (Verbs.ContainsKey(kind)) op = (elem.Length > 0 ? "「" + elem + "」を" : "") + Verbs[kind];
             else if (kind == "wheel")
             {
                 var wh = e["wheel"] as JsonObject;
@@ -477,12 +518,15 @@ namespace OpRec
         static string ScreenHeadline(JsonObject e, string headline, bool headlineEdited)
         {
             if (string.IsNullOrEmpty(headline)) return "";
+            if (!headlineEdited)
+            {
+                string windowSentence = WindowSentence(e, true);
+                if (windowSentence != null) return Regex.Replace(windowSentence, "。$", "");
+            }
             string verb;
             if (!headlineEdited && Verbs.TryGetValue(Str(e["kind"]) ?? "", out verb))
                 headline = TargetPhrase(e["uia"] as JsonObject) + "を「" + verb + "」します";
-            var window = e["window"] as JsonObject;
-            string title = Regex.Replace(Str(window?["title"]) ?? "", @"\s+", " ").Trim();
-            return (title.Length > 0 ? "「" + title + "」画面の" : "画面名不明の画面の") + headline;
+            return ScreenName(e["window"] as JsonObject) + "の" + headline;
         }
 
         static Dictionary<string, object> BuildModel(JsonObject session, List<JsonObject> events, string sessionDir, string outDir, Options o)

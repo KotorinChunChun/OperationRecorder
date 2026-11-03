@@ -16,11 +16,12 @@ namespace OpRec
         sealed class WindowObservation { public IntPtr Window, Previous; public long Ts; public string Kind; }
         sealed class TaskbarClick { public long Ts; public int X, Y; public bool Released; public string Label; }
 
-        void InitializeWindowChanges()
+        void InitializeWindowChanges(IntPtr? selected = null)
         {
+            windowObservations.Clear(); taskbarClick = null;
             var windows = new List<long>();
             N.EnumWindows((h, l) => { if (N.IsWindowVisible(h)) windows.Add(h.ToInt64()); return true; }, IntPtr.Zero);
-            observedForeground = WinUtil.Root(N.GetForegroundWindow());
+            observedForeground = selected ?? WinUtil.Root(N.GetForegroundWindow());
             windowChanges.Prime(windows, observedForeground.ToInt64());
         }
 
@@ -140,7 +141,7 @@ namespace OpRec
         {
             object value;
             string key = ev.Rec.TryGetValue("key", out value) ? value as string : null;
-            return ev.Kind == "key" && key != null && (key.Contains("Alt+Tab") || key.Contains("Win+Tab") || key.Contains("Alt+Esc"));
+            return ev.Kind == "key" && WindowChangeTracker.IsNavigationKey(key);
         }
     }
 }

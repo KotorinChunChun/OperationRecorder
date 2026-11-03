@@ -75,9 +75,13 @@ public static class ReplayImporter
                 step.Text = new ReplayText { Literal = step.IsPassword ? null : Text(e["input"]?["value"]) };
             }
             if (kind == "wheel") step.WheelNotches = checked((int)Number(e["wheel"]?["notches"])) * (Text(e["wheel"]?["direction"]) == "up" ? 1 : -1);
-            if (kind == "capture" || kind == "note") step.Kind = "wait";
-            step.BeforeImage = Gate(e, "before", directory);
-            step.AfterImage = Gate(e, "after", directory);
+            bool windowObservation = kind == "window-open" || kind == "window-switch";
+            if (kind == "capture" || kind == "note" || windowObservation) step.Kind = "wait";
+            step.BeforeImage = windowObservation ? null : Gate(e, "before", directory);
+            // 別画面へ移った後の画像を、操作元のウィンドウ座標で照合しない。
+            bool changedWindow = e["windowEvent"]?["window"] is JsonObject changed
+                && Text(changed["hwnd"]) != Text(w?["hwnd"]);
+            step.AfterImage = changedWindow && !windowObservation ? null : Gate(e, "after", directory);
             config.Steps.Add(step);
         }
         return config;

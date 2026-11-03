@@ -4,8 +4,8 @@
   "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
   "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
   "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
-  "methodCount": 300,
-  "expandedCaseCount": 485,
+  "methodCount": 308,
+  "expandedCaseCount": 509,
   "additionalSuites": [
     {
       "id": "html-browser",
@@ -44,6 +44,13 @@
     "手順の画像移動失敗は画像を残したままJSON削除を続ける既存契約。画像の物理廃棄成功を示さない。"
   ],
   "features": [
+    {
+      "id": "F-WINDOW",
+      "title": "ウィンドウの表示・切り替えと操作後の観測",
+      "boundary": "Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証",
+      "caseCount": 8,
+      "status": "automated"
+    },
     {
       "id": "F-SETTINGS",
       "title": "設定の既定・移行・保存復元",
@@ -4897,6 +4904,142 @@
       "boundary": "合成イベントと専用生成画像、実入力はDesktopの別ケース",
       "displayNames": [
         "OperationRecorderApp.Tests.WheelRulesTests.戻しきらなければ差し引いた分だけ記録する"
+      ]
+    },
+    {
+      "id": "TEST-C1162ED4BEFD",
+      "fullName": "OperationRecorderApp.Tests.WindowChangeTests.開始時の画面と同じ画面の通知を手順にしない",
+      "title": "開始時の画面と同じ画面の通知を手順にしない",
+      "featureIds": [
+        "F-WINDOW"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WindowChangeTests.開始時の画面と同じ画面の通知を手順にしない"
+      ]
+    },
+    {
+      "id": "TEST-94BFFFD6D9F9",
+      "fullName": "OperationRecorderApp.Tests.WindowChangeTests.観測手順を文にしてリプレイでは画面待機に変換する",
+      "title": "観測手順を文にしてリプレイでは画面待機に変換する",
+      "featureIds": [
+        "F-WINDOW"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WindowChangeTests.観測手順を文にしてリプレイでは画面待機に変換する(kind: \"window-open\", origin: \"taskbar\", expected: \"タスクバーから「販売管理」を「クリック」します。「設定」画面が表示されます\")",
+        "OperationRecorderApp.Tests.WindowChangeTests.観測手順を文にしてリプレイでは画面待機に変換する(kind: \"window-open\", origin: \"window\", expected: \"「設定」画面が表示されます\")",
+        "OperationRecorderApp.Tests.WindowChangeTests.観測手順を文にしてリプレイでは画面待機に変換する(kind: \"window-switch\", origin: \"taskbar\", expected: \"タスクバーから「販売管理」を「クリック」します。「設定」画面が表示されます\")",
+        "OperationRecorderApp.Tests.WindowChangeTests.観測手順を文にしてリプレイでは画面待機に変換する(kind: \"window-switch\", origin: \"window\", expected: \"「設定」画面に切り替えます\")"
+      ]
+    },
+    {
+      "id": "TEST-62BE5EF74920",
+      "fullName": "OperationRecorderApp.Tests.WindowChangeTests.関連付けは時間と操作と対象関係を検査する",
+      "title": "関連付けは時間と操作と対象関係を検査する",
+      "featureIds": [
+        "F-WINDOW"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WindowChangeTests.関連付けは時間と操作と対象関係を検査する(kind: \"click\", action: 0, observed: 1000, sameProcess: True, navigation: False, expected: True)",
+        "OperationRecorderApp.Tests.WindowChangeTests.関連付けは時間と操作と対象関係を検査する(kind: \"click\", action: 0, observed: 1001, sameProcess: True, navigation: False, expected: False)",
+        "OperationRecorderApp.Tests.WindowChangeTests.関連付けは時間と操作と対象関係を検査する(kind: \"click\", action: 0, observed: 500, sameProcess: False, navigation: False, expected: False)",
+        "OperationRecorderApp.Tests.WindowChangeTests.関連付けは時間と操作と対象関係を検査する(kind: \"click\", action: 10, observed: 0, sameProcess: True, navigation: False, expected: False)",
+        "OperationRecorderApp.Tests.WindowChangeTests.関連付けは時間と操作と対象関係を検査する(kind: \"drag\", action: 0, observed: 100, sameProcess: True, navigation: False, expected: False)",
+        "OperationRecorderApp.Tests.WindowChangeTests.関連付けは時間と操作と対象関係を検査する(kind: \"key\", action: 0, observed: 500, sameProcess: False, navigation: True, expected: True)",
+        "OperationRecorderApp.Tests.WindowChangeTests.関連付けは時間と操作と対象関係を検査する(kind: \"middleclick\", action: 0, observed: 500, sameProcess: True, navigation: False, expected: True)",
+        "OperationRecorderApp.Tests.WindowChangeTests.関連付けは時間と操作と対象関係を検査する(kind: \"wheel\", action: 0, observed: 100, sameProcess: True, navigation: False, expected: False)"
+      ]
+    },
+    {
+      "id": "TEST-00DFCDFEC8F8",
+      "fullName": "OperationRecorderApp.Tests.WindowChangeTests.切り替えキーの修飾キーと方向を判定する",
+      "title": "切り替えキーの修飾キーと方向を判定する",
+      "featureIds": [
+        "F-WINDOW"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WindowChangeTests.切り替えキーの修飾キーと方向を判定する(key: \"Alt+Shift+Tab\", expected: True)",
+        "OperationRecorderApp.Tests.WindowChangeTests.切り替えキーの修飾キーと方向を判定する(key: \"Alt+Tab\", expected: True)",
+        "OperationRecorderApp.Tests.WindowChangeTests.切り替えキーの修飾キーと方向を判定する(key: \"Ctrl+N\", expected: False)",
+        "OperationRecorderApp.Tests.WindowChangeTests.切り替えキーの修飾キーと方向を判定する(key: \"Win+1\", expected: True)",
+        "OperationRecorderApp.Tests.WindowChangeTests.切り替えキーの修飾キーと方向を判定する(key: \"Win+Tab\", expected: True)"
+      ]
+    },
+    {
+      "id": "TEST-2EFBA2474BC5",
+      "fullName": "OperationRecorderApp.Tests.WindowChangeTests.操作後の観測を同じ手順へ出力して別画面の画像を元画面で照合しない",
+      "title": "操作後の観測を同じ手順へ出力して別画面の画像を元画面で照合しない",
+      "featureIds": [
+        "F-WINDOW"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WindowChangeTests.操作後の観測を同じ手順へ出力して別画面の画像を元画面で照合しない(origin: \"action\", expected: \"「販売管理」画面の「登録」ボタンを「クリック」します。「設定」画面が表示されます\")",
+        "OperationRecorderApp.Tests.WindowChangeTests.操作後の観測を同じ手順へ出力して別画面の画像を元画面で照合しない(origin: \"switch\", expected: \"「設定」画面に切り替えます\")"
+      ]
+    },
+    {
+      "id": "TEST-D98451BBD2EF",
+      "fullName": "OperationRecorderApp.Tests.WindowChangeTests.対象外を記録せず破棄後のハンドル再利用を新規として扱う",
+      "title": "対象外を記録せず破棄後のハンドル再利用を新規として扱う",
+      "featureIds": [
+        "F-WINDOW"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WindowChangeTests.対象外を記録せず破棄後のハンドル再利用を新規として扱う"
+      ]
+    },
+    {
+      "id": "TEST-E6B70441FE12",
+      "fullName": "OperationRecorderApp.Tests.WindowChangeTests.表示と前面の通知をまとめて再切り替えを記録する",
+      "title": "表示と前面の通知をまとめて再切り替えを記録する",
+      "featureIds": [
+        "F-WINDOW"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WindowChangeTests.表示と前面の通知をまとめて再切り替えを記録する"
+      ]
+    },
+    {
+      "id": "TEST-93D687C465A4",
+      "fullName": "OperationRecorderApp.Tests.WindowObservationTests.別PIDの表示と切り替えを実通知で記録し対象外を除外する",
+      "title": "別PIDの表示と切り替えを実通知で記録し対象外を除外する",
+      "featureIds": [
+        "F-WINDOW"
+      ],
+      "layer": "desktop",
+      "suite": "Desktop",
+      "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
+      "boundary": "Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.WindowObservationTests.別PIDの表示と切り替えを実通知で記録し対象外を除外する(mode: App, expected: 3)",
+        "OperationRecorderApp.Tests.WindowObservationTests.別PIDの表示と切り替えを実通知で記録し対象外を除外する(mode: Window, expected: 1)"
       ]
     }
   ]

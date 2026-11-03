@@ -19,6 +19,8 @@ PCの操作と操作前後の画面を記録し、スクリーンショット付
 画面の×はタスクトレイへの格納です。終了するときはトレイメニュー、またはKotorinToysの「停止」を使います。記録中・保存中は停止を拒否するため、先に記録を保存してください。
 
 - [操作記録マニュアル](docs/USERS_GUIDE.md)
+- [手順の見出し表記](docs/step-headings.md)
+- [ウィンドウの表示・切り替えの記録](docs/window-events.md)
 - [KotorinToysとの連携・保存先](docs/kotorintoys-integration.md)
 - [リプレイの設定と実行](docs/replay.md)
 - [複数記録からの再生条件作成](docs/replay-learning.md)

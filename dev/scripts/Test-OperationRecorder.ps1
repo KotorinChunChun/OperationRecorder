@@ -11,8 +11,8 @@ param(
 $ErrorActionPreference = 'Stop'
 # nativeの非0はTRXと合わせて分類する。呼出元の設定で先に例外へ変換しない。
 $PSNativeCommandUseErrorActionPreference = $false
-if ($Suite -notin @('Core', 'Desktop', 'All') -or $Configuration -notin @('Debug', 'Release')) {
-    [Console]::Error.WriteLine('SuiteはCore/Desktop/All、ConfigurationはDebug/Releaseを指定してください。')
+if ($Suite -notin @('Core', 'Desktop', 'WindowEvents', 'All') -or $Configuration -notin @('Debug', 'Release')) {
+    [Console]::Error.WriteLine('SuiteはCore/Desktop/WindowEvents/All、ConfigurationはDebug/Releaseを指定してください。')
     exit 2
 }
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -36,16 +36,18 @@ function Invoke-Dotnet([string[]]$Arguments, [string]$LogName) {
 
 function Invoke-Suite([string]$Name) {
     $entry = [ordered]@{ name = $Name; status = 'failed'; total = 0; passed = 0; failed = 0; skipped = 0; trx = $null; reason = $null }
-    if ($Name -eq 'Desktop') {
+    if ($Name -in @('Desktop', 'WindowEvents')) {
         if (-not $IsWindows -or -not [Environment]::UserInteractive) {
             $entry.status = 'blocked'; $entry.reason = 'DESKTOP_BLOCKED: 対話可能なWindowsデスクトップが必要です。'; return $entry
         }
         $existing = @(Get-Process -Name OperationRecorder -ErrorAction SilentlyContinue)
-        if ($existing.Count -gt 0) {
+        if ($Name -eq 'Desktop' -and $existing.Count -gt 0) {
             $entry.status = 'blocked'; $entry.reason = 'DESKTOP_BLOCKED: 起動中のOperationRecorderがあります。既存アプリへの入力と撮影を避けるため実行しません。'; return $entry
         }
         if (-not (Test-Path -LiteralPath $fixture -PathType Leaf)) { throw '専用fixtureが未ビルドです。-NoBuildを外して実行してください。' }
-        $env:OPREC_DESKTOP_TESTS = '1'
+        # WindowEventsは専用PIDへのパイプ命令だけ。OS入力のあるDesktopの既存アプリ検査は維持する。
+        $env:OPREC_DESKTOP_TESTS = if ($Name -eq 'Desktop') { '1' } else { '0' }
+        $env:OPREC_PASSIVE_WINDOW_TESTS = '1'
         $env:OPREC_FIXTURE_EXE = $fixture
         $env:OPREC_RECORDING_ARTIFACTS = Join-Path $runRoot 'recording'
     }
@@ -53,7 +55,9 @@ function Invoke-Suite([string]$Name) {
     $resultDir = Join-Path $runRoot $Name.ToLowerInvariant()
     [void][IO.Directory]::CreateDirectory($resultDir)
     $entry.trx = Join-Path $resultDir 'tests.trx'
-    $filter = if ($Name -eq 'Desktop') { 'Category=Desktop' } else { 'Category!=Desktop' }
+    $filter = if ($Name -eq 'Desktop') { 'Category=Desktop' }
+        elseif ($Name -eq 'WindowEvents') { 'FullyQualifiedName~WindowChangeTests|FullyQualifiedName~WindowObservationTests' }
+        else { 'Category!=Desktop' }
     $testExit = Invoke-Dotnet @('test', $testProject, '-c', $Configuration, '--artifacts-path', $artifacts,
         '--no-build', '--no-restore', '--filter', $filter, '--logger', 'trx;LogFileName=tests.trx', '--results-directory', $resultDir) ($Name.ToLowerInvariant() + '.log')
     if (-not (Test-Path -LiteralPath $entry.trx -PathType Leaf)) { $entry.reason = "TRXが作成されませんでした（終了コード $testExit）。"; return $entry }
@@ -80,7 +84,7 @@ try {
     }
     if (Test-Path -LiteralPath (Join-Path $runRoot 'summary.json')) { $exitCode = 2; throw '既存の試験結果を上書きしない保存先を指定してください。' }
     [void][IO.Directory]::CreateDirectory($runRoot)
-    foreach ($name in @('OPREC_DESKTOP_TESTS', 'OPREC_FIXTURE_EXE', 'OPREC_RECORDING_ARTIFACTS')) { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+    foreach ($name in @('OPREC_DESKTOP_TESTS', 'OPREC_PASSIVE_WINDOW_TESTS', 'OPREC_FIXTURE_EXE', 'OPREC_RECORDING_ARTIFACTS')) { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
     $artifacts = Join-Path $repoRoot 'artifacts/automation-runner'
     $testProject = Join-Path $repoRoot 'tests/OperationRecorderApp.Tests/OperationRecorderApp.Tests.csproj'
     $fixtureProject = Join-Path $repoRoot 'tests/OperationRecorder.RecordingFixture/OperationRecorder.RecordingFixture.csproj'

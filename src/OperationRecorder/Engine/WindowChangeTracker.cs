@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace OpRec
 {
@@ -32,7 +33,11 @@ namespace OpRec
             long previous = foreground; foreground = window;
             if (previous == window || !eligible) return null;
             long showTime;
-            if (shown.TryGetValue(window, out showTime) && time >= showTime && time - showTime <= 750) return null;
+            if (shown.TryGetValue(window, out showTime))
+            {
+                shown.Remove(window);
+                if (time >= showTime && time - showTime <= 750) return null;
+            }
             return first ? "open" : "switch";
         }
 
@@ -46,7 +51,15 @@ namespace OpRec
         {
             if (observedTime < actionTime || observedTime - actionTime > AssociationMs) return false;
             if (!sameProcess && !navigation) return false;
-            return kind == "click" || kind == "doubleclick" || kind == "rightclick" || kind == "key";
+            return kind == "click" || kind == "doubleclick" || kind == "rightclick" || kind == "middleclick" || kind == "key";
+        }
+
+        public static bool IsNavigationKey(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return false;
+            var parts = key.Split('+');
+            return (parts.Contains("Alt") && (parts.Contains("Tab") || parts.Contains("Esc")))
+                || (parts.Contains("Win") && (parts.Contains("Tab") || (parts.Last().Length == 1 && char.IsDigit(parts.Last()[0]))));
         }
     }
 }
