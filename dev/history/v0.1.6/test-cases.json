@@ -4,8 +4,8 @@
   "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
   "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
   "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
-  "methodCount": 296,
-  "expandedCaseCount": 471,
+  "methodCount": 300,
+  "expandedCaseCount": 485,
   "additionalSuites": [
     {
       "id": "html-browser",
@@ -153,7 +153,7 @@
       "id": "F-EXPORT",
       "title": "Markdown/HTMLの出力形式・画像・本文と旧CLI互換",
       "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
-      "caseCount": 28,
+      "caseCount": 32,
       "status": "automated"
     },
     {
@@ -1824,6 +1824,21 @@
       ]
     },
     {
+      "id": "TEST-9C022F4C1B65",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.画面名の改行を整理しても対象名と原本を置換しない",
+      "title": "画面名の改行を整理しても対象名と原本を置換しない",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.画面名の改行を整理しても対象名と原本を置換しない"
+      ]
+    },
+    {
       "id": "TEST-304D49C9B791",
       "fullName": "OperationRecorderApp.Tests.ExportTests.形式を選べる",
       "title": "形式を選べる",
@@ -1927,6 +1942,61 @@
       "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
       "displayNames": [
         "OperationRecorderApp.Tests.ExportTests.操作前だけ"
+      ]
+    },
+    {
+      "id": "TEST-34F8D57484BF",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名と括弧付き操作を表示する",
+      "title": "操作前後の見出しは画面名と括弧付き操作を表示する",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名と括弧付き操作を表示する(kind: \"click\", verb: \"クリック\")",
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名と括弧付き操作を表示する(kind: \"doubleclick\", verb: \"ダブルクリック\")",
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名と括弧付き操作を表示する(kind: \"drag\", verb: \"ドラッグ\")",
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名と括弧付き操作を表示する(kind: \"middleclick\", verb: \"ホイールボタンでクリック\")",
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名と括弧付き操作を表示する(kind: \"rightclick\", verb: \"右クリック\")",
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名と括弧付き操作を表示する(kind: \"rightdrag\", verb: \"右ボタンでドラッグ\")"
+      ]
+    },
+    {
+      "id": "TEST-66B73A4895EF",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名不明を明示する",
+      "title": "操作前後の見出しは画面名不明を明示する",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名不明を明示する(title: \" \\r\\n \")",
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名不明を明示する(title: \"\")",
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは画面名不明を明示する(title: null)"
+      ]
+    },
+    {
+      "id": "TEST-3427F169C372",
+      "fullName": "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは入力と特殊操作の文を保つ",
+      "title": "操作前後の見出しは入力と特殊操作の文を保つ",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "api",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは入力と特殊操作の文を保つ(kind: \"capture\", heading: \"\")",
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは入力と特殊操作の文を保つ(kind: \"input\", heading: \"「販売管理」画面の「氏名」欄に「山田」と入力します\")",
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは入力と特殊操作の文を保つ(kind: \"key\", heading: \"「販売管理」画面の「登録」ボタンで Enter キーを押します\")",
+        "OperationRecorderApp.Tests.ExportTests.操作前後の見出しは入力と特殊操作の文を保つ(kind: \"wheel\", heading: \"「販売管理」画面の「登録」ボタンでマウスホイールを下に回します(3 目盛り)\")"
       ]
     },
     {

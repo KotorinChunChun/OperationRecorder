@@ -473,6 +473,18 @@ namespace OpRec
                  : action == null && inputLines.Count > 1 ? inputText : "";
         }
 
+        // 操作前後テンプレート用。共通の見出しや保存済みの手直しは変更しない。
+        static string ScreenHeadline(JsonObject e, string headline, bool headlineEdited)
+        {
+            if (string.IsNullOrEmpty(headline)) return "";
+            string verb;
+            if (!headlineEdited && Verbs.TryGetValue(Str(e["kind"]) ?? "", out verb))
+                headline = TargetPhrase(e["uia"] as JsonObject) + "を「" + verb + "」します";
+            var window = e["window"] as JsonObject;
+            string title = Regex.Replace(Str(window?["title"]) ?? "", @"\s+", " ").Trim();
+            return (title.Length > 0 ? "「" + title + "」画面の" : "画面名不明の画面の") + headline;
+        }
+
         static Dictionary<string, object> BuildModel(JsonObject session, List<JsonObject> events, string sessionDir, string outDir, Options o)
         {
             var steps = new List<object>();
@@ -524,7 +536,9 @@ namespace OpRec
                 bool same = beforeModel != null && afterModel != null && ImagesSame(e, sessionDir);
                 steps.Add(new Dictionary<string, object>
                 {
-                    { "number", (long)n }, { "headline", headline }, { "actionSentence", action }, { "inputText", inputText }, { "body", body },
+                    { "number", (long)n }, { "headline", headline },
+                    { "screenHeadline", ScreenHeadline(e, headline, edited && ed["headline"] != null) },
+                    { "actionSentence", action }, { "inputText", inputText }, { "body", body },
                     { "originalHeadline", originalHeadline }, { "originalBody", originalBody }, { "edited", edited },
                     { "uiElements", UiElements(uia) }, { "psrText", PsrText(e, inputLines0(e)) }, { "timeText", TimeText(Str(e["time"])) },
                     { "windowTitle", win != null ? Str(win["title"]) : null },

@@ -28,6 +28,7 @@
  steps の各要素の変数
    number         手順番号(1 から)
    headline       見出しの文(末尾の「。」なし)。手動キャプチャ(Ctrl+Shift)の手順では空
+   screenHeadline 画面名付きの見出し。クリック/ドラッグ系の操作名を「」で囲む。画面名不明を明示し、手直し文を保持する
    actionSentence 操作の文(例: 「登録」ボタンをクリックします。)。入力の手順では空
    inputText      入力の文(例: 「氏名」欄に「山田」と入力します。)。入力の手順だけ。複数行の値はコードブロック付き
    body           本文。複数行の入力の手順は inputText、それ以外は空(見出しと同じ文は本文に繰り返さない)
@@ -61,7 +62,7 @@
 
 {{#endif}}
 {{#each steps}}
-## 手順 {{number}}.{{#if headline}} {{headline}}{{#endif}}
+## 手順 {{number}}.{{#if screenHeadline}} {{screenHeadline}}{{#endif}}
 
 {{#if body}}
 {{body}}

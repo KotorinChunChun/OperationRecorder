@@ -16,6 +16,65 @@ namespace OperationRecorderApp.Tests
 
         static string TemplateDir => Path.Combine(AppContext.BaseDirectory, "templates");
 
+        [Theory]
+        [InlineData("click", "クリック")]
+        [InlineData("doubleclick", "ダブルクリック")]
+        [InlineData("rightclick", "右クリック")]
+        [InlineData("middleclick", "ホイールボタンでクリック")]
+        [InlineData("drag", "ドラッグ")]
+        [InlineData("rightdrag", "右ボタンでドラッグ")]
+        public void 操作前後の見出しは画面名と括弧付き操作を表示する(string kind, string verb)
+        {
+            string path = Path.Combine(s.Dir, "events.jsonl"); var lines = File.ReadAllLines(path);
+            var first = JsonNode.Parse(lines[0]); first["kind"] = kind;
+            lines[0] = first.ToJsonString(); File.WriteAllLines(path, lines);
+            var report = Export();
+            string heading = "「販売管理」画面の「登録」ボタンを「" + verb + "」します";
+            Assert.Contains("## 手順 1. " + heading, report.Md);
+            Assert.Contains(heading, report.Html);
+            Assert.Contains("## 手順 1. 「登録」ボタンを" + verb + "します", Export("user-before").Md);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" \r\n ")]
+        public void 操作前後の見出しは画面名不明を明示する(string title)
+        {
+            string path = Path.Combine(s.Dir, "events.jsonl"); var lines = File.ReadAllLines(path);
+            var first = JsonNode.Parse(lines[0]); first["window"]["title"] = title;
+            lines[0] = first.ToJsonString(); File.WriteAllLines(path, lines);
+            Assert.Contains("## 手順 1. 画面名不明の画面の「登録」ボタンを「クリック」します", Export().Md);
+        }
+
+        [Theory]
+        [InlineData("input", "「販売管理」画面の「氏名」欄に「山田」と入力します")]
+        [InlineData("key", "「販売管理」画面の「登録」ボタンで Enter キーを押します")]
+        [InlineData("wheel", "「販売管理」画面の「登録」ボタンでマウスホイールを下に回します(3 目盛り)")]
+        [InlineData("capture", "")]
+        public void 操作前後の見出しは入力と特殊操作の文を保つ(string kind, string heading)
+        {
+            string path = Path.Combine(s.Dir, "events.jsonl"); var lines = File.ReadAllLines(path);
+            var first = JsonNode.Parse(lines[0]); first["kind"] = kind;
+            first["key"] = "Enter";
+            first["wheel"] = new JsonObject { ["direction"] = "down", ["notches"] = 3 };
+            first["input"] = kind == "input" ? new JsonObject { ["name"] = "氏名", ["value"] = "山田" } : null;
+            lines[0] = first.ToJsonString(); File.WriteAllLines(path, lines);
+            Assert.Contains("## 手順 1." + (heading.Length > 0 ? " " + heading : "") + "\n", Export().Md.Replace("\r\n", "\n"));
+        }
+
+        [Fact]
+        public void 画面名の改行を整理しても対象名と原本を置換しない()
+        {
+            string path = Path.Combine(s.Dir, "events.jsonl"); var lines = File.ReadAllLines(path);
+            var first = JsonNode.Parse(lines[0]); first["window"]["title"] = " クリックします\r\n 設定 ";
+            first["uia"]["name"] = "クリックします";
+            lines[0] = first.ToJsonString(); File.WriteAllLines(path, lines);
+            string original = File.ReadAllText(path);
+            Assert.Contains("## 手順 1. 「クリックします 設定」画面の「クリックします」ボタンを「クリック」します", Export().Md);
+            Assert.Equal(original, File.ReadAllText(path));
+        }
+
         sealed class Result { public string Md, Html; public List<string> MdFiles = new List<string>(), HtmlFiles = new List<string>(); }
 
         // template は名前(templates フォルダ)か md のパス
@@ -143,7 +202,7 @@ namespace OperationRecorderApp.Tests
         {
             ReportGenerator.SaveStepEdit(s.Dir, 1, "「登録」ボタンを押して確定します", "入力内容を確認してから押してください。");
             var r = Export();
-            Assert.Contains("## 手順 1. 「登録」ボタンを押して確定します", r.Md);
+            Assert.Contains("## 手順 1. 「販売管理」画面の「登録」ボタンを押して確定します", r.Md);
             Assert.Contains("入力内容を確認してから押してください。", r.Html);
         }
 
