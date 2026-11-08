@@ -331,6 +331,77 @@ namespace OperationRecorderApp.Tests
     public class AutomationCommandTests
     {
         [Fact]
+        public void サンプルの完了から説明と手順編集と画像付きHTMLまで実EXEで通る()
+        {
+            using var scope = new AutomationScope();
+            var sample = scope.Session();
+            File.Delete(Path.Combine(sample, "session.json"));
+            string originalEvents = File.ReadAllText(Path.Combine(sample, "events.jsonl"));
+            const string session = "records/sample";
+            var complete = new JsonObject { ["action"] = "complete", ["sample"] = sample, ["session"] = session, ["caption"] = "隔離サンプル" };
+            var result = scope.Run("session", complete);
+            Assert.Equal(0, result.Code);
+            Assert.Equal(4, result.Result["result"]["eventCount"].GetValue<int>());
+            Assert.False(string.IsNullOrWhiteSpace(result.Result["result"]["end"].GetValue<string>()));
+            var metadataFile = scope.Workspace.Resolve(session + "/session.json");
+            var metadata = File.ReadAllText(metadataFile);
+            Assert.Equal("sample", JsonNode.Parse(metadata)["source"].GetValue<string>());
+            Assert.NotEqual(0, scope.Run("session", complete).Code);
+            Assert.Equal(metadata, File.ReadAllText(metadataFile));
+
+            Assert.Equal(0, scope.Run("session", new JsonObject { ["action"] = "metadata", ["session"] = session, ["description"] = "更新した記録の説明" }).Code);
+            Assert.Equal(0, scope.Run("session", new JsonObject { ["action"] = "edit", ["session"] = session,
+                ["seq"] = 1, ["headline"] = "登録を確定する", ["body"] = "更新した手順の説明" }).Code);
+            var export = scope.Process("--export", scope.Workspace.Resolve(session), "--template", "user", "--format", "html", "--embed", "--out", scope.Workspace.Resolve("exports"));
+            Assert.True(export.Code == 0, export.Error);
+            var html = File.ReadAllText(Assert.Single(Directory.GetFiles(scope.Workspace.Resolve("exports"), "*.html")));
+            Assert.Contains("更新した記録の説明", html);
+            Assert.Contains("登録を確定する", html);
+            Assert.Contains("更新した手順の説明", html);
+            Assert.Contains("data:image/png;base64,", html);
+            Assert.Equal(originalEvents, File.ReadAllText(Path.Combine(sample, "events.jsonl")));
+        }
+
+        [Theory]
+        [InlineData("../outside.png", false)]
+        [InlineData("img/missing.png", false)]
+        [InlineData(null, true)]
+        public void 不正なサンプルでは完了済み記録を公開しない(string image, bool duplicate)
+        {
+            using var scope = new AutomationScope();
+            var sample = scope.Session();
+            string eventsPath = Path.Combine(sample, "events.jsonl");
+            var lines = File.ReadAllLines(eventsPath);
+            if (duplicate) lines[1] = lines[0];
+            else
+            {
+                var first = JsonNode.Parse(lines[0]);
+                first["before"]["file"] = image;
+                lines[0] = first.ToJsonString();
+            }
+            File.WriteAllLines(eventsPath, lines);
+            var result = scope.Run("session", new JsonObject { ["action"] = "complete", ["sample"] = sample, ["session"] = "records/rejected" });
+            Assert.NotEqual(0, result.Code);
+            Assert.False(Directory.Exists(scope.Workspace.Resolve("records/rejected")));
+        }
+
+        [Fact]
+        public void 壊れたPNGで失敗した記録は作業領域を片付けて再試行できる()
+        {
+            using var scope = new AutomationScope();
+            var sample = scope.Session();
+            var first = JsonNode.Parse(File.ReadLines(Path.Combine(sample, "events.jsonl")).First());
+            string image = Path.Combine(sample, first["before"]["file"].GetValue<string>());
+            byte[] original = File.ReadAllBytes(image);
+            File.WriteAllText(image, "PNGではない入力");
+            var request = new JsonObject { ["action"] = "complete", ["sample"] = sample, ["session"] = "records/retry" };
+            Assert.NotEqual(0, scope.Run("session", request).Code);
+            Assert.Empty(Directory.EnumerateFileSystemEntries(scope.Workspace.Resolve("records")));
+            File.WriteAllBytes(image, original);
+            Assert.Equal(0, scope.Run("session", request).Code);
+        }
+
+        [Fact]
         public void 実EXEの自動操作はGUI起動なしに結果JSONと終了コードを返す()
         {
             using var scope = new AutomationScope(); var session = scope.Session();

@@ -17,6 +17,7 @@ namespace OperationRecorderApp
         {
             ["session"] = new Dictionary<string, string[]>(StringComparer.Ordinal)
             {
+                ["complete"] = new[] { "sample", "session", "caption", "description" },
                 ["inspect"] = new[] { "session" }, ["metadata"] = new[] { "session", "caption", "description" },
                 ["edit"] = new[] { "session", "seq", "headline", "body" },
                 ["reset"] = new[] { "session", "seq" }, ["delete-step"] = new[] { "session", "seq" },
@@ -50,6 +51,7 @@ namespace OperationRecorderApp
 
         static JsonObject Session(string action, JsonObject request, AutomationWorkspace workspace)
         {
+            if (action == "complete") return SampleRecording.Complete(request, workspace);
             var directory = SessionDirectory(request, workspace);
             var sessionPath = workspace.Resolve(Path.Combine(directory, "session.json"), true);
             var session = ReadObject(sessionPath);
@@ -193,17 +195,22 @@ namespace OperationRecorderApp
                 var record = JsonNode.Parse(line) as JsonObject ?? throw new ArgumentException("記録イベントの形式が不正です。");
                 foreach (var tag in new[] { "before", "after" })
                 {
-                    if (record[tag] == null) continue;
-                    if (record[tag] is not JsonObject imageInfo || imageInfo["file"] is not JsonValue value || !value.TryGetValue<string>(out var relative))
-                        throw new ArgumentException("画像の参照はfileを持つオブジェクトです。");
-                    if (string.IsNullOrEmpty(relative) || Path.IsPathRooted(relative) || relative.Contains(':') || relative.Replace('\\', '/').Split('/').Any(part => part == ".." || part.EndsWith(".") || part.EndsWith(" ")))
-                        throw new ArgumentException("記録外の画像を参照できません。");
-                    var image = workspace.Resolve(Path.Combine(directory, relative), true);
-                    if (!AutomationWorkspace.Within(image, directory)) throw new ArgumentException("記録外の画像を参照できません。");
+                    if (record[tag] != null) ResolveImage(record[tag], directory, workspace);
                 }
             }
             var edits = Path.Combine(directory, "edits.json"); if (File.Exists(edits)) ReadObject(workspace.Resolve(edits, true));
             return directory;
+        }
+
+        internal static string ResolveImage(JsonNode node, string directory, AutomationWorkspace workspace)
+        {
+            if (node is not JsonObject imageInfo || imageInfo["file"] is not JsonValue value || !value.TryGetValue<string>(out var relative))
+                throw new ArgumentException("画像の参照はfileを持つオブジェクトです。");
+            if (string.IsNullOrEmpty(relative) || Path.IsPathRooted(relative) || relative.Contains(':') || relative.Replace('\\', '/').Split('/').Any(part => part == ".." || part.EndsWith(".") || part.EndsWith(" ")))
+                throw new ArgumentException("記録外の画像を参照できません。");
+            var image = workspace.Resolve(Path.Combine(directory, relative), true);
+            if (!AutomationWorkspace.Within(image, directory)) throw new ArgumentException("記録外の画像を参照できません。");
+            return image;
         }
 
         static void ValidateRequest(string area, JsonObject request)
@@ -233,7 +240,7 @@ namespace OperationRecorderApp
                         break;
                     default:
                         string text = StringValue(field.Value, field.Key);
-                        if (new[] { "session", "directory", "out", "templateDirectory" }.Contains(field.Key) && string.IsNullOrWhiteSpace(text))
+                        if (new[] { "sample", "session", "directory", "out", "templateDirectory" }.Contains(field.Key) && string.IsNullOrWhiteSpace(text))
                             throw new ArgumentException(field.Key + "は空でないパスです。");
                         if (field.Key == "name") CheckName(text);
                         break;

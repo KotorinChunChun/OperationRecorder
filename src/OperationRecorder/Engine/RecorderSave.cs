@@ -5,6 +5,8 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text;
 using System.Threading;
 
 namespace OpRec
@@ -16,6 +18,50 @@ namespace OpRec
         readonly object savedLock = new object();
         volatile bool saverBusy;
 
+        void OpenSessionFiles(string directory)
+        {
+            SessionDir = directory;
+            Directory.CreateDirectory(Path.Combine(directory, "img"));
+            var utf8 = new UTF8Encoding(false);
+            jsonl = new StreamWriter(Path.Combine(directory, "events.jsonl"), false, utf8);
+            try { logWriter = new StreamWriter(Path.Combine(directory, "recorder.log"), false, utf8); }
+            catch { jsonl.Dispose(); throw; }
+        }
+
+        // 検証済みの操作イベントと画像を、フックや画面取得を開始せずに通常の記録として確定する。
+        internal void CompleteSample(string directory, IReadOnlyList<JsonObject> events, long durationMs)
+        {
+            startWall = DateTime.Now.AddMilliseconds(-durationMs);
+            OpenSessionFiles(directory);
+            using (jsonl)
+            using (logWriter)
+            {
+                WriteSession(false, sample: true);
+                foreach (var record in events)
+                {
+                    var saved = new SavedRec { Seq = record["seq"].GetValue<int>(), Ts = record["tMs"].GetValue<long>(), Kind = record["kind"].GetValue<string>() };
+                    record["time"] = EventTime(saved.Ts);
+                    saved.Line = record.ToJsonString(JsonLine);
+                    SaveRecord(saved);
+                }
+                WriteSession(true, sample: true);
+                Log("サンプル記録終了: " + savedCount + " 件", writeToConsole: false);
+            }
+        }
+
+        string EventTime(long elapsedMs) => startWall.AddMilliseconds(elapsedMs).ToString("yyyy-MM-ddTHH:mm:ss.fff");
+
+        void SaveRecord(SavedRec saved)
+        {
+            lock (savedLock)
+            {
+                jsonl.WriteLine(saved.Line);
+                jsonl.Flush();
+                savedRecs.Add(saved);
+                Interlocked.Increment(ref savedCount);
+            }
+        }
+
         void SaverLoop()
         {
             foreach (var ev in saverQ.GetConsumingEnumerable())
@@ -26,7 +72,7 @@ namespace OpRec
                     var rec = new Dictionary<string, object>();
                     rec["seq"] = ev.Seq;
                     rec["kind"] = ev.Kind;
-                    rec["time"] = startWall.AddMilliseconds(ev.Ts).ToString("yyyy-MM-ddTHH:mm:ss.fff");
+                    rec["time"] = EventTime(ev.Ts);
                     rec["tMs"] = ev.Ts;
                     if (ev.IsMouse)
                     {
@@ -51,13 +97,7 @@ namespace OpRec
                     var saved = new SavedRec { Seq = ev.Seq, Ts = ev.Ts, Kind = ev.Kind, Line = JsonSerializer.Serialize(rec, JsonLine) };
                     if (before != null) saved.Files.Add((string)before["file"]);
                     if (after != null) saved.Files.Add((string)after["file"]);
-                    lock (savedLock)
-                    {
-                        jsonl.WriteLine(saved.Line);
-                        jsonl.Flush();
-                        savedRecs.Add(saved);
-                        Interlocked.Increment(ref savedCount);
-                    }
+                    SaveRecord(saved);
                     Log(string.Format("#{0} {1} {2}", ev.Seq, ev.Kind, Summary(ev)));
                     RaiseStepSaved(saved.Line);
                 }

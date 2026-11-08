@@ -141,7 +141,7 @@ Desktopテストを直接起動する場合はrunnerと同じfixture/環境条�
 
 | 領域 | `action`または操作 | 主な入力 |
 |---|---|---|
-| `session` | `inspect`、`metadata`、`edit`、`reset`、`delete-step`、`export` | `session`、元手順の`seq`、`caption/description/headline/body`、`templates`、`out`、`md/html/embed`、`marks/radius` |
+| `session` | `complete`、`inspect`、`metadata`、`edit`、`reset`、`delete-step`、`export` | `complete`は`sample`と新規の`session`。編集は`session`、元手順の`seq`、`caption/description/headline/body`。出力は`templates`、`out`、`md/html/embed`、`marks/radius` |
 | `template` | `list`、`read`、`create`、`save`、`delete`、`check`、`preview` | `directory`（既定templates）、`name`（拡張子なし）、`text`、previewの`session` |
 | `settings` | `defaults`、`load`、`save` | saveの`settings`オブジェクト。通常設定へは保存しない |
 | `composition` | `operations`配列 | `sources`または`draft`の一方だけを指定する |
@@ -149,6 +149,61 @@ Desktopテストを直接起動する場合はrunnerと同じfixture/環境条�
 すべての入力に`"schemaVersion":1`を指定する。未知のキー、不正な型、必須項目の欠落は処理前に拒否する。設定の`save`も未知の設定項目や型違いを拒否する。以前の版の設定を読み込む`load`では移行処理を維持する。
 
 `session edit`は`headline`と`body`を両方指定する。自動文章への復元は`reset`を明示して行う。`metadata`は`caption`か`description`を少なくとも一方指定し、前後の空白はGUIと同じように除去して保存する。
+
+### サンプルから記録完了、編集、画像付きHTML出力まで
+
+`session complete`は`sample`フォルダーの`events.jsonl`と参照PNGを取り込み、`records/名前`に完了済み記録を作る。`sample`と`session`は専用領域内の別フォルダー。出力先が既に存在する場合はエラーになり、同じ入力を新規名で処理できる。サンプルの`session.json`や`edits.json`は不要。
+
+各イベントは正の32ビット整数の`seq`、操作種別`kind`、開始から7日以内の整数ミリ秒`tMs`を持つ。`seq`は記録内で一意とする。`before`と`after`は省略でき、指定する場合はサンプル内のPNGを相対パスの`file`で参照する。記録は最大10,000件、イベントファイルは32 MiB、PNGは合計256 MiBまで。入力の`seq`、`tMs`と操作内容を保持し、`time`と画像参照は新しい記録に合わせて設定する。完了した`session.json`には`end`、`eventCount`と`source: "sample"`が入る。
+
+以下は合成PNGで再現するPowerShell 7の例。入力フック・ウィンドウ選択・実画面の撮影はDesktop試験で扱う。
+
+```powershell
+cd C:\develop\KotorinToys\tools\OperationRecorder
+$ErrorActionPreference = 'Stop'
+$run = Join-Path $PWD ('dev/history/v0.1.6/logs/sample-cli-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $run | Out-Null
+$build = Join-Path $run 'build'
+dotnet build src/OperationRecorder/OperationRecorderApp.csproj -c Release --artifacts-path $build -m:1 -nr:false
+if ($LASTEXITCODE -ne 0) { throw 'ビルドに失敗しました。' }
+$exe = Join-Path $build 'bin/OperationRecorderApp/release/OperationRecorder.exe'
+$workspace = Join-Path $run 'workspace'
+
+function Invoke-SampleAutomation($area, $request) {
+    $request.schemaVersion = 1
+    $inputPath = Join-Path $run ($request.action + '.json')
+    $request | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $inputPath -Encoding utf8
+    $reply = & $exe --automation $area --input $inputPath --workspace $workspace --result ('results/' + $request.action + '.json') | Out-String
+    if ($LASTEXITCODE -ne 0) { throw ('CLI操作に失敗しました。' + $request.action) }
+    if (!($reply | ConvertFrom-Json).success) { throw ('CLIが成功結果を返しませんでした。' + $request.action) }
+}
+
+# 既存CLIで空の専用領域を初期化してから、サンプルを置く。
+Invoke-SampleAutomation template @{ action = 'check'; text = '# 記録サンプル' }
+$sample = Join-Path $workspace 'inputs/sample'
+$img = New-Item -ItemType Directory -Path (Join-Path $sample 'img') -Force
+[IO.File]::WriteAllBytes((Join-Path $img.FullName 'before.png'), [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAGUlEQVR4AQEOAPH/ADN3qjN3qgAzd6ozd6ojYgVR936/KgAAAABJRU5ErkJggg=='))
+[IO.File]::WriteAllBytes((Join-Path $img.FullName 'after.png'), [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAGUlEQVR4AQEOAPH/AESqd0SqdwBEqndEqncmTgWVsZQbIAAAAABJRU5ErkJggg=='))
+@{ seq = 1; kind = 'click'; tMs = 250; window = @{ title = '専用サンプル' }
+   uia = @{ name = '登録'; controlType = 'Button' }
+   before = @{ file = 'img/before.png' }; after = @{ file = 'img/after.png' } } |
+    ConvertTo-Json -Depth 10 -Compress | Set-Content -LiteralPath (Join-Path $sample 'events.jsonl') -Encoding utf8
+
+$session = 'records/sample'
+Invoke-SampleAutomation session @{ action = 'complete'; sample = 'inputs/sample'; session = $session; caption = '専用サンプル' }
+Invoke-SampleAutomation session @{ action = 'metadata'; session = $session; description = '更新した記録の説明' }
+Invoke-SampleAutomation session @{ action = 'edit'; session = $session; seq = 1; headline = '登録を確定する'; body = '更新した手順の説明' }
+$output = Join-Path $workspace 'exports'
+& $exe --export (Join-Path $workspace $session) --template user --format html --embed --marks none --out $output | Out-Host
+if ($LASTEXITCODE -ne 0) { throw 'HTML出力に失敗しました。' }
+$html = Get-ChildItem -LiteralPath $output -Filter '*.html' -File
+$content = Get-Content -LiteralPath $html.FullName -Raw
+foreach ($expected in '更新した記録の説明', '登録を確定する', '更新した手順の説明') {
+    if (!$content.Contains($expected)) { throw ('HTMLに期待した文章がありません。' + $expected) }
+}
+if ([regex]::Matches($content, 'data:image/png;base64,').Count -ne 2) { throw '前後のPNGが揃っていません。' }
+$html.FullName
+```
 
 たとえば既存の専用領域にコピーした記録を検査する入力は次のようになる。
 

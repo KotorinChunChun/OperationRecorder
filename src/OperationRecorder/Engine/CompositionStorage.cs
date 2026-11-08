@@ -78,7 +78,7 @@ namespace OpRec
             catch (JsonException error) { throw new IOException("記録JSONが壊れています：" + Path.GetFileName(path), error); }
         }
 
-        static List<JsonObject> ReadEvents(string directory)
+        internal static List<JsonObject> ReadEvents(string directory)
         {
             var result = new List<JsonObject>();
             var unique = new HashSet<long>();
@@ -95,7 +95,7 @@ namespace OpRec
                 result.Add(value);
                 if (result.Count > MaximumSteps) throw new IOException("元記録の手順は10,000件までです。");
             }
-            if (result.Count == 0) throw new IOException("操作手順がない記録は合成できません。");
+            if (result.Count == 0) throw new IOException("操作手順がありません。");
             return result.OrderBy(value => value["tMs"] == null ? 0 : value["tMs"].GetValue<double>()).ThenBy(Seq).ToList();
         }
 
@@ -111,7 +111,7 @@ namespace OpRec
                 }
         }
 
-        static void CheckImage(string path)
+        internal static void CheckImage(string path, bool requirePng = false)
         {
             CheckNoLinks(path);
             if (!File.Exists(path)) throw new IOException("記録の参照画像がありません：" + Path.GetFileName(path));
@@ -120,8 +120,12 @@ namespace OpRec
             try
             {
                 using (var image = Image.FromFile(path))
+                {
+                    if (requirePng && image.RawFormat.Guid != System.Drawing.Imaging.ImageFormat.Png.Guid)
+                        throw new IOException("サンプルの画像はPNG形式です。");
                     if (image.Width < 1 || image.Height < 1 || (long)image.Width * image.Height > 100000000)
                         throw new IOException("参照画像の寸法が上限を超えています。");
+                }
             }
             catch (ArgumentException error) { throw new IOException("参照画像を読み込めません：" + Path.GetFileName(path), error); }
             catch (OutOfMemoryException error) { throw new IOException("参照画像が壊れているか、読み込み上限を超えています。", error); }

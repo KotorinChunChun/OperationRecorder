@@ -4,8 +4,8 @@
   "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
   "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
   "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
-  "methodCount": 309,
-  "expandedCaseCount": 513,
+  "methodCount": 312,
+  "expandedCaseCount": 518,
   "additionalSuites": [
     {
       "id": "html-browser",
@@ -209,7 +209,7 @@
       "id": "F-AUTOMATION",
       "title": "自動操作CLIの結果・終了コード・専用領域",
       "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
-      "caseCount": 15,
+      "caseCount": 18,
       "status": "automated"
     },
     {
@@ -419,6 +419,21 @@
       ]
     },
     {
+      "id": "TEST-21D0322BFC43",
+      "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.サンプルの完了から説明と手順編集と画像付きHTMLまで実EXEで通る",
+      "title": "サンプルの完了から説明と手順編集と画像付きHTMLまで実EXEで通る",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationCommandTests.サンプルの完了から説明と手順編集と画像付きHTMLまで実EXEで通る"
+      ]
+    },
+    {
       "id": "TEST-399FD886F28A",
       "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.ファイル不足は処理失敗として結果と非ゼロを返す",
       "title": "ファイル不足は処理失敗として結果と非ゼロを返す",
@@ -431,6 +446,21 @@
       "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
       "displayNames": [
         "OperationRecorderApp.Tests.AutomationCommandTests.ファイル不足は処理失敗として結果と非ゼロを返す"
+      ]
+    },
+    {
+      "id": "TEST-F68EEC6826FA",
+      "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.壊れたPNGで失敗した記録は作業領域を片付けて再試行できる",
+      "title": "壊れたPNGで失敗した記録は作業領域を片付けて再試行できる",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationCommandTests.壊れたPNGで失敗した記録は作業領域を片付けて再試行できる"
       ]
     },
     {
@@ -491,6 +521,23 @@
       "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
       "displayNames": [
         "OperationRecorderApp.Tests.AutomationCommandTests.入力と結果の同一指定を処理前に拒否する"
+      ]
+    },
+    {
+      "id": "TEST-9172432CF573",
+      "fullName": "OperationRecorderApp.Tests.AutomationCommandTests.不正なサンプルでは完了済み記録を公開しない",
+      "title": "不正なサンプルでは完了済み記録を公開しない",
+      "featureIds": [
+        "F-AUTOMATION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実EXEまたは共通サービス、通常設定/記録・領域外・リンク・不正入力を拒否",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AutomationCommandTests.不正なサンプルでは完了済み記録を公開しない(image: \"../outside.png\", duplicate: False)",
+        "OperationRecorderApp.Tests.AutomationCommandTests.不正なサンプルでは完了済み記録を公開しない(image: \"img/missing.png\", duplicate: False)",
+        "OperationRecorderApp.Tests.AutomationCommandTests.不正なサンプルでは完了済み記録を公開しない(image: null, duplicate: True)"
       ]
     },
     {

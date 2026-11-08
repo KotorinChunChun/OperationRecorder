@@ -79,11 +79,7 @@ namespace OpRec
             string folder = "session-" + startWall.ToString("yyyyMMdd-HHmmss");
             string safe = SafeFolderPart(Caption);
             if (safe.Length > 0) folder += "_" + safe;
-            SessionDir = Path.Combine(Path.GetFullPath(outRoot), folder);
-            Directory.CreateDirectory(Path.Combine(SessionDir, "img"));
-            var utf8 = new UTF8Encoding(false);
-            jsonl = new StreamWriter(Path.Combine(SessionDir, "events.jsonl"), false, utf8);
-            logWriter = new StreamWriter(Path.Combine(SessionDir, "recorder.log"), false, utf8);
+            OpenSessionFiles(Path.Combine(Path.GetFullPath(outRoot), folder));
 
             if (Mode == CaptureMode.AllDesktops) allMonitors = Monitors.GetAll().Select(m => m.Bounds).ToList();
             TuneInterval();
@@ -230,17 +226,17 @@ namespace OpRec
             return t;
         }
 
-        internal void Log(string msg)
+        internal void Log(string msg, bool writeToConsole = true)
         {
             string line = DateTime.Now.ToString("HH:mm:ss.fff") + " " + msg;
             lock (logLock)
             {
-                Console.WriteLine(line);
+                if (writeToConsole) Console.WriteLine(line);
                 if (logWriter != null) { logWriter.WriteLine(line); logWriter.Flush(); }
             }
         }
 
-        void WriteSession(bool final)
+        void WriteSession(bool final, bool sample = false)
         {
             var d = new Dictionary<string, object>();
             d["tool"] = "operation-recorder";
@@ -267,7 +263,8 @@ namespace OpRec
                 rules[k] = new Dictionary<string, object> { { "record", r.Record }, { "before", r.Before }, { "after", r.After } };
             }
             d["captureRules"] = rules;
-            d["virtualScreen"] = WinUtil.Rc(WinUtil.VirtualScreen());
+            d["virtualScreen"] = sample ? null : WinUtil.Rc(WinUtil.VirtualScreen());
+            if (sample) d["source"] = "sample";
             d["eventCount"] = savedCount;
             d["coordinates"] = "物理ピクセル(per-monitor DPI aware)。window 相対は DWM の描画枠左上、client 相対はクライアント領域左上が原点";
             File.WriteAllText(Path.Combine(SessionDir, "session.json"), JsonSerializer.Serialize(d, JsonIndented), new UTF8Encoding(false));
