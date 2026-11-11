@@ -20,7 +20,7 @@ namespace OperationRecorderApp.Tests
             if (Environment.GetEnvironmentVariable("OPREC_PASSIVE_WINDOW_TESTS") != "1")
                 throw new InvalidOperationException("DESKTOP_BLOCKED: OPREC_PASSIVE_WINDOW_TESTS=1の専用fixture環境が必要です。");
             using var fixture = new RecordingDesktopTests.FixtureProcess();
-            fixture.Command("foreground");
+            fixture.Command("front");
             string root = Path.Combine(Path.GetTempPath(), "oprec-window-" + Guid.NewGuid().ToString("N"));
             var rules = CaptureRules.Defaults(); foreach (var rule in rules.Values) rule.Record = false;
             rules[CaptureRules.WindowChange] = new CaptureRule(true, images, images);
@@ -36,13 +36,17 @@ namespace OperationRecorderApp.Tests
                 Wait(() => recorder.SavedCount >= (mode == CaptureMode.App ? 2 : 1));
                 fixture.Command("window-secondary");
                 if (mode == CaptureMode.App) Wait(() => recorder.SavedCount >= 3);
-                using (var outside = new RecordingDesktopTests.FixtureProcess())
-                { outside.Command("window-open"); Thread.Sleep(450); }
+                using var outside = new RecordingDesktopTests.FixtureProcess();
+                outside.Command("front");
+                outside.Command("window-open");
+                Thread.Sleep(450);
+                // 対象外の画面を閉じると対象画面に前面が戻ることがある。除外の判定後に閉じる。
                 recorder.Stop();
                 var events = File.ReadAllLines(Path.Combine(recorder.SessionDir, "events.jsonl")).Select(x => JsonNode.Parse(x)).ToArray();
                 Assert.Equal(expected, events.Length);
                 Assert.All(events, e => Assert.Equal(fixture.Pid, e["window"]["pid"].GetValue<int>()));
-                Assert.Equal(mode == CaptureMode.App ? "window-open" : "window-switch", events[0]["kind"].GetValue<string>());
+                Assert.Equal(mode == CaptureMode.App ? new[] { "window-open", "window-switch", "window-switch" } : new[] { "window-switch" },
+                    events.Select(e => e["kind"].GetValue<string>()));
                 Assert.All(events, e =>
                 {
                     foreach (string side in new[] { "before", "after" })
