@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Text.Json.Nodes;
 
 namespace OperationRecorderApp
 {
@@ -24,17 +23,12 @@ namespace OperationRecorderApp
                 var settings = AppSettings.Load();
                 if (TranscriptionSettings.SelectedProvider(settings) == TranscriptionProvider.None)
                 {
-                    Console.Error.WriteLine("文字起こしが無効です。「撮影の設定」で文字起こし方式を選択してください。");
+                    Console.Error.WriteLine("文字起こしが無効です。「記録対象」で文字起こし方式を選択してください。");
                     return 2;
                 }
                 string directory = Path.GetFullPath(args[1]);
-                var media = JsonNode.Parse(File.ReadAllText(Path.Combine(directory, "media.json")));
-                if (media?["audio"] is not JsonObject audio ||
-                    audio["file"]?.GetValue<string>() != "narration.wav" ||
-                    audio["startMs"] is not JsonValue clock || !clock.TryGetValue<long>(out long offset) ||
-                    offset < 0 || offset > TimeSpan.FromDays(1).TotalMilliseconds)
-                    throw new InvalidDataException("記録に有効なマイク音声情報がありません。");
-                int? count = NarrationTranscription.Save(TranscriptionSettings.From(settings), directory, offset);
+                var audio = RecordedNarration.Read(directory);
+                int? count = NarrationTranscription.Save(TranscriptionSettings.From(settings), directory, audio.StartMs);
                 Console.WriteLine($"文字起こしを保存しました（{count}区間）。");
                 return 0;
             }

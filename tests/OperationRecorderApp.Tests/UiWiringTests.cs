@@ -31,7 +31,7 @@ namespace OperationRecorderApp.Tests
                 Named<NumericUpDown>(form, "numBeforeMs").Value = 650;
                 Named<NumericUpDown>(form, "numAfterMs").Value = 1700;
                 Named<NumericUpDown>(form, "numRadius").Value = 37;
-                foreach (string name in new[] { "chkOverlay", "chkOverlayFlee", "chkTargetFrame", "chkFlash", "chkMarkCircle", "chkMarkFrame" })
+                foreach (string name in new[] { "chkOverlay", "chkRipple", "chkTargetFrame", "chkFlash", "chkMarkCircle", "chkMarkFrame" })
                     Named<CheckBox>(form, name).Checked = false;
                 foreach (string name in new[] { "chkMarkPointer", "chkMarkArrow", "chkOutMd", "chkOutHtml", "chkOpen", "chkOpenHtml", "chkOpenFolder" })
                     Named<CheckBox>(form, name).Checked = true;
@@ -57,7 +57,7 @@ namespace OperationRecorderApp.Tests
                 Assert.Equal(1700, saved.AfterMs);
                 Assert.Equal(37, saved.MarkerRadius);
                 Assert.True(saved.EmbedImages && saved.MarkPointer && saved.MarkArrow && saved.OutputMd && saved.OutputHtml && saved.OpenAfterSave && saved.OpenHtmlAfterSave && saved.OpenFolderAfterSave);
-                Assert.False(saved.ShowOverlay || saved.OverlayFlee || saved.ShowTargetFrame || saved.FlashOnCapture || saved.MarkCircle || saved.MarkFrame);
+                Assert.False(saved.ShowOverlay || saved.ShowClickRipple || saved.ShowTargetFrame || saved.FlashOnCapture || saved.MarkCircle || saved.MarkFrame);
                 ruleIndex = 0;
                 foreach (string kind in CaptureRules.Order)
                 {
@@ -396,26 +396,34 @@ namespace OperationRecorderApp.Tests
         }
 
         [Fact]
-        public void オーバーレイの状態ボタン直近十手取消消去と逃避無効を非表示で検証する()
+        public void オーバーレイのボタンにキーを表示し直近十手と非表示を確認する()
         {
             RunSta(() =>
             {
                 using var sample = new TestSession(); using var overlay = new RecordingOverlay();
                 int undo = 0, restart = 0, stop = 0, open = 0;
                 overlay.UndoClicked += () => undo++; overlay.RestartClicked += () => restart++; overlay.StopClicked += () => stop++; overlay.OpenMainClicked += () => open++;
-                overlay.SetTarget("試験対象"); overlay.SetShortcuts("試験キー"); overlay.SetStatus("記録中", Color.Red, true);
+                overlay.SetTarget("試験対象"); overlay.SetShortcuts(HotkeySet.Defaults()); overlay.SetStatus("記録中", Color.Red, true);
                 foreach (string button in new[] { "btnUndo", "btnRestart", "btnStop", "btnOpen" }) Click(Field<Button>(overlay, button));
                 Assert.Equal((1, 1, 1, 1), (undo, restart, stop, open));
-                Assert.Contains("試験対象", Field<Label>(overlay, "lblTarget").Text); Assert.Equal("試験キー", Field<Label>(overlay, "lblKeys").Text);
+                Assert.Contains("試験対象", Field<Label>(overlay, "lblTarget").Text);
+                Assert.Contains("Ctrl+Shift+F10", Field<Button>(overlay, "btnUndo").Text);
+                Assert.Contains("Ctrl+Shift+F11", Field<Button>(overlay, "btnRestart").Text);
+                Assert.Contains("Ctrl+Shift+F12", Field<Button>(overlay, "btnStop").Text);
+                Assert.Contains("透過", Field<Label>(overlay, "lblKeys").Text);
                 for (int i = 1; i <= 12; i++) overlay.AddStep("{\"seq\":" + i + ",\"kind\":\"capture\"}", sample.Dir, i);
                 Assert.Equal(10, ((System.Collections.ICollection)Field<object>(overlay, "items")).Count);
                 overlay.RemoveStep(12); Assert.Equal(9, ((System.Collections.ICollection)Field<object>(overlay, "items")).Count);
                 overlay.SetStatus("保存中", Color.Orange, false);
                 Assert.False(Field<Button>(overlay, "btnUndo").Enabled || Field<Button>(overlay, "btnRestart").Enabled || Field<Button>(overlay, "btnStop").Enabled);
                 Assert.True(Field<Button>(overlay, "btnOpen").Enabled);
-                overlay.FleeEnabled = false; Point original = overlay.Location; Invoke(overlay, "FleeFromPointerWindow"); Assert.Equal(original, overlay.Location);
                 overlay.ClearItems(); Assert.Empty((System.Collections.IEnumerable)Field<object>(overlay, "items"));
-                overlay.HideOverlay(); Assert.False(Field<System.Windows.Forms.Timer>(overlay, "fleeTimer").Enabled); Assert.False(overlay.Visible);
+                bool hidden = false;
+                overlay.HiddenByUser += () => hidden = true;
+                Click(Field<Button>(overlay, "btnHide"));
+                Assert.True(hidden);
+                Assert.False(Field<System.Windows.Forms.Timer>(overlay, "proximityTimer").Enabled);
+                Assert.False(overlay.Visible);
             });
         }
 

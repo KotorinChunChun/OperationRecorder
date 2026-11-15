@@ -116,6 +116,8 @@ namespace OpRec
             public string Kind, Headline, Body, WindowTitle, BeforePath, AfterPath;
             public string TimeText, Screen, PointInWindow, ClassName, UiElements, Program, PsrText;
             public string OriginalHeadline, OriginalBody;   // 自動で作った文章(手で直す前)
+            public string BodyWithoutNarration;
+            public long StartMs;
             public bool Edited;                             // edits.json で直してあるか
             public MarkSpec BeforeMarks;                    // 操作前の画像に描く印の位置(古い記録は画像に描いてあるので null)
         }
@@ -194,6 +196,8 @@ namespace OpRec
                     Body = s["body"] as string,
                     OriginalHeadline = s["originalHeadline"] as string,
                     OriginalBody = s["originalBody"] as string,
+                    BodyWithoutNarration = s["bodyWithoutNarration"] as string,
+                    StartMs = (long)s["startMs"],
                     Edited = s["edited"] is bool && (bool)s["edited"],
                     WindowTitle = s["windowTitle"] as string,
                     TimeText = s["timeText"] as string,
@@ -320,6 +324,8 @@ namespace OpRec
             string kind = Str(e["kind"]) ?? "";
             var uia = e["uia"] as JsonObject;
             if (Verbs.ContainsKey(kind)) return TargetPhrase(uia) + "を" + Verbs[kind] + "します。";
+            if (kind is "mouseback" or "mouseforward")
+                return "マウスの「" + (kind == "mouseback" ? "戻る" : "進む") + "」ボタンを押します。";
             if (kind == "wheel")
             {
                 var wh = e["wheel"] as JsonObject;
@@ -541,6 +547,8 @@ namespace OpRec
                 if (windowSentence != null) return Regex.Replace(windowSentence, "。$", "");
             }
             string verb;
+            if (!headlineEdited && Str(e["kind"]) is "mouseback" or "mouseforward")
+                return ScreenName(e["window"] as JsonObject) + "で" + headline;
             if (!headlineEdited && Verbs.TryGetValue(Str(e["kind"]) ?? "", out verb))
                 headline = TargetPhrase(e["uia"] as JsonObject) + "を「" + verb + "」します";
             return ScreenName(e["window"] as JsonObject) + "の" + headline;
@@ -557,6 +565,7 @@ namespace OpRec
                 n++;
                 string headline, body, action, inputText;
                 ComposeTexts(e, out headline, out body, out action, out inputText);
+                string bodyWithoutNarration = body;
                 if (narration.TryGetValue((long)Num(e["seq"]), out var spoken))
                     body = string.IsNullOrEmpty(body) ? spoken : body + "\n\n" + spoken;
                 string originalHeadline = headline, originalBody = body;
@@ -608,6 +617,7 @@ namespace OpRec
                     { "number", (long)n }, { "headline", headline },
                     { "screenHeadline", ScreenHeadline(e, headline, edited && ed["headline"] != null) },
                     { "actionSentence", action }, { "inputText", inputText }, { "body", body },
+                    { "bodyWithoutNarration", bodyWithoutNarration }, { "startMs", Math.Max(0L, (long)Num(e["tMs"])) },
                     { "originalHeadline", originalHeadline }, { "originalBody", originalBody }, { "edited", edited },
                     { "uiElements", UiElements(uia) }, { "psrText", PsrText(e, inputLines0(e)) }, { "timeText", TimeText(Str(e["time"])) },
                     { "windowTitle", win != null ? Str(win["title"]) : null },

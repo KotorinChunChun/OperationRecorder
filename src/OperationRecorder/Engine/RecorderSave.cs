@@ -76,7 +76,10 @@ namespace OpRec
                     rec["tMs"] = ev.Ts;
                     if (ev.IsMouse)
                     {
-                        if (ev.Button >= 0) rec["button"] = ev.Button == 0 ? "left" : ev.Button == 1 ? "right" : "middle";
+                        if (ev.Button >= 0) rec["button"] = ev.Button switch
+                        {
+                            0 => "left", 1 => "right", 2 => "middle", 3 => "x1", _ => "x2",
+                        };
                         rec["screen"] = WinUtil.Pt(ev.X, ev.Y);
                         if (ev.Kind.EndsWith("drag"))
                         {

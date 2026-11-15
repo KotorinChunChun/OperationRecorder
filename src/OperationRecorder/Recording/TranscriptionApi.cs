@@ -20,16 +20,18 @@ namespace OperationRecorderApp
             "Return chronological segments with text and startMs/endMs measured in milliseconds from the beginning of this clip. " +
             "Break at natural pauses. Return an empty array for silence.";
 
-        internal static async Task<JsonArray> Run(TranscriptionSettings options, TranscriptionCredentials credentials, string audio)
+        internal static async Task<JsonArray> Run(TranscriptionSettings options, TranscriptionCredentials credentials, string audio,
+            CancellationToken cancellation = default)
         {
             string key = credentials.Read(options.Provider, options.Endpoint);
             if (key == null && options.Provider != TranscriptionProvider.Compatible)
-                throw new InvalidOperationException("「撮影の設定」で選択中のサービスのAPIキーを保存してください。");
+                throw new InvalidOperationException("「記録対象」で選択中のサービスのAPIキーを保存してください。");
             using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan };
-            return await Run(options, key, audio, client).ConfigureAwait(false);
+            return await Run(options, key, audio, client, cancellation).ConfigureAwait(false);
         }
 
-        internal static async Task<JsonArray> Run(TranscriptionSettings options, string key, string audio, HttpClient client)
+        internal static async Task<JsonArray> Run(TranscriptionSettings options, string key, string audio, HttpClient client,
+            CancellationToken cancellation = default)
         {
             bool gemini = options.Provider == TranscriptionProvider.Gemini;
             bool compatible = options.Provider == TranscriptionProvider.Compatible;
@@ -43,7 +45,8 @@ namespace OperationRecorderApp
                 _ => options.Endpoint,
             };
 
-            using var timer = new CancellationTokenSource(TimeSpan.FromMinutes(30));
+            using var timer = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+            timer.CancelAfter(TimeSpan.FromMinutes(30));
             var results = new JsonArray();
             long totalTextBytes = 0;
             int secondsPerChunk = gemini ? 60 : compatible || !timed ? 20 : 180;
@@ -90,7 +93,8 @@ namespace OperationRecorderApp
                 }
                 return results;
             }
-            catch (OperationCanceledException) { throw new TimeoutException("文字起こしサービスが30分以内に応答しませんでした。"); }
+            catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+            { throw new TimeoutException("文字起こしサービスが30分以内に応答しませんでした。"); }
             catch (HttpRequestException) { throw new IOException("文字起こしサービスに接続できません。通信設定を確認してください。"); }
             catch (Exception error) when (error is JsonException or InvalidOperationException)
             {

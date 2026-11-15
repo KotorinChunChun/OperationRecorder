@@ -101,21 +101,18 @@ namespace OperationRecorderApp
             // 右: 記録中の画面表示・オーバーレイ・記録を保存するフォルダ
             right.Controls.Add(Caption("記録中の画面表示", true));
             chkTargetFrame = new CheckBox { Text = "記録の対象になっているウィンドウを赤い枠で囲う", AutoSize = true, Checked = settings.ShowTargetFrame };
-            chkFlash = new CheckBox { Text = "撮影した瞬間に知らせる(枠が黄色く光り、クリックした位置に丸が広がる)", AutoSize = true, Checked = settings.FlashOnCapture };
+            chkFlash = new CheckBox { Text = "撮影時に対象の枠を光らせる", AutoSize = true, Checked = settings.FlashOnCapture };
+            chkRipple = new CheckBox { Text = "記録したクリック位置に広がる丸を表示する", AutoSize = true, Checked = settings.ShowClickRipple };
             right.Controls.Add(chkTargetFrame);
             right.Controls.Add(chkFlash);
-            chkOverlay = new CheckBox { Text = "撮影ログのオーバーレイ(対象・使えるキー・直近 10 手・操作ボタン)を表示する", AutoSize = true, Checked = settings.ShowOverlay };
-            right.Controls.Add(chkOverlay);
-            chkOverlayFlee = new CheckBox { Text = "ポインタがあるウィンドウに重なったら、画面の隅へ自動で移動する", AutoSize = true, Checked = settings.OverlayFlee, Margin = new Padding(24, 3, 3, 3) };
-            chkOverlay.CheckedChanged += (s, e) => chkOverlayFlee.Enabled = chkOverlay.Checked;
-            chkOverlayFlee.Enabled = chkOverlay.Checked;
-            right.Controls.Add(chkOverlayFlee);
+            right.Controls.Add(chkRipple);
 
             right.Controls.Add(Caption("記録を保存するフォルダ", true));
             right.Controls.Add(Note("この中に「session-日時_名前」というフォルダを作り、画像と記録データを保存します。"));
             txtOutDir = new TextBox { Width = 400, Text = settings.OutDir };
             right.Controls.Add(Row(txtOutDir, BrowseButton(txtOutDir, "記録を保存するフォルダ")));
             right.Controls.Add(Note("記録を始めると、この画面はタスクトレイに隠れます。記録する画面と入力した文字(パスワード欄を除く)が保存されるので、写ってほしくない画面は閉じておいてください。"));
+            AddMediaSettings(right);
 
             // 初期値
             switch (settings.Mode)

@@ -6,10 +6,18 @@ import wave
 from pathlib import Path
 
 def whisper(audio, model_dir):
+    import numpy as np
     from faster_whisper import WhisperModel
+
+    with wave.open(str(audio), "rb") as source:
+        if (source.getframerate(), source.getnchannels(), source.getsampwidth()) != (16000, 1, 2):
+            raise ValueError("16 kHz mono PCM WAV required")
+        samples = np.frombuffer(source.readframes(source.getnframes()), dtype="<i2").astype(np.float32) / 32768
+    if samples.size == 0:
+        return []
     model = WhisperModel(str(model_dir), device="cpu", compute_type="int8",
                          local_files_only=True)
-    segments, _ = model.transcribe(str(audio), vad_filter=True, beam_size=3)
+    segments, _ = model.transcribe(samples, vad_filter=True, beam_size=3)
     return [
         {"startMs": round(segment.start * 1000), "endMs": round(segment.end * 1000),
          "text": segment.text.strip()}

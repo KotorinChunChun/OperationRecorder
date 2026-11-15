@@ -35,6 +35,90 @@ namespace OperationRecorderApp.Tests
         }
 
         [Fact]
+        public void 旧Haas設定を引き継ぎWhisperの設定と別々に保存する()
+        {
+            var settings = AppSettings.FromJson("""{"NarrationProvider":"Haas","TranscriptionPython":"legacy-python","TranscriptionModel":"legacy-haas"}""");
+            Assert.Equal("legacy-haas", TranscriptionSettings.From(settings).LocalModel);
+            settings.TranscriptionModel = "my-whisper";
+            var saved = AppSettings.FromJson(settings.ToJson());
+            Assert.Equal("legacy-haas", TranscriptionSettings.From(saved, TranscriptionProvider.Haas).LocalModel);
+            Assert.Equal("my-whisper", TranscriptionSettings.From(saved, TranscriptionProvider.Whisper).LocalModel);
+        }
+
+        [Fact]
+        public void 録音中に先行区間を処理し停止時に最後の区間を一度だけ保存する()
+        {
+            string wav = Path.Combine(session.Dir, "narration.wav");
+            var gate = new object();
+            var durations = new System.Collections.Generic.List<double>();
+            var options = TranscriptionSettings.From(new AppSettings { NarrationProvider = "Whisper" });
+            var live = new LiveNarration(options, wav, gate, (file, _) =>
+            {
+                using var audio = new WaveFileReader(file);
+                durations.Add(audio.TotalTime.TotalSeconds);
+                return JsonNode.Parse("""[{"startMs":0,"endMs":500,"text":"途中の本文"}]""").AsArray();
+            });
+            bool saveStarted = false;
+            try
+            {
+                using (var output = new WaveFileWriter(new FileStream(wav, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite),
+                    new WaveFormat(16000, 16, 1)))
+                {
+                    var first = new byte[LiveNarration.ClipBytes];
+                    output.Write(first, 0, first.Length);
+                    output.Flush();
+                    live.Publish(first.Length);
+                    Assert.True(SpinWait.SpinUntil(() => live.Latest == "途中の本文", 5000));
+                    Assert.False(File.Exists(Path.Combine(session.Dir, "transcript.json")));
+                    var last = new byte[RecordedNarration.BytesPerSecond];
+                    output.Write(last, 0, last.Length);
+                }
+                live.Publish(LiveNarration.ClipBytes + RecordedNarration.BytesPerSecond, complete: true);
+                saveStarted = true;
+                live.Save(session.Dir, audioStartMs: 250);
+                Assert.Equal(new[] { 12.0, 1.0 }, durations);
+                var saved = JsonNode.Parse(File.ReadAllText(Path.Combine(session.Dir, "transcript.json"))).AsArray();
+                Assert.Equal(new long[] { 250, 12250 }, saved.Select(segment => segment["startMs"].GetValue<long>()));
+            }
+            finally { if (!saveStarted) live.ReleaseAfterCancellation(); }
+        }
+
+        [Fact]
+        public void 本文再生成は選択した手順の範囲だけを読み取る()
+        {
+            var input = new RecordedNarration(MakeWave(4), StartMs: 1000);
+            var options = TranscriptionSettings.From(new AppSettings { NarrationProvider = "Whisper" });
+            var text = input.Regenerate(options, stepStartMs: 2000, nextStepMs: 3250, (file, _) =>
+            {
+                using var clip = new WaveFileReader(file);
+                Assert.Equal(1.25, clip.TotalTime.TotalSeconds);
+                return JsonNode.Parse("""[{"startMs":0,"endMs":500,"text":"新しい<本文>"}]""").AsArray();
+            });
+            Assert.Equal(@"新しい\<本文\>", text);
+            Assert.False(File.Exists(Path.Combine(session.Dir, "transcript.json")));
+        }
+
+        [Fact]
+        public void モデル削除は管理用フォルダーの読み取り専用ファイルだけを削除する()
+        {
+            var installer = new LocalTranscriptionInstaller(session.Root);
+            var paths = installer.Paths(TranscriptionProvider.Whisper);
+            string managed = Path.GetDirectoryName(paths.Model);
+            Directory.CreateDirectory(paths.Model);
+            string local = Path.Combine(paths.Model, "model.bin");
+            File.WriteAllText(local, "試験データ");
+            Assert.Throws<IOException>(() => installer.Remove(TranscriptionProvider.Whisper));
+            Assert.True(File.Exists(local));
+            string external = Path.Combine(session.Root, "手動のモデル.bin");
+            File.WriteAllText(external, "手動モデル");
+            File.WriteAllText(Path.Combine(managed, ".operation-recorder-model"), "Whisper");
+            File.SetAttributes(local, FileAttributes.ReadOnly);
+            installer.Remove(TranscriptionProvider.Whisper);
+            Assert.False(Directory.Exists(managed));
+            Assert.Equal("手動モデル", File.ReadAllText(external));
+        }
+
+        [Fact]
         public void キーを暗号化してサービスと接続先ごとに保管する()
         {
             const string dummy = "dummy-test-key-that-must-not-be-stored-in-plain-text";

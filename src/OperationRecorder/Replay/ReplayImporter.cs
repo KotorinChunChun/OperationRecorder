@@ -48,7 +48,7 @@ public static class ReplayImporter
                 var modifiers = (step.Key ?? "").Split('+').Where(p => new[] { "Ctrl", "Alt", "Shift", "Win" }.Contains(p));
                 step.Key = string.Join("+", modifiers.Append("VK_0x" + Number(e["keyCode"]).ToString("X2")));
             }
-            bool mouse = new[] { "click", "rightclick", "middleclick", "doubleclick", "drag", "rightdrag", "wheel" }.Contains(kind);
+            bool mouse = new[] { "click", "rightclick", "middleclick", "doubleclick", "drag", "rightdrag", "wheel", "mouseback", "mouseforward" }.Contains(kind);
             if (mouse) step.X = step.Y = step.EndX = step.EndY = -1;
             previous = time;
             if (e["uia"] is JsonObject uia)

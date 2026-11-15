@@ -14,13 +14,16 @@ namespace OperationRecorderApp
         readonly string ffmpeg;
         readonly TranscriptionSettings transcription;
         readonly string transcriptionConfigError;
-        readonly bool audioEnabled;
+        readonly bool audioEnabled, realtime;
         readonly object audioLock = new object();
         readonly TaskCompletionSource<Exception> audioEnded = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
         readonly List<string> warnings = new List<string>();
         ScreenVideo video;
         WaveInEvent microphone;
         WaveFileWriter wave;
+        LiveNarration live;
+        long recordedBytes, publishedBytes;
+        bool discardTranscript;
         string directory;
         long? audioStartMs;
         bool finished;
@@ -29,6 +32,7 @@ namespace OperationRecorderApp
         {
             this.recorder = recorder;
             audioEnabled = settings.RecordNarration;
+            realtime = settings.RealtimeTranscription;
             ffmpeg = settings.RecordVideo ? ExistingFile(settings.FfmpegPath, "FFmpeg") : null;
             if (audioEnabled)
             {
@@ -40,11 +44,18 @@ namespace OperationRecorderApp
         static string ExistingFile(string path, string name)
         {
             if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path.Trim()) || !File.Exists(path.Trim()))
-                throw new InvalidOperationException(name + "の実行ファイルを「撮影の設定」で指定してください。");
+                throw new InvalidOperationException(name + "の実行ファイルを「記録対象」で指定してください。");
             return path.Trim();
         }
 
         public string Warning => warnings.Count == 0 ? null : string.Join("\n", warnings);
+        public string LiveText => live?.Latest;
+
+        public void DiscardTranscript()
+        {
+            discardTranscript = true;
+            live?.Cancel();
+        }
 
         public void Start(string sessionDirectory)
         {
@@ -62,7 +73,10 @@ namespace OperationRecorderApp
             try
             {
                 microphone = new WaveInEvent { WaveFormat = new WaveFormat(16000, 16, 1), BufferMilliseconds = 100 };
-                wave = new WaveFileWriter(Path.Combine(directory, "narration.wav"), microphone.WaveFormat);
+                string audio = Path.Combine(directory, "narration.wav");
+                wave = new WaveFileWriter(new FileStream(audio, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite), microphone.WaveFormat);
+                if (realtime && transcription is { Provider: not TranscriptionProvider.None })
+                    live = new LiveNarration(transcription, audio, audioLock);
                 microphone.DataAvailable += (_, e) =>
                 {
                     lock (audioLock)
@@ -70,6 +84,13 @@ namespace OperationRecorderApp
                         if (wave == null || e.BytesRecorded == 0) return;
                         audioStartMs ??= Math.Max(0, recorder.ElapsedMilliseconds - e.BytesRecorded * 1000L / wave.WaveFormat.AverageBytesPerSecond);
                         wave.Write(e.Buffer, 0, e.BytesRecorded);
+                        recordedBytes += e.BytesRecorded;
+                        if (live != null && recordedBytes - publishedBytes >= LiveNarration.ClipBytes)
+                        {
+                            wave.Flush();
+                            publishedBytes = recordedBytes;
+                            live.Publish(recordedBytes);
+                        }
                     }
                 };
                 microphone.RecordingStopped += (_, e) => audioEnded.TrySetResult(e.Exception);
@@ -79,6 +100,8 @@ namespace OperationRecorderApp
             {
                 warnings.Add("マイク録音を開始できません: " + e.Message);
                 CloseMicrophone();
+                live?.ReleaseAfterCancellation();
+                live = null;
             }
         }
 
@@ -97,6 +120,15 @@ namespace OperationRecorderApp
                 }
                 catch (Exception e) { warnings.Add("録音を停止できません: " + e.Message); }
                 finally { CloseMicrophone(); }
+            }
+            if (live != null)
+            {
+                if (discardTranscript || !audioStartMs.HasValue)
+                {
+                    live.ReleaseAfterCancellation();
+                    live = null;
+                }
+                else live.Publish(recordedBytes, complete: true);
             }
 
             if (video != null)
@@ -138,7 +170,11 @@ namespace OperationRecorderApp
                 warnings.Add("本文への文字起こしを追加できません: " + transcriptionConfigError);
                 return;
             }
-            try { NarrationTranscription.Save(transcription, directory, audioStartMs.Value); }
+            try
+            {
+                if (live != null) live.Save(directory, audioStartMs.Value);
+                else NarrationTranscription.Save(transcription, directory, audioStartMs.Value);
+            }
             catch (Exception e) { warnings.Add("本文への文字起こしを追加できません: " + e.Message); }
         }
     }

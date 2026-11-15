@@ -68,16 +68,22 @@ namespace OpRec
                 if (!(events[index]["seq"] is JsonValue value) || !value.TryGetValue<long>(out var seq)) continue;
                 if (!bodies.TryGetValue(seq, out var lines)) bodies[seq] = lines = new List<string>();
                 var time = TimeSpan.FromMilliseconds(at);
-                var text = new StringBuilder();
-                foreach (char character in segment["text"].GetValue<string>() ?? "")
-                {
-                    if ("\\`*_{}[]<>()#+-.!|&~".IndexOf(character) >= 0) text.Append('\\');
-                    text.Append(char.IsControl(character) ? ' ' : character);
-                }
+                string text = EscapeMarkdown(segment["text"].GetValue<string>());
                 lines.Add("[" + (int)time.TotalHours + time.ToString(@"\:mm\:ss\.fff", System.Globalization.CultureInfo.InvariantCulture) + "] " + text);
             }
             foreach (var body in bodies) result[body.Key] = string.Join("\n\n", body.Value);
             return result;
+        }
+
+        internal static string EscapeMarkdown(string value)
+        {
+            var text = new StringBuilder();
+            foreach (char character in value ?? "")
+            {
+                if ("\\`*_{}[]<>()#+-.!|&~".IndexOf(character) >= 0) text.Append('\\');
+                text.Append(char.IsControl(character) ? ' ' : character);
+            }
+            return text.ToString();
         }
     }
 }

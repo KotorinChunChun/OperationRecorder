@@ -86,11 +86,19 @@ namespace OpRec
                     case 0x207: type = 1; btn = 2; break;
                     case 0x208: type = 2; btn = 2; break;
                     case 0x20A: type = 7; break;                 // WM_MOUSEWHEEL(縦のホイール)
+                    case 0x20B: type = 1; btn = 3; break;        // WM_XBUTTONDOWN
+                    case 0x20C: type = 2; btn = 3; break;        // WM_XBUTTONUP
                 }
                 if (type != 0)
                 {
                     if (hCtrl || hShift) snapSpoiled = true;   // Ctrl+Shift+クリックはキャプチャではない
                     var s = Marshal.PtrToStructure<N.MSLLHOOKSTRUCT>(l);
+                    if (btn == 3)
+                    {
+                        uint extendedButton = s.mouseData >> 16;
+                        if (extendedButton is not (1 or 2)) return N.CallNextHookEx(IntPtr.Zero, nCode, w, l);
+                        btn = (int)extendedButton + 2;
+                    }
                     var raw = new Raw { Type = type, Button = btn, X = s.pt.X, Y = s.pt.Y, Ts = sw.ElapsedMilliseconds };
                     if (type == 7) raw.Vk = (short)(s.mouseData >> 16);   // ホイールの回転量(正 = 上 / 奥、負 = 下 / 手前。1 ノッチ = 120)
                     Enqueue(raw);

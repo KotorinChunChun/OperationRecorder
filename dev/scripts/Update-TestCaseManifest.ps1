@@ -22,7 +22,7 @@ $features = @(
     [ordered]@{ id = 'F-TARGET'; title = '撮影モードと対象ウィンドウ・プロセス・ディスプレイ'; boundary = 'Coreは判断と設定、実OS撮影はDesktopの別ケース' },
     [ordered]@{ id = 'F-INPUT'; title = '入力分類・ホイール集約・撮影規則・画像同一判定'; boundary = '合成イベントと専用生成画像、実入力はDesktopの別ケース' },
     [ordered]@{ id = 'F-HOTKEY'; title = '操作キーの変更・検証・状態表示'; boundary = 'キー値と画面配線、実OS登録の失敗は差替えで検証' },
-    [ordered]@{ id = 'F-OVERLAY'; title = 'オーバーレイの直近手順・ボタン・逃避計算'; boundary = '実コントロールと位置計算、外観の良さや全DPIは判定しない' },
+    [ordered]@{ id = 'F-OVERLAY'; title = 'オーバーレイの直近手順・ボタン・近接透過'; boundary = '実コントロールと透過状態遷移、全DPIでの外観は判定しない' },
     [ordered]@{ id = 'F-RECORDING'; title = '記録の開始・取消・取り直し・保存と失敗処理'; boundary = '実controllerに記録・ホットキー・dispatch・保存境界を注入' },
     [ordered]@{ id = 'F-TRANSCRIPTION'; title = '文字起こし方式、鍵保管、音声送信と時刻'; boundary = '隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない' },
     [ordered]@{ id = 'F-SESSION-LIST'; title = '記録一覧と複数選択・未保存の保持'; boundary = '実フォーム、画像と記録は専用fixture' },
@@ -48,7 +48,7 @@ $classFeature = @{
     WindowChangeTests = 'F-WINDOW'; WindowObservationTests = 'F-WINDOW'
     AppSettingsTests = 'F-SETTINGS'; TargetSettingsTests = 'F-SETTINGS'; TargetRulesTests = 'F-TARGET'
     CaptureRulesTests = 'F-INPUT'; WheelRulesTests = 'F-INPUT'; ImageCompareTests = 'F-INPUT'
-    HotkeyTests = 'F-HOTKEY'; UiTextsTests = 'F-HOTKEY'; OverlayPlacementTests = 'F-OVERLAY'
+    HotkeyTests = 'F-HOTKEY'; UiTextsTests = 'F-HOTKEY'; OverlayProximityTests = 'F-OVERLAY'
     RecordingLifecycleTests = 'F-RECORDING'; CompositionEntryTests = 'F-SESSION-LIST'; SessionEditorTests = 'F-SESSION-DELETE'
     TranscriptionTests = 'F-TRANSCRIPTION'
     MergeTests = 'F-COMPOSITION-ENGINE'; CompositionEngineTests = 'F-COMPOSITION-ENGINE'

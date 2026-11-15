@@ -5,7 +5,7 @@ using System.Text;
 
 namespace OperationRecorderApp
 {
-    enum TranscriptionProvider { None, Whisper, Haas, Compatible, OpenAI, Gemini }
+    enum TranscriptionProvider { None, Whisper, Haas, Compatible, OpenAI, Gemini, Windows }
 
     sealed record TranscriptionSettings(TranscriptionProvider Provider, string Python, string LocalModel,
         string Model, Uri Endpoint)
@@ -19,10 +19,13 @@ namespace OperationRecorderApp
                 Enum.IsDefined(provider) ? provider : TranscriptionProvider.None;
         }
 
-        public static TranscriptionSettings From(AppSettings settings)
+        public static TranscriptionSettings From(AppSettings settings) => From(settings, SelectedProvider(settings));
+
+        public static TranscriptionSettings From(AppSettings settings, TranscriptionProvider provider)
         {
-            var provider = SelectedProvider(settings);
-            return new TranscriptionSettings(provider, settings.TranscriptionPython?.Trim(), settings.TranscriptionModel?.Trim(),
+            string python = provider == TranscriptionProvider.Haas ? settings.HaasPython : settings.TranscriptionPython;
+            string folder = provider == TranscriptionProvider.Haas ? settings.HaasModel : settings.TranscriptionModel;
+            return new TranscriptionSettings(provider, python?.Trim(), folder?.Trim(),
                 provider switch
                 {
                     TranscriptionProvider.Compatible => Fallback(settings.TranscriptionServerModel, null),
@@ -78,7 +81,7 @@ namespace OperationRecorderApp
             }
             catch (Exception error) when (error is CryptographicException || error is IOException || error is UnauthorizedAccessException)
             {
-                throw new InvalidOperationException("保存済みのAPIキーを読み込めません。「撮影の設定」でキーを保存し直してください。");
+                throw new InvalidOperationException("保存済みのAPIキーを読み込めません。「記録対象」でキーを保存し直してください。");
             }
         }
 
