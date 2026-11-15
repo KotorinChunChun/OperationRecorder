@@ -55,6 +55,8 @@ namespace OperationRecorderApp
         public string NarrationProvider { get; set; }
         public string TranscriptionServerUrl { get; set; } = "";
         public string TranscriptionServerModel { get; set; } = "";
+        public string KotorinTranscriptionServerUrl { get; set; } = "http://127.0.0.1:8769";
+        public string KotorinTranscriptionServerModel { get; set; } = "";
         public string TranscriptionOpenAIModel { get; set; } = "gpt-4o-transcribe-diarize";
         public string TranscriptionGeminiModel { get; set; } = "gemini-3.5-flash-lite";
         public bool ShowOverlay { get; set; } = true;        // 記録中に撮影ログのオーバーレイを出す

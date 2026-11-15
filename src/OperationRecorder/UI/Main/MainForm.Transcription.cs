@@ -13,6 +13,7 @@ namespace OperationRecorderApp
 
         ComboBox narrationProvider;
         TextBox transcriptionPython, transcriptionLocalModel, transcriptionEndpoint, transcriptionServerModel;
+        TextBox kotorinTranscriptionEndpoint, kotorinTranscriptionModel;
         TextBox haasPython, haasModel;
         TextBox transcriptionOpenAIModel, transcriptionGeminiModel, transcriptionKey;
         CheckBox realtimeTranscription;
@@ -24,6 +25,7 @@ namespace OperationRecorderApp
             new(TranscriptionProvider.Whisper, "Whisper（ローカル）"),
             new(TranscriptionProvider.Haas, "Haas（ローカル）"),
             new(TranscriptionProvider.Compatible, "互換サーバー（音声を送信）"),
+            new(TranscriptionProvider.TranscriptionServer, "TranscriptionServer（音声を送信）"),
             new(TranscriptionProvider.OpenAI, "OpenAI GPT（音声を送信）"),
             new(TranscriptionProvider.Gemini, "Gemini（音声を送信）"),
             new(TranscriptionProvider.Windows, "OS標準音声モデル（非推奨）"),
@@ -54,6 +56,8 @@ namespace OperationRecorderApp
             CancellationTokenSource installing = null;
             var endpointRow = TranscriptionTextRow("互換サーバーのURL", settings.TranscriptionServerUrl, out transcriptionEndpoint);
             var serverModelRow = TranscriptionTextRow("モデルID（任意）", settings.TranscriptionServerModel, out transcriptionServerModel);
+            var kotorinEndpointRow = TranscriptionTextRow("TranscriptionServerのURL", settings.KotorinTranscriptionServerUrl, out kotorinTranscriptionEndpoint);
+            var kotorinModelRow = TranscriptionTextRow("モデルID（空欄なら自動）", settings.KotorinTranscriptionServerModel, out kotorinTranscriptionModel);
             var openAIModelRow = TranscriptionTextRow("OpenAIのモデルID", settings.TranscriptionOpenAIModel, out transcriptionOpenAIModel);
             var geminiModelRow = TranscriptionTextRow("GeminiのモデルID", settings.TranscriptionGeminiModel, out transcriptionGeminiModel);
             transcriptionKey = new TextBox { AccessibleName = "APIキー", UseSystemPasswordChar = true, Width = 205, MaxLength = 2048 };
@@ -63,8 +67,12 @@ namespace OperationRecorderApp
             var keyRow = Row(TranscriptionLabel("APIキー"), transcriptionKey, saveKey, removeKey, keyStatus);
             var credentials = new TranscriptionCredentials(AppSettings.SettingsDir);
 
-            Uri SelectedEndpoint() => NarrationProvider == TranscriptionProvider.Compatible
-                ? TranscriptionSettings.ServerEndpoint(transcriptionEndpoint.Text) : null;
+            Uri SelectedEndpoint() => NarrationProvider switch
+            {
+                TranscriptionProvider.Compatible => TranscriptionSettings.ServerEndpoint(transcriptionEndpoint.Text),
+                TranscriptionProvider.TranscriptionServer => TranscriptionSettings.TranscriptionServerEndpoint(kotorinTranscriptionEndpoint.Text),
+                _ => null,
+            };
 
             void UpdateKeyStatus()
             {
@@ -94,9 +102,13 @@ namespace OperationRecorderApp
                 modelStatus.Text = local && installer.Installed(provider) ? "導入済み" : "";
                 delete.Enabled = local && installer.Installed(provider);
                 endpointRow.Visible = serverModelRow.Visible = provider == TranscriptionProvider.Compatible;
+                kotorinEndpointRow.Visible = kotorinModelRow.Visible = provider == TranscriptionProvider.TranscriptionServer;
                 openAIModelRow.Visible = provider == TranscriptionProvider.OpenAI;
                 geminiModelRow.Visible = provider == TranscriptionProvider.Gemini;
-                keyRow.Visible = provider is TranscriptionProvider.Compatible or TranscriptionProvider.OpenAI or TranscriptionProvider.Gemini;
+                keyRow.Visible = provider is TranscriptionProvider.Compatible or TranscriptionProvider.TranscriptionServer or
+                    TranscriptionProvider.OpenAI or TranscriptionProvider.Gemini;
+                transcriptionKey.AccessibleName = provider == TranscriptionProvider.TranscriptionServer
+                    ? "Bearer認証を構成したサーバーの接続キー" : "APIキー";
                 transcriptionKey.Clear();
                 UpdateKeyStatus();
             }
@@ -169,9 +181,10 @@ namespace OperationRecorderApp
                 catch (Exception error) { ShowInfo("モデルを削除できません。\n" + error.Message); }
             };
             panel.Controls.AddRange([installRow, modelStatus, pythonRow, localModelRow, haasPythonRow, haasModelRow,
-                endpointRow, serverModelRow, openAIModelRow, geminiModelRow, keyRow]);
+                endpointRow, serverModelRow, kotorinEndpointRow, kotorinModelRow, openAIModelRow, geminiModelRow, keyRow]);
             narrationProvider.SelectedIndexChanged += (_, _) => UpdateRows();
             transcriptionEndpoint.TextChanged += (_, _) => { transcriptionKey.Clear(); UpdateKeyStatus(); };
+            kotorinTranscriptionEndpoint.TextChanged += (_, _) => { transcriptionKey.Clear(); UpdateKeyStatus(); };
             saveKey.Click += (_, _) => ChangeKey(false);
             removeKey.Click += (_, _) => ChangeKey(true);
             UpdateRows();
@@ -200,6 +213,9 @@ namespace OperationRecorderApp
             }
             catch (ArgumentException) { settings.TranscriptionServerUrl = ""; }
             settings.TranscriptionServerModel = transcriptionServerModel.Text.Trim();
+            try { settings.KotorinTranscriptionServerUrl = TranscriptionSettings.TranscriptionServerEndpoint(kotorinTranscriptionEndpoint.Text).AbsoluteUri; }
+            catch (ArgumentException) { settings.KotorinTranscriptionServerUrl = "invalid"; }
+            settings.KotorinTranscriptionServerModel = kotorinTranscriptionModel.Text.Trim();
             settings.TranscriptionOpenAIModel = transcriptionOpenAIModel.Text.Trim();
             settings.TranscriptionGeminiModel = transcriptionGeminiModel.Text.Trim();
         }

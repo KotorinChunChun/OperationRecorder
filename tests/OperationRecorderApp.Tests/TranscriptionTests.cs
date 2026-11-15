@@ -243,6 +243,81 @@ namespace OperationRecorderApp.Tests
             Assert.Equal("[]", File.ReadAllText(existing));
         }
 
+        [Theory]
+        [InlineData("local")]
+        [InlineData("lan")]
+        [InlineData("bearer")]
+        public async Task TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する(string mode)
+        {
+            var options = TranscriptionSettings.From(new AppSettings { NarrationProvider = "TranscriptionServer" });
+            const string saved = "saved-bearer-key";
+            const string temporary = "ephemeral-health-token";
+            string expected = mode == "bearer" ? saved : temporary;
+            int calls = 0;
+            using var client = new HttpClient(new Stub(async request =>
+            {
+                calls++;
+                Assert.Equal("http://127.0.0.1:8769", request.RequestUri.GetLeftPart(UriPartial.Authority));
+                switch (request.RequestUri.AbsolutePath)
+                {
+                    case "/api/health":
+                        if (mode == "bearer" && request.Headers.Authorization == null)
+                            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                        Assert.Equal(mode == "bearer" ? saved : null, request.Headers.Authorization?.Parameter);
+                        return Json(new JsonObject
+                        {
+                            ["appId"] = "meeting-transcriber", ["serverVersion"] = "0.1.17", ["protocolVersion"] = 3,
+                            ["authMode"] = mode, ["token"] = temporary, ["ready"] = true, ["acceptingJobs"] = true,
+                            ["capabilities"] = new JsonObject { ["openaiAudio"] = true },
+                        }.ToJsonString());
+                    case "/v1/models":
+                        Assert.Equal(expected, request.Headers.Authorization?.Parameter);
+                        return Json("""{"data":[{"id":"openai/whisper-1","x_meeting":{"task":"transcription","available":true,"modelInstalled":null}},{"id":"whisper/small","x_meeting":{"task":"transcription","available":true,"modelInstalled":true}}]}""");
+                    default:
+                        Assert.Equal("/v1/audio/transcriptions", request.RequestUri.AbsolutePath);
+                        Assert.Equal(expected, request.Headers.Authorization?.Parameter);
+                        var form = Assert.IsType<MultipartFormDataContent>(request.Content).ToDictionary(part => part.Headers.ContentDisposition.Name.Trim('"'));
+                        Assert.Equal("whisper/small", await form["model"].ReadAsStringAsync());
+                        Assert.Equal("verbose_json", await form["response_format"].ReadAsStringAsync());
+                        return Json("""{"segments":[{"start":0.125,"end":0.75,"text":"説明を確認します"}]}""");
+                }
+            }));
+            var segments = await TranscriptionApi.Run(options, saved, MakeWave(1), client);
+            Assert.Equal(mode == "bearer" ? 4 : 3, calls);
+            OpRec.SessionTranscript.Save(session.Dir, segments, 1000);
+            var savedTranscript = File.ReadAllText(Path.Combine(session.Dir, "transcript.json"));
+            Assert.Contains("1125", savedTranscript);
+            Assert.DoesNotContain(expected, savedTranscript);
+        }
+
+        [Theory]
+        [InlineData(2, true, true, "protocolVersion")]
+        [InlineData(3, false, true, "受付できません")]
+        [InlineData(3, true, false, "受付できません")]
+        [InlineData(3, true, true, "指定したモデル")]
+        public async Task TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(
+            int protocol, bool ready, bool accepting, string message)
+        {
+            var options = TranscriptionSettings.From(new AppSettings
+            {
+                NarrationProvider = "TranscriptionServer", KotorinTranscriptionServerModel = "whisper/small",
+            });
+            using var client = new HttpClient(new Stub(request =>
+            {
+                Assert.Equal(HttpMethod.Get, request.Method);
+                return Task.FromResult(request.RequestUri.AbsolutePath == "/api/health" ? Json(new JsonObject
+                {
+                    ["appId"] = "meeting-transcriber", ["serverVersion"] = "0.1.17", ["protocolVersion"] = protocol,
+                    ["authMode"] = "local", ["token"] = "must-not-appear", ["ready"] = ready, ["acceptingJobs"] = accepting,
+                    ["capabilities"] = new JsonObject { ["openaiAudio"] = true },
+                }.ToJsonString()) : Json("""{"data":[{"id":"whisper/small","x_meeting":{"task":"transcription","available":false,"modelInstalled":false}}]}"""));
+            }));
+            var failure = await Record.ExceptionAsync(() => TranscriptionApi.Run(options, (string)null, MakeWave(1), client));
+            Assert.NotNull(failure);
+            Assert.Contains(message, failure.Message);
+            Assert.DoesNotContain("must-not-appear", failure.Message);
+        }
+
         string MakeWave(int seconds)
         {
             string path = Path.Combine(session.Dir, "narration.wav");

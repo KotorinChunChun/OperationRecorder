@@ -5,7 +5,7 @@ using System.Text;
 
 namespace OperationRecorderApp
 {
-    enum TranscriptionProvider { None, Whisper, Haas, Compatible, OpenAI, Gemini, Windows }
+    enum TranscriptionProvider { None, Whisper, Haas, Compatible, OpenAI, Gemini, Windows, TranscriptionServer }
 
     sealed record TranscriptionSettings(TranscriptionProvider Provider, string Python, string LocalModel,
         string Model, Uri Endpoint)
@@ -29,10 +29,16 @@ namespace OperationRecorderApp
                 provider switch
                 {
                     TranscriptionProvider.Compatible => Fallback(settings.TranscriptionServerModel, null),
+                    TranscriptionProvider.TranscriptionServer => Fallback(settings.KotorinTranscriptionServerModel, null),
                     TranscriptionProvider.OpenAI => Fallback(settings.TranscriptionOpenAIModel, "gpt-4o-transcribe-diarize"),
                     TranscriptionProvider.Gemini => Fallback(settings.TranscriptionGeminiModel, "gemini-3.5-flash-lite"),
                     _ => null,
-                }, provider == TranscriptionProvider.Compatible ? ServerEndpoint(settings.TranscriptionServerUrl) : null);
+                }, provider switch
+                {
+                    TranscriptionProvider.Compatible => ServerEndpoint(settings.TranscriptionServerUrl),
+                    TranscriptionProvider.TranscriptionServer => TranscriptionServerEndpoint(settings.KotorinTranscriptionServerUrl),
+                    _ => null,
+                });
         }
 
         static string Fallback(string value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
@@ -48,6 +54,14 @@ namespace OperationRecorderApp
             else if (path.EndsWith("/v1", StringComparison.Ordinal)) path += "/audio/transcriptions";
             return new UriBuilder(uri) { Path = path }.Uri;
         }
+
+        public static Uri TranscriptionServerEndpoint(string address)
+        {
+            var endpoint = ServerEndpoint(Fallback(address, "http://127.0.0.1:8769"));
+            if (endpoint.AbsolutePath != "/v1/audio/transcriptions")
+                throw new ArgumentException("TranscriptionServerのURLまたは /v1/audio/transcriptions を指定してください。");
+            return endpoint;
+        }
     }
 
     sealed class TranscriptionCredentials(string settingsDirectory)
@@ -58,12 +72,15 @@ namespace OperationRecorderApp
             {
                 TranscriptionProvider.OpenAI => "openai",
                 TranscriptionProvider.Gemini => "gemini",
-                TranscriptionProvider.Compatible when endpoint != null => "server-" +
-                    Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(endpoint.AbsoluteUri))),
+                TranscriptionProvider.Compatible when endpoint != null => EndpointName("server-", endpoint),
+                TranscriptionProvider.TranscriptionServer when endpoint != null => EndpointName("transcription-server-", endpoint),
                 _ => throw new ArgumentException("この文字起こし方式ではAPIキーを使用しません。"),
             };
             return Path.Combine(settingsDirectory, "credentials", name + ".dpapi");
         }
+
+        static string EndpointName(string prefix, Uri endpoint) => prefix +
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(endpoint.AbsoluteUri)));
 
         public bool Exists(TranscriptionProvider provider, Uri endpoint) => File.Exists(KeyPath(provider, endpoint));
 

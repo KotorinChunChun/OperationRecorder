@@ -24,9 +24,13 @@ namespace OperationRecorderApp
             CancellationToken cancellation = default)
         {
             string key = credentials.Read(options.Provider, options.Endpoint);
-            if (key == null && options.Provider != TranscriptionProvider.Compatible)
+            if (key == null && options.Provider is not (TranscriptionProvider.Compatible or TranscriptionProvider.TranscriptionServer))
                 throw new InvalidOperationException("「記録対象」で選択中のサービスのAPIキーを保存してください。");
-            using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan };
+            using var client = new HttpClient(new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                UseProxy = options.Provider != TranscriptionProvider.TranscriptionServer || !options.Endpoint.IsLoopback,
+            }) { Timeout = Timeout.InfiniteTimeSpan };
             return await Run(options, key, audio, client, cancellation).ConfigureAwait(false);
         }
 
@@ -34,10 +38,12 @@ namespace OperationRecorderApp
             CancellationToken cancellation = default)
         {
             bool gemini = options.Provider == TranscriptionProvider.Gemini;
+            bool managedServer = options.Provider == TranscriptionProvider.TranscriptionServer;
             bool compatible = options.Provider == TranscriptionProvider.Compatible;
             bool native = compatible && options.Endpoint.AbsolutePath.EndsWith("/inference", StringComparison.Ordinal);
-            bool diarize = !gemini && !compatible && options.Model.StartsWith("gpt-4o-transcribe-diarize", StringComparison.Ordinal);
-            bool timed = compatible || diarize || options.Model == "whisper-1";
+            bool diarize = options.Provider == TranscriptionProvider.OpenAI &&
+                options.Model.StartsWith("gpt-4o-transcribe-diarize", StringComparison.Ordinal);
+            bool timed = compatible || managedServer || diarize || options.Model == "whisper-1";
             Uri endpoint = options.Provider switch
             {
                 TranscriptionProvider.Gemini => GeminiEndpoint(options.Model),
@@ -52,6 +58,9 @@ namespace OperationRecorderApp
             int secondsPerChunk = gemini ? 60 : compatible || !timed ? 20 : 180;
             try
             {
+                string model = options.Model;
+                if (managedServer)
+                    (key, model) = await TranscriptionServerConnection.Prepare(client, endpoint, key, model, timer.Token).ConfigureAwait(false);
                 foreach (var chunk in ReadChunks(audio, secondsPerChunk))
                 {
                     using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
@@ -64,11 +73,14 @@ namespace OperationRecorderApp
                     {
                         if (key != null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
                         string format = diarize ? "diarized_json" : timed ? "verbose_json" : "json";
-                        request.Content = MultipartContent(chunk.Wav, native ? null : options.Model, format, diarize, native);
+                        request.Content = MultipartContent(chunk.Wav, native ? null : model, format, diarize, native);
                     }
                     using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timer.Token).ConfigureAwait(false);
                     if (!response.IsSuccessStatusCode)
+                    {
+                        if (managedServer) throw TranscriptionServerConnection.RequestFailure(response.StatusCode, "音声の認識");
                         throw new IOException($"文字起こしサービスから HTTP {(int)response.StatusCode} が返りました。接続先・モデル・APIキーを確認してください。");
+                    }
                     if (compatible && response.Headers.TryGetValues("X-Speech-Stop", out var stops) &&
                         System.Linq.Enumerable.Contains(stops, "model_limit"))
                         throw new InvalidDataException("互換サーバーのモデルが出力上限に達したため、文字起こしを保存できません。");
@@ -79,6 +91,8 @@ namespace OperationRecorderApp
                         result = new JsonObject { ["text"] = System.Text.Encoding.UTF8.GetString(body) };
                     else
                         result = JsonNode.Parse(body);
+                    if (managedServer && (result is not JsonObject serverResult || serverResult["segments"] is not JsonArray))
+                        throw new InvalidDataException("TranscriptionServerから時刻付きの認識区間を取得できません。");
                     foreach (var segment in ReadSegments(result, gemini, chunk.DurationMs))
                     {
                         totalTextBytes += System.Text.Encoding.UTF8.GetByteCount(segment.Text) + 96;
@@ -148,7 +162,7 @@ namespace OperationRecorderApp
             },
         });
 
-        static async Task<byte[]> ReadResponse(HttpContent content, CancellationToken token)
+        internal static async Task<byte[]> ReadResponse(HttpContent content, CancellationToken token)
         {
             using var stream = await content.ReadAsStreamAsync(token).ConfigureAwait(false);
             using var buffer = new MemoryStream();

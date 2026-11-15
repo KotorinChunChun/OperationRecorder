@@ -4,8 +4,8 @@
   "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
   "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
   "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
-  "methodCount": 323,
-  "expandedCaseCount": 533,
+  "methodCount": 325,
+  "expandedCaseCount": 540,
   "additionalSuites": [
     {
       "id": "html-browser",
@@ -97,7 +97,7 @@
       "id": "F-TRANSCRIPTION",
       "title": "文字起こし方式、鍵保管、音声送信と時刻",
       "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
-      "caseCount": 12,
+      "caseCount": 14,
       "status": "automated"
     },
     {
@@ -4614,6 +4614,41 @@
       "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
       "displayNames": [
         "OperationRecorderApp.Tests.TranscriptionTests.OpenAIに時刻付きGPT形式を指定する"
+      ]
+    },
+    {
+      "id": "TEST-EBB78906BFC6",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない",
+      "title": "TranscriptionServerが未準備かモデルが使えない場合は音声を送らない",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 2, ready: True, accepting: True, message: \"protocolVersion\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 3, ready: False, accepting: True, message: \"受付できません\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 3, ready: True, accepting: False, message: \"受付できません\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 3, ready: True, accepting: True, message: \"指定したモデル\")"
+      ]
+    },
+    {
+      "id": "TEST-549B74285098",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する",
+      "title": "TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する(mode: \"bearer\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する(mode: \"lan\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する(mode: \"local\")"
       ]
     },
     {

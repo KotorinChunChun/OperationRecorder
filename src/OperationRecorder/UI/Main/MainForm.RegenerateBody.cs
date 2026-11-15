@@ -81,9 +81,11 @@ namespace OperationRecorderApp
             void UpdateModelFields()
             {
                 var provider = Provider();
-                modelRow.Visible = provider is TranscriptionProvider.Compatible or TranscriptionProvider.OpenAI or TranscriptionProvider.Gemini;
+                modelRow.Visible = provider is TranscriptionProvider.Compatible or TranscriptionProvider.TranscriptionServer or
+                    TranscriptionProvider.OpenAI or TranscriptionProvider.Gemini;
                 folderRow.Visible = provider is TranscriptionProvider.Whisper or TranscriptionProvider.Haas;
                 if (provider == TranscriptionProvider.Compatible) model.Text = settings.TranscriptionServerModel;
+                else if (provider == TranscriptionProvider.TranscriptionServer) model.Text = settings.KotorinTranscriptionServerModel;
                 else
                 {
                     var selected = TranscriptionSettings.From(settings, provider);
