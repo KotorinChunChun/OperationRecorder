@@ -1,33 +1,57 @@
 # OperationRecorder
 
-OperationRecorderは、PCの操作風景を記録し、スクリーンショット付きのHTML操作マニュアルを作成するWindowsアプリです。
+OperationRecorderは、PCの操作風景を記録し、スクリーンショット付きの操作マニュアルを作成するためのWindowsアプリです。
+
+Windowsには元来、ステップ記録ツール（psr）という同様のソフトウェアが内蔵されていましたが、廃止が予定されているため本ツールが置換えになると考えています。
+
+記録完了と同時に即座に他人に配布可能なマニュアルを作成することを目指して開発しました。
 
 ## 入力と出力
 
 ```mermaid
 flowchart LR
-    A["Windowsでの操作"] --> R["OperationRecorder"]
-    B["選択したウィンドウ・ディスプレイの画面"] --> R
-    C["マイクで話す説明（任意）"] --> R
+    A["Windowsでのクリック・ショートカットキー操作"] --> R["OperationRecorder"]
+    B["ウィンドウ・ディスプレイの画面"] --> R
+    C["マイクで話した操作説明・補足解説（任意）"] --> R
     D["保存済みの操作記録（編集・合成）"] --> R
     R --> E["操作記録・操作前後のPNG"]
-    R --> F["画像と説明付きの手順書（HTML・Markdown・PDF・DOCX）"]
+    R --> F["画像と説明付きの手順書（Markdown・HTML）"]
     R --> G["録画（MP4）・マイク録音（WAV）・時刻付き文字起こし（任意）"]
     R --> H["操作再生用の設定（JSON）"]
 ```
 
-## 成果物はこちら
+## 本ツールで作成可能な成果物
 
-- [操作前後](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/user.md)
-- [操作前のみ](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/user-before.md)
-- [ステップ記録ツール](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/psr.md)
-- [AI向け](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/ai.md)
+本ツールは、テンプレート様式に合わせて自由なフォーマットでの出力に対応しています。
 
-リンク先で手順書をプレビューできます。HTML版は同じフォルダーにあり、画像と一緒にダウンロードして開けます。
+デフォルトで4種類のテンプレートを搭載しています。実際に作成された成果物は以下より確認できます。
+
+- [操作前後の手順書](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/user.md)
+- [操作前のみの手順書](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/user-before.md)
+- [ステップ記録ツール風の手順書](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/psr.md)
+- [AI操作再現向けの詳細記録文書](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/ai.md)
+
+出力フォーマットにMarkdownとhtmlを選ぶことができ、更にbase64による単独ファイルへの画像埋め込み済みのマニュアル生成にも対応しています。
 
 [KotorinToys](https://github.com/KotorinChunChun/KotorinToys)のコレクションからインストール・更新・起動できます。単体のインストーラーは[GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)から入手できます。
 
-画像や動画の撮影、操作の記録に使うツールを選ぶときは、[画面・操作記録ツールの使い分け](https://github.com/KotorinChunChun/KotorinToys/blob/main/docs/recording-tools.md)を参照してください。
+なお、汎用的なスクリーンショットに特化したツールや、画面録画から動画マニュアルや手順書作成をするためのツールも開発しています。詳しくは [画面・操作記録ツールの使い分け](https://github.com/KotorinChunChun/KotorinToys/blob/main/docs/recording-tools.md)を参照してください。
+
+## 想定用途
+
+1. 人に渡すための手順書の作成（pdf、docx、html）
+   画像を埋め込んだファイルにすれば、Teams・Slack・メールなどで簡単に共有できます。
+   base64で画像を埋め込んだhtmlなら、htmlしか見れない環境でもアプリ内蔵ブラウザで軽快に閲覧できます。
+2. GitHubなどへ公開するための手順書の作成（markdown）
+   エンジニアが編集しやすいMarkdown形式の出力に対応しています。
+   AIで編集する際も少ないトークンで編集できます。
+   Markdownで公開を基本としているGitHubはもちろん、個人ブログ、情報共有サイト、Wiki、CMSへの公開にも活用できます。
+3. AIがPCの自動操作を再現するための記録文書の作成（markdown+json）
+   パソコンの自動操作（RPA的なこと）をさせるには、クリックしたいUIを教え込む必要がありますが、本ツールを使えばTitle、Class、Captionなど自動操作に必要な内部情報が記録されますので、機械的に再現可能なプログラム生成をAIにさせる際の手助けになります。
+   WinアプリやWebブラウザには、だいたいIDが付いているので、それらの情報から操作を再現可能です。
+   クリック前後のスクリーンショットも付いているため、毎回IDが変わるようなツールでもAIエージェントで実行すれば操作を再現させることができる可能性が高いです。
+   ※難易度が自動操作したい対象によって大きく変わります。完全に再現できることは保証できません。
+   本ツールはCLIでの完全操作に対応しており、Skillsを内包しておりますので、CodexやClaudeにSkillとして組み込めば、AIエージェント経由で記録を開始することも可能です。
 
 ## できること
 
