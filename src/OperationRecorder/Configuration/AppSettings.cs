@@ -62,6 +62,11 @@ namespace OperationRecorderApp
         public bool EmbedImages { get; set; }
         public bool OutputMd { get; set; } = true;
         public bool OutputHtml { get; set; } = true;
+        public bool OutputPdf { get; set; }
+        public bool OutputDocx { get; set; }
+        public string PandocPath { get; set; } = "";
+        public bool OpenPdfAfterSave { get; set; }
+        public bool OpenDocxAfterSave { get; set; }
         public bool OpenAfterSave { get; set; }              // 保存したら md を開く
         public bool OpenHtmlAfterSave { get; set; } = true;  // 保存したら HTML を開く
         public bool OpenFolderAfterSave { get; set; }        // 保存したら記録フォルダを開く

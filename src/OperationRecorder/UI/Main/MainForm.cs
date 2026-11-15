@@ -79,6 +79,11 @@ namespace OperationRecorderApp
             controller.StateChanged += OnStateChanged;
             controller.Notify += (title, text, icon) => tray.ShowBalloonTip(5000, title, text, icon);
             controller.Saved += OnSaved;
+            controller.DocumentsSaved += files =>
+            {
+                foreach (var file in files)
+                    if (Path.GetExtension(file) == ".pdf" ? settings.OpenPdfAfterSave : settings.OpenDocxAfterSave) OpenPath(file);
+            };
             controller.StepSaved += (line, dir) =>
             {
                 overlaySteps++;
@@ -227,6 +232,7 @@ namespace OperationRecorderApp
 
         internal string ManagementStopBlockReason => ManagementStopPolicy.Reason(controller.State,
             Application.OpenForms.Cast<Form>().Any(form => form.Visible && form.Modal)) ??
+            (documentExporting ? "手順書を出力しています。完了してから停止してください。" : null) ??
             (HasUnsavedSessionEdits ? "編集中の名前・解説・手順の文章を保存してから停止してください。" : null);
 
         internal void StopManaged()
@@ -239,6 +245,7 @@ namespace OperationRecorderApp
 
         void ExitApp()
         {
+            if (documentExporting) { ShowInfo("手順書を出力しています。完了してから終了してください。"); return; }
             if (controller.State == RecState.Recording || controller.State == RecState.Saving)
             {
                 if (!Confirm("記録中です。今の記録は保存されません。終了しますか?")) return;

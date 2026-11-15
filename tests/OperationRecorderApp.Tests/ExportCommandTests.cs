@@ -33,13 +33,35 @@ namespace OperationRecorderApp.Tests
             var o = ExportCommand.Parse(new[] { "--export", s.Dir }, out _);
             Assert.False(o.Embed);
             Assert.True(o.Md && o.Html);
+            Assert.False(o.Pdf || o.Docx);
             Assert.Equal(new[] { "user" }, o.Templates);
+        }
+
+        [Fact]
+        public void PDFとDOCXを指定して従来形式を省ける()
+        {
+            var options = ExportCommand.Parse(new[] { "--export", s.Dir, "--format", "pdf,DOCX", "--pandoc", "D:\\tools\\pandoc.exe" }, out string error);
+            Assert.Null(error);
+            Assert.True(options.Pdf && options.Docx);
+            Assert.False(options.Html || options.Md);
+            Assert.Equal("D:\\tools\\pandoc.exe", options.PandocPath);
+        }
+
+        [Fact]
+        public void DOCX変換ツールが無ければ他形式を上書きする前に理由を返す()
+        {
+            string output = Path.Combine(s.Root, "documents");
+            var options = ExportCommand.Parse(new[] { "--export", s.Dir, "--format", "md,docx",
+                "--pandoc", Path.Combine(s.Root, "not-installed", "pandoc.exe"), "--out", output }, out _);
+            var error = Assert.Throws<InvalidOperationException>(() => ExportCommand.Run(options));
+            Assert.Contains("Pandoc", error.Message);
+            Assert.False(Directory.Exists(output));
         }
 
         [Theory]
         [InlineData(new[] { "--export" }, "記録フォルダ")]
         [InlineData(new[] { "--export", "a", "--layout", "side" }, "知らない引数")]   // 並べ方はテンプレートで決める
-        [InlineData(new[] { "--export", "a", "--format", "pdf" }, "--format")]
+        [InlineData(new[] { "--export", "a", "--format", "rtf" }, "--format")]
         [InlineData(new[] { "--export", "a", "--unknown" }, "知らない引数")]
         [InlineData(new[] { "--export", "a", "b" }, "1 つだけ")]
         [InlineData(new[] { "--export", "a", "--out" }, "値がありません")]
@@ -95,7 +117,7 @@ namespace OperationRecorderApp.Tests
         {
             string exe = Path.Combine(AppContext.BaseDirectory, "OperationRecorder.exe");
             var psi = new ProcessStartInfo(exe) { UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true, CreateNoWindow = true };
-            foreach (var a in new[] { "--export", s.Dir, "--format", "pdf" }) psi.ArgumentList.Add(a);
+            foreach (var a in new[] { "--export", s.Dir, "--format", "rtf" }) psi.ArgumentList.Add(a);
             using (var p = Process.Start(psi))
             {
                 p.StandardOutput.ReadToEnd(); p.StandardError.ReadToEnd();

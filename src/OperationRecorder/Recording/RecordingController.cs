@@ -23,6 +23,7 @@ namespace OperationRecorderApp
         public event Action StateChanged;
         public event Action<string, string, ToolTipIcon> Notify;              // タイトル・本文・種類
         public event Action<string, List<string>, List<string>> Saved;        // 記録フォルダ・出力した md・出力した HTML
+        public event Action<IReadOnlyList<string>> DocumentsSaved;
         public event Action<string, string> StepSaved;                        // events.jsonl の 1 行・記録フォルダ(UI スレッドで呼ぶ)
         public event Action<int> StepRemoved;                                 // 取り消した手順の seq(UI スレッドで呼ぶ)
         public event Action<string, System.Drawing.Point?> StepCaptured;      // 撮影した瞬間(種類・マウスの位置)(UI スレッドで呼ぶ)
@@ -263,6 +264,7 @@ namespace OperationRecorderApp
             {
                 var mds = new List<string>();
                 var htmls = new List<string>();
+                var documents = new List<string>();
                 string error = null;
                 bool stopped = false;
                 var native = session as NativeRecordingSession;
@@ -282,6 +284,12 @@ namespace OperationRecorderApp
                             if (dependencies.Export != null) dependencies.Export(s, session.SessionDir, mds, htmls);
                             else Export(s, session.SessionDir, s.Templates, s.ReportDir, s.EmbedImages, s.OutputMd, s.OutputHtml, null, null, mds, htmls);
                         }
+                        if (session.SavedCount > 0 && s.Templates.Count > 0 && (s.OutputPdf || s.OutputDocx))
+                            documents = new DocumentExporter(s.OutputPdf, s.OutputDocx, s.PandocPath).Export(new ReportGenerator.Options
+                            {
+                                SessionDir = session.SessionDir, TemplateDir = s.EffectiveTemplateDir, Templates = s.Templates,
+                                ReportDir = s.ReportDir, Marks = s.ToMarkOptions()
+                            });
                     }
                 }
                 catch (Exception ex) { error = ex.Message; }
@@ -296,8 +304,9 @@ namespace OperationRecorderApp
                     else if (!save) Notify?.Invoke("記録を取り消しました", UiTexts.NotifyRestarted(s.Hotkeys), ToolTipIcon.Info);
                     else if (native?.MediaWarning != null) Notify?.Invoke("記録を保存しました（録画・録音の確認が必要です）", native.MediaWarning, ToolTipIcon.Warning);
                     else if (session.SavedCount == 0) Notify?.Invoke("記録を保存しました", "操作が 0 件だったので、報告書は出力していません。", ToolTipIcon.Warning);
-                    else Notify?.Invoke("記録を保存しました", session.SavedCount + " 件の操作を保存しました。" + (mds.Count + htmls.Count > 0 ? "報告書を出力しました。" : ""), ToolTipIcon.Info);
+                    else Notify?.Invoke("記録を保存しました", session.SavedCount + " 件の操作を保存しました。" + (mds.Count + htmls.Count + documents.Count > 0 ? "報告書を出力しました。" : ""), ToolTipIcon.Info);
                     if (save && stopped) Saved?.Invoke(session.SessionDir, mds, htmls);
+                    if (documents.Count > 0) DocumentsSaved?.Invoke(documents);
                 });
             });
         }
