@@ -14,6 +14,7 @@ Windows 11 x64と.NET 10 SDKを使用する。OperationRecorderは親KotorinToys
 | `tools/legacy-recorder/` | 旧PowerShell記録・報告書入口。`src/OperationRecorder/Engine`と`templates`を共有 |
 | `Assets/`・`config/`・`tool.json` | 共通アイコン、配布設定例、親の管理定義 |
 | `docs/` | 現行の利用方法・仕様・開発手順。利用説明の正本は`USERS_GUIDE.md` |
+| `samples/` | 実際の操作記録から出力した、閲覧用のサンプル手順書 |
 | `dev/scripts/` | ビルド、試験、ケース台帳更新など開発用の処理 |
 | `dev/history/vX.Y.Z/` | 版別の要求・計画・報告。進行中も完了後も同じ場所 |
 | `artifacts/` | Git対象外のbin/objと検証用出力。`Directory.Build.props`で集約 |
@@ -112,5 +113,3 @@ pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite Core
 | `SessionEditorTests` / `DragArrowTests` / `TemplateStoreTests` | 手順の削除と番号の繰り上げ・画像と手直しの片付け、ドラッグの矢印の形、テンプレートの追加・削除・書き方の誤り・プレビュー |
 | `HotkeyTests` / `UiTextsTests` | 操作キーの既定・判定(修飾キーまで一致)・使えない組み合わせ・選べるキー、変えたキーが表示に出るか |
 | `TargetRulesTests` / `TargetSettingsTests` | 前面のウィンドウを対象にできるか、ウィンドウが映っているディスプレイ、全ディスプレイの範囲と撮影の間隔、対象の決め方・操作キー・撮影モードの設定の移行 |
-
-
