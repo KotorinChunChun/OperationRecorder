@@ -406,8 +406,7 @@ Word にしたいときは、これらのアプリの出力機能や pandoc を�
 
 ## 付録: コマンドで使う(PowerShell 7)
 
-ツールの画面を使わず、コマンドでも記録・出力できます(Claude Code の operation-recorder スキルとして入っている場合)。
-スクリプトは `%USERPROFILE%\.claude\skills\operation-recorder\scripts\` にあります。
+ソースを入手した場合は `tools/legacy-recorder/` にあるPowerShellスクリプトで記録と出力ができます。次のコマンドはこのフォルダーで実行します。
 
 | 目的 | コマンド |
 |---|---|
@@ -418,3 +417,9 @@ Word にしたいときは、これらのアプリの出力機能や pandoc を�
 | 記録フォルダを指定して md を作る | `pwsh -File New-OperationReport.ps1 -SessionDir <記録フォルダ> -Template user,ai` |
 
 パラメータの一覧は `Get-Help <スクリプトのパス> -Full` で表示できます。
+
+配布版は `--export` で、保存済みの記録を画面を開かずに出力できます。
+
+```powershell
+& .\OperationRecorder.exe --export <記録フォルダ> --template user --format md,html | Write-Output
+```

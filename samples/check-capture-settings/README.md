@@ -1,0 +1,27 @@
+# OperationRecorderの基本設定操作手順書
+
+本書ではOperationRecorderの基本設定の操作手順について説明する
+
+OperationRecorder 0.1.6を開いた状態から、記録を始める前に撮影条件と操作キーを確認する例です。
+
+操作はOperationRecorderで記録し、画面画像を補って「操作前後」テンプレートで出力しました。HTMLで見る場合は、このフォルダーをまとめてダウンロードして [report.html](report.html) を開いてください。
+
+## 手順 1. 「撮影の設定」タブをクリックします
+
+操作の種類ごとに「記録する」「操作前を撮る」「操作後を撮る」を確認します。表の下には、操作の何ミリ秒前・後を撮るかを指定する欄があります。
+
+**画面:** OperationRecorder - ver 0.1.6
+
+| 操作前 | 操作後 |
+| --- | --- |
+| ![手順 1 操作前](sample_marked/0001_before.png) | ![手順 1 操作後](img/0001_after.png) |
+
+## 手順 2. 「ショートカットキー」タブをクリックします
+
+「記録の開始・再開」と「保存して終了」のキーを確認します。既定値はそれぞれ Ctrl+Shift+F9 と Ctrl+Shift+F12 です。
+
+**画面:** OperationRecorder - ver 0.1.6
+
+| 操作前 | 操作後 |
+| --- | --- |
+| ![手順 2 操作前](sample_marked/0002_before.png) | ![手順 2 操作後](img/0002_after.png) |

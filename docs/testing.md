@@ -70,14 +70,14 @@ runnerが引数の値に誤りを見つけると、終了コード2を返す。�
 
 ```powershell
 # UIの値受渡し・確認分岐を非表示STAで検証
-dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
+dotnet test .\tests\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
   --artifacts-path .\artifacts\automation-ui `
   --filter 'FullyQualifiedName~UiWiringTests|FullyQualifiedName~AppInteractionTests' `
   --logger 'trx;LogFileName=ui-wiring.trx' `
   --results-directory .\dev\history\v0.1.6\logs\ui
 
 # 1ケースだけ指定（Theoryはすべての引数行を実行）
-dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
+dotnet test .\tests\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
   --filter 'FullyQualifiedName=OperationRecorderApp.Tests.UiWiringTests.操作キーの画面変更は有効な値だけ保存してメニュー表示へ反映する'
 ```
 
@@ -185,7 +185,7 @@ Node.js、Playwright、Edgeを用意する。既存の利用者ブラウザー�
 ```powershell
 cd C:\develop\KotorinToys\tools\OperationRecorder
 $env:OPREC_HTML_TEST_ARTIFACTS = Join-Path (Get-Location) 'dev/history/v0.1.6/logs/html-local/fixtures'
-dotnet test .\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj -c Release `
+dotnet test .\tests\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj -c Release `
   --artifacts-path .\artifacts\html-tests --filter 'FullyQualifiedName~HtmlViewTests'
 node .\dev\scripts\Test-ReportHtml.cjs `
   .\dev\history\v0.1.6\logs\html-local\fixtures .\dev\history\v0.1.6\logs\html-local\browser

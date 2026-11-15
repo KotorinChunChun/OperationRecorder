@@ -1,7 +1,7 @@
 # OperationRecorderとKotorinToysの連携
 
 OperationRecorderは、PCの操作と操作前後の画面を記録し、画像付きのMarkdown・HTML手順書を作るツールです。
-使い方の詳細は[操作記録マニュアル](../operation-recorder/MANUAL.md)を参照してください。
+使い方の詳細は[操作記録マニュアル](USERS_GUIDE.md)を参照してください。
 
 ## コレクションから使う
 
@@ -35,11 +35,11 @@ KotorinToysの一覧でOperationRecorderを選び、「起動」を押すとタ�
 ## 開発版のビルドと起動
 
 Windows 11 x64と.NET 10 SDKが必要です。フレームワーク依存EXEの実行には.NET Desktop Runtime 10 x64を使用します。
-記録エンジン、テンプレート、マニュアルは、このリポジトリの `operation-recorder/` を正本とします。
+記録エンジンは `src/OperationRecorder/Engine/`、テンプレートは `templates/`、マニュアルは `docs/USERS_GUIDE.md` にあります。
 
 ```powershell
 cd C:\develop\KotorinToys\tools\OperationRecorder
-dotnet build .\OperationRecorderApp.csproj -c Debug --artifacts-path .\artifacts\management
+dotnet build .\src\OperationRecorder\OperationRecorderApp.csproj -c Debug --artifacts-path .\artifacts\management
 .\artifacts\management\bin\OperationRecorderApp\debug\OperationRecorder.exe
 ```
 

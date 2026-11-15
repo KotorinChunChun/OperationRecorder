@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OperationRecorderの基本設定操作手順書</title>
+<style>
+body { font-family: 'Yu Gothic UI', 'Meiryo', sans-serif; max-width: 1100px; margin: 2em auto; padding: 0 1.2em; line-height: 1.75; color: #222; }
+h1 { color: #1e3c78; border-bottom: 3px solid #1e3c78; padding-bottom: .3em; }
+h2 { color: #1e3c78; border-bottom: 1px solid #b8c4dc; padding-bottom: .2em; margin-top: 2.2em; }
+img { max-width: 100%; border: 1px solid #ccc; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+table { border-collapse: collapse; margin: .8em 0; }
+th, td { border: 1px solid #ccc; padding: 6px 10px; vertical-align: top; }
+th { background: #eef2f8; }
+td img { max-width: 100%; }
+table.images { width: 100%; table-layout: fixed; }
+table.images th { text-align: left; }
+code { background: #f3f3f3; padding: 0 .3em; border-radius: 3px; }
+pre { background: #f6f6f6; padding: .8em 1em; overflow-x: auto; border-radius: 4px; }
+pre code { background: none; padding: 0; }
+
+/* 操作前 / 操作後の表示切り替え */
+.view-radio { position: absolute; opacity: 0; pointer-events: none; }
+.view-switch { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #d8dee9; padding: .4em 0; margin-bottom: .6em; font-size: .92em; }
+.view-switch label { display: inline-block; padding: .15em .9em; margin-right: .3em; border: 1px solid #b8c4dc; border-radius: 1em; cursor: pointer; color: #1e3c78; }
+#view-both:checked ~ .view-switch label[for=view-both],
+#view-before:checked ~ .view-switch label[for=view-before],
+#view-after:checked ~ .view-switch label[for=view-after] { background: #1e3c78; color: #fff; }
+#view-before:checked ~ .report .shot-after,
+#view-after:checked ~ .report .shot-before { display: none; }
+
+/* クリックで拡大 */
+.zoom { display: inline-block; }
+.zoom > .zoom-open { cursor: zoom-in; }
+.zoom > .zoom-close, .zoom > .zoom-backdrop { display: none; }
+.zoom:target { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 100; background: rgba(0,0,0,.85); text-align: center; }
+.zoom:target > .zoom-open img { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 96vw; max-height: 94vh; width: auto; height: auto; border: none; z-index: 101; }
+.zoom:target > .zoom-backdrop { display: block; position: fixed; inset: 0; z-index: 100; cursor: zoom-out; }
+.zoom:target > .zoom-close { display: block; position: fixed; top: 12px; right: 12px; z-index: 102; padding: 8px 16px; border: 1px solid #b8c4dc; border-radius: 6px; background: #fff; color: #1e3c78; font-weight: bold; text-decoration: none; cursor: pointer; }
+
+@media print {
+  body { max-width: none; margin: 0; }
+  h2 { page-break-after: avoid; }
+  img { page-break-inside: avoid; }
+  .view-switch, .zoom > .zoom-close, .zoom > .zoom-backdrop { display: none !important; }
+  .report .shot-before, .report .shot-after { display: revert !important; }
+}
+</style>
+</head>
+<body>
+<div class="intro">
+<h1 id="operationrecorder">OperationRecorderの基本設定操作手順書</h1>
+<p>本書ではOperationRecorderの基本設定の操作手順について説明する</p>
+<p>OperationRecorder 0.1.6を開いた状態から、記録を始める前に撮影条件と操作キーを確認する例です。</p>
+</div>
+<input type="radio" name="view" id="view-both" class="view-radio" checked>
+<input type="radio" name="view" id="view-before" class="view-radio">
+<input type="radio" name="view" id="view-after" class="view-radio">
+<div class="view-switch"><label for="view-both">操作前と操作後</label><label for="view-before">操作前だけ</label><label for="view-after">操作後だけ</label></div>
+<div class="report">
+<h2 id="section">手順 1. 「撮影の設定」タブをクリックします</h2>
+<p>操作の種類ごとに「記録する」「操作前を撮る」「操作後を撮る」を確認します。表の下には、操作の何ミリ秒前・後を撮るかを指定する欄があります。</p>
+<p><strong>画面:</strong> OperationRecorder - ver 0.1.6</p>
+<table class="images">
+<thead>
+<tr>
+<th class="shot-before">操作前</th>
+<th class="shot-after">操作後</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="shot-before"><span class="zoom" id="zoom-1"><a class="zoom-open" href="#zoom-1"><img src="sample_marked/0001_before.png" alt="手順 1 操作前" /></a><a class="zoom-backdrop" href="#_" aria-label="拡大画像を閉じる"></a><a class="zoom-close" href="#_" role="button" aria-label="閉じる（ESC）">閉じる（ESC）</a></span></td>
+<td class="shot-after"><span class="zoom" id="zoom-2"><a class="zoom-open" href="#zoom-2"><img src="img/0001_after.png" alt="手順 1 操作後" /></a><a class="zoom-backdrop" href="#_" aria-label="拡大画像を閉じる"></a><a class="zoom-close" href="#_" role="button" aria-label="閉じる（ESC）">閉じる（ESC）</a></span></td>
+</tr>
+</tbody>
+</table>
+<h2 id="section-1">手順 2. 「ショートカットキー」タブをクリックします</h2>
+<p>「記録の開始・再開」と「保存して終了」のキーを確認します。既定値はそれぞれ Ctrl+Shift+F9 と Ctrl+Shift+F12 です。</p>
+<p><strong>画面:</strong> OperationRecorder - ver 0.1.6</p>
+<table class="images">
+<thead>
+<tr>
+<th class="shot-before">操作前</th>
+<th class="shot-after">操作後</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="shot-before"><span class="zoom" id="zoom-3"><a class="zoom-open" href="#zoom-3"><img src="sample_marked/0002_before.png" alt="手順 2 操作前" /></a><a class="zoom-backdrop" href="#_" aria-label="拡大画像を閉じる"></a><a class="zoom-close" href="#_" role="button" aria-label="閉じる（ESC）">閉じる（ESC）</a></span></td>
+<td class="shot-after"><span class="zoom" id="zoom-4"><a class="zoom-open" href="#zoom-4"><img src="img/0002_after.png" alt="手順 2 操作後" /></a><a class="zoom-backdrop" href="#_" aria-label="拡大画像を閉じる"></a><a class="zoom-close" href="#_" role="button" aria-label="閉じる（ESC）">閉じる（ESC）</a></span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<script>
+document.addEventListener('keydown', function (event) {
+  if (event.defaultPrevented || (event.key !== 'Escape' && event.key !== 'Esc')) return;
+  var zoom = document.querySelector('.zoom:target');
+  if (!zoom) return;
+  event.preventDefault();
+  window.location.hash = '_';
+  var opener = zoom.querySelector('.zoom-open');
+  if (opener) opener.focus();
+});
+</script>
+</body>
+</html>
