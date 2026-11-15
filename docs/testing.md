@@ -148,6 +148,8 @@ Desktopテストを直接起動する場合はrunnerと同じfixture/環境条�
 
 すべての入力に`"schemaVersion":1`を指定する。未知のキー、不正な型、必須項目の欠落は処理前に拒否する。設定の`save`も未知の設定項目や型違いを拒否する。以前の版の設定を読み込む`load`では移行処理を維持する。
 
+`session export` の `pdf` と `docx` は既定で `false`。追加形式だけを出力する場合は `"md":false,"html":false` を指定する。PDFはインストール済みのEdge、DOCXはインストール済みまたはPATH上のPandocを使う。変換ソフトを明示する場合は、通常の `--export` の `--pandoc` を使う。
+
 `session edit`は`headline`と`body`を両方指定する。自動文章への復元は`reset`を明示して行う。`metadata`は`caption`か`description`を少なくとも一方指定し、前後の空白はGUIと同じように除去して保存する。
 
 `session transcript` は時刻付きの発話を隔離領域内の記録に取り込む。入力JSONの例は `{"schemaVersion":1,"action":"transcript","session":"records/sample","transcript":"inputs/narration.json","offsetMs":250}`。`transcript` のファイルは `[{"startMs":0,"endMs":850,"text":"入力を確定します"}]` のようなJSON配列。各区間の時刻は音声の先頭からのミリ秒で、`offsetMs` を加えて記録開始を基準にする。実EXEのCLI試験は手順の割り当て、既存操作と手修正文の保持、Markdown・HTML出力を検証する。

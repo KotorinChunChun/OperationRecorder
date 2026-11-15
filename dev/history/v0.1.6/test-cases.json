@@ -4,8 +4,8 @@
   "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
   "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
   "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
-  "methodCount": 313,
-  "expandedCaseCount": 519,
+  "methodCount": 315,
+  "expandedCaseCount": 521,
   "additionalSuites": [
     {
       "id": "html-browser",
@@ -160,7 +160,7 @@
       "id": "F-EXPORT",
       "title": "Markdown/HTMLの出力形式・画像・本文と旧CLI互換",
       "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
-      "caseCount": 32,
+      "caseCount": 34,
       "status": "automated"
     },
     {
@@ -1676,6 +1676,21 @@
       ]
     },
     {
+      "id": "TEST-C11E7A1BB0C6",
+      "fullName": "OperationRecorderApp.Tests.ExportCommandTests.DOCX変換ツールが無ければ他形式を上書きする前に理由を返す",
+      "title": "DOCX変換ツールが無ければ他形式を上書きする前に理由を返す",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportCommandTests.DOCX変換ツールが無ければ他形式を上書きする前に理由を返す"
+      ]
+    },
+    {
       "id": "TEST-54D7EDA87185",
       "fullName": "OperationRecorderApp.Tests.ExportCommandTests.exeから出力できる",
       "title": "exeから出力できる",
@@ -1706,6 +1721,21 @@
       ]
     },
     {
+      "id": "TEST-FDDEC86945BA",
+      "fullName": "OperationRecorderApp.Tests.ExportCommandTests.PDFとDOCXを指定して従来形式を省ける",
+      "title": "PDFとDOCXを指定して従来形式を省ける",
+      "featureIds": [
+        "F-EXPORT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.ExportCommandTests.PDFとDOCXを指定して従来形式を省ける"
+      ]
+    },
+    {
       "id": "TEST-AD3F49AD425C",
       "fullName": "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる",
       "title": "引数の誤りを知らせる",
@@ -1717,7 +1747,7 @@
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
       "boundary": "実出力ファイル、生成画像、pwsh比較、外部の既定アプリは起動しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\", \"a\", \"--format\", \"pdf\"], expected: \"--format\")",
+        "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\", \"a\", \"--format\", \"rtf\"], expected: \"--format\")",
         "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\", \"a\", \"--layout\", \"side\"], expected: \"知らない引数\")",
         "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\", \"a\", \"--out\"], expected: \"値がありません\")",
         "OperationRecorderApp.Tests.ExportCommandTests.引数の誤りを知らせる(args: [\"--export\", \"a\", \"--unknown\"], expected: \"知らない引数\")",

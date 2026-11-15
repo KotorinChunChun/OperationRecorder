@@ -14,6 +14,7 @@ namespace OperationRecorderApp
     public static class HtmlExporter
     {
         static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+        static readonly MarkdownPipeline PrintPipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().DisableHtml().Build();
 
         const string Css = @"
 body { font-family: 'Yu Gothic UI', 'Meiryo', sans-serif; max-width: 1100px; margin: 2em auto; padding: 0 1.2em; line-height: 1.75; color: #222; }
@@ -101,6 +102,29 @@ document.addEventListener('keydown', function (event) {
                    (intro.Length > 0 ? "<div class=\"intro\">\n" + intro + "</div>\n" : "") +
                    (switchable ? ViewSwitch : "") + "<div class=\"report\">\n" + steps + "</div>\n" +
                    (body.Contains("class=\"zoom\"") ? EscapeScript : "") + "</body>\n</html>\n";
+        }
+
+        internal static string ToDocumentHtml(string markdown)
+        {
+            string body = Markdown.ToHtml(markdown, PrintPipeline);
+            body = Regex.Replace(body, @"<img\b[^>]*>", image =>
+            {
+                // 変換エンジンへ渡す画像は、レポートが取り込んだインラインPNGに限る。
+                var source = Regex.Match(image.Value, @"\ssrc=""(data:image/png;base64,iVBORw0KGgo[A-Za-z0-9+/=]*)""");
+                if (!source.Success) return "";
+                var alt = Regex.Match(image.Value, @"\salt=""([^""]*)""").Groups[1].Value;
+                return "<img src=\"" + source.Groups[1].Value + "\" alt=\"" + alt + "\">";
+            }, RegexOptions.IgnoreCase);
+            body = Regex.Replace(body, @"<table>(?=(?:(?!</table>).)*?<img)", "<table class=\"images\">", RegexOptions.Singleline);
+            body = Regex.Replace(body, @"<table class=""images"">.*?</table>", table =>
+                Regex.Replace(table.Value, @"<img\b", "<img width=\"300\"", RegexOptions.IgnoreCase), RegexOptions.Singleline);
+            return "<!DOCTYPE html><html lang=\"ja\"><head><meta charset=\"utf-8\">" +
+                   "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src data:; style-src 'unsafe-inline'\">" +
+                   "<style>" + Css + "@page { size: A4; margin: 14mm; }" +
+                   "h1,h2,h3,h2 + p:not(:has(img)),h2 + p + p:not(:has(img)),h3 + p:not(:has(img)) { break-after: avoid; }" +
+                   "img { height: auto; max-height: 220mm; }" +
+                   "tr { break-inside: avoid; } pre { white-space: pre-wrap; overflow-wrap: anywhere; }</style>" +
+                   "</head><body><main class=\"report\">" + body + "</main></body></html>";
         }
 
         // 手順の部分が始まる位置: 最初に操作前 / 操作後の画像が出てくる手順の見出し(その前の最後の <h2>)。見出しが無ければその画像の段落・表

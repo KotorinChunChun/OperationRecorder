@@ -23,6 +23,7 @@ namespace OpRec
             public string OutFile;          // テンプレートが 1 つのときだけ使える
             public string ReportDir;        // 省略時は記録フォルダの中
             public bool EmbedImages;        // true: PNG を base64 で埋め込む / false: 相対パスで参照
+            public bool RestrictImagePaths; // 外部変換へ渡す画像は記録フォルダ内の通常ファイルに限る
             public string Caption;          // null なら session.json の caption
             public string Description;      // null なら session.json の description
             // 操作前の画像に合成する印(ポインタ・丸・矢印・枠)。記録の画像には描かずに保存しているので、ここで描く。
@@ -367,6 +368,22 @@ namespace OpRec
             return "![" + alt + "](" + rel + ")";
         }
 
+        static void CheckImagePath(JsonNode node, string sessionDir)
+        {
+            if (node == null) return;
+            string file = Str(node["file"]);
+            if (string.IsNullOrWhiteSpace(file) || Path.IsPathRooted(file) || file.Contains(':'))
+                throw new IOException("記録フォルダ外の画像は出力できません。");
+            string path = Path.GetFullPath(Path.Combine(sessionDir, file));
+            string root = Path.TrimEndingDirectorySeparator(sessionDir);
+            if (!path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(Path.GetExtension(path), ".png", StringComparison.OrdinalIgnoreCase))
+                throw new IOException("記録フォルダ内のPNGだけを出力できます。");
+            for (; !string.Equals(path, root, StringComparison.OrdinalIgnoreCase); path = Path.GetDirectoryName(path))
+                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                    throw new IOException("リンク先の画像は出力できません。");
+        }
+
         static string Xy(JsonNode p) { var o = p as JsonObject; return o == null ? null : "[" + Raw(o["x"]) + ", " + Raw(o["y"]) + "]"; }
         static string Xywh(JsonNode r) { var o = r as JsonObject; return o == null ? null : "[" + Raw(o["x"]) + ", " + Raw(o["y"]) + ", " + Raw(o["w"]) + ", " + Raw(o["h"]) + "]"; }
         static string Tf(JsonNode b) { return b == null ? null : (Bool(b) ? "true" : "false"); }
@@ -578,6 +595,11 @@ namespace OpRec
 
                 // 操作前の画像に描く印(画像に印を描かずに保存した記録だけ。合成した記録の古い記録から来た手順は marksBaked)
                 var beforeMarks = Str(session["marks"]) == "output" && !Bool(e["marksBaked"]) ? MarkSpec.FromEvent(e, e["before"] as JsonObject) : null;
+                if (o.RestrictImagePaths)
+                {
+                    CheckImagePath(e["before"], sessionDir);
+                    CheckImagePath(e["after"], sessionDir);
+                }
                 var beforeModel = ImageModel(e["before"], "手順 " + n + " 操作前", sessionDir, outDir, o.EmbedImages, beforeMarks, o.Marks);
                 var afterModel = ImageModel(e["after"], "手順 " + n + " 操作後", sessionDir, outDir, o.EmbedImages);
                 bool same = beforeModel != null && afterModel != null && ImagesSame(e, sessionDir);

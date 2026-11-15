@@ -22,7 +22,7 @@ namespace OperationRecorderApp
                 ["transcript"] = new[] { "session", "transcript", "offsetMs" },
                 ["edit"] = new[] { "session", "seq", "headline", "body" },
                 ["reset"] = new[] { "session", "seq" }, ["delete-step"] = new[] { "session", "seq" },
-                ["export"] = new[] { "session", "templates", "out", "templateDirectory", "md", "html", "embed", "caption", "description", "marks", "radius" },
+                ["export"] = new[] { "session", "templates", "out", "templateDirectory", "md", "html", "pdf", "docx", "embed", "caption", "description", "marks", "radius" },
             },
             ["template"] = new Dictionary<string, string[]>(StringComparer.Ordinal)
             {
@@ -102,10 +102,10 @@ namespace OperationRecorderApp
                         SessionDir = directory, OutDir = output, Templates = names.ToList(),
                         TemplateDir = templatePath,
                         Md = Boolean(request, "md", true), Html = Boolean(request, "html", true),
+                        Pdf = Boolean(request, "pdf", false), Docx = Boolean(request, "docx", false),
                         Embed = Boolean(request, "embed", false), Caption = Text(request, "caption"), Description = Text(request, "description"),
                         Marks = MarkOptions.Parse(Text(request, "marks") ?? "circle,arrow,frame", Integer(request, "radius", 14)),
                     };
-                    if (!options.Md && !options.Html) throw new ArgumentException("出力形式を1件以上選択してください。");
                     var files = new JsonArray(); foreach (var file in ExportCommand.Run(options)) files.Add(file);
                     return new JsonObject { ["files"] = files, ["session"] = Inspect(directory) };
                 default: throw new ArgumentException("未対応の記録操作です：" + action);
@@ -245,7 +245,7 @@ namespace OperationRecorderApp
                         if (field.Value == null) throw new ArgumentException("offsetMsは整数です。");
                         Integer(request, field.Key, 0, 86_400_000);
                         break;
-                    case "md": case "html": case "embed":
+                    case "md": case "html": case "pdf": case "docx": case "embed":
                         if (field.Value == null) throw new ArgumentException(field.Key + "はtrue/falseです。");
                         Boolean(request, field.Key, true); break;
                     case "templates":
@@ -271,7 +271,9 @@ namespace OperationRecorderApp
                 if (action == "edit" || action == "reset" || action == "delete-step") PositiveLong(request, "seq");
                 if (action == "export")
                 {
-                    if (!Boolean(request, "md", true) && !Boolean(request, "html", true)) throw new ArgumentException("出力形式を1件以上選択してください。");
+                    if (!Boolean(request, "md", true) && !Boolean(request, "html", true)
+                        && !Boolean(request, "pdf", false) && !Boolean(request, "docx", false))
+                        throw new ArgumentException("出力形式を1件以上選択してください。");
                     MarkOptions.Parse(Text(request, "marks") ?? "circle,arrow,frame", Integer(request, "radius", 14));
                 }
             }

@@ -11,10 +11,11 @@ namespace OperationRecorderApp
     // タブの上の帯(記録を開始・名前・始めるタイミング)、「記録対象」タブ(撮影モード・対象・記録中の表示)、「出力の設定」タブ
     public sealed partial class MainForm
     {
-        TextBox txtCaption, txtDescription, txtOutDir, txtReportDir;
+        TextBox txtCaption, txtDescription, txtOutDir, txtReportDir, txtPandocPath;
         RadioButton rbWindow, rbApp, rbActive, rbDesktop, rbAllDesktops, rbPick, rbForeground, rbChoose, rbLink, rbEmbed;
         ComboBox cmbWindows, cmbMonitors;
         CheckBox chkAllSame, chkOpen, chkOpenHtml, chkOpenFolder, chkOutMd, chkOutHtml;
+        CheckBox chkOutPdf, chkOpenPdf, chkOutDocx, chkOpenDocx;
         NumericUpDown numRadius;
         CheckBox chkMarkPointer, chkMarkCircle, chkMarkArrow, chkMarkFrame;
         CheckedListBox clbTemplates;
@@ -179,9 +180,22 @@ namespace OperationRecorderApp
             formats.Controls.Add(new Label { Text = "md(Markdown)", AutoSize = true, Margin = new Padding(6, 8, 6, 6) });
             formats.Controls.Add(chkOutMd);
             formats.Controls.Add(chkOpen);
+            chkOutPdf = FormatBox(settings.OutputPdf);
+            chkOpenPdf = FormatBox(settings.OpenPdfAfterSave);
+            chkOutDocx = FormatBox(settings.OutputDocx);
+            chkOpenDocx = FormatBox(settings.OpenDocxAfterSave);
+            formats.Controls.Add(new Label { Text = "PDF (Microsoft Edge)", AutoSize = true, Margin = new Padding(6, 8, 6, 6) });
+            formats.Controls.Add(chkOutPdf);
+            formats.Controls.Add(chkOpenPdf);
+            formats.Controls.Add(new Label { Text = "DOCX (Pandoc)", AutoSize = true, Margin = new Padding(6, 8, 6, 6) });
+            formats.Controls.Add(chkOutDocx);
+            formats.Controls.Add(chkOpenDocx);
             p.Controls.Add(formats);
             BindCreateOpen(chkOutHtml, chkOpenHtml);
             BindCreateOpen(chkOutMd, chkOpen);
+            BindCreateOpen(chkOutPdf, chkOpenPdf);
+            BindCreateOpen(chkOutDocx, chkOpenDocx);
+            p.Controls.Add(PathSelectionRow("Pandocの実行ファイル", nameof(txtPandocPath), settings.PandocPath, false, out txtPandocPath));
             chkOpenFolder = new CheckBox { Text = "保存したら記録フォルダを開く", AutoSize = true, Checked = settings.OpenFolderAfterSave };
             p.Controls.Add(chkOpenFolder);
             rbLink = new RadioButton { Text = "PNG を参照(img フォルダの画像を使う。ファイルが軽い)", AutoSize = true, Checked = !settings.EmbedImages };
@@ -205,7 +219,7 @@ namespace OperationRecorderApp
             numRadius.Enabled = chkMarkCircle.Checked;
 
 
-            p.Controls.Add(Caption("md / HTML を保存するフォルダ(空なら記録フォルダの中)", true));
+            p.Controls.Add(Caption("手順書を保存するフォルダ(空なら記録フォルダの中)", true));
             txtReportDir = new TextBox { Width = 460, Text = settings.ReportDir };
             p.Controls.Add(Row(txtReportDir, BrowseButton(txtReportDir, "md / HTML を保存するフォルダ")));
             FillTemplateList(clbTemplates, LoadTemplates(), settings.Templates);
@@ -331,6 +345,11 @@ namespace OperationRecorderApp
             settings.OpenFolderAfterSave = chkOpenFolder.Checked;
             settings.OutputMd = chkOutMd.Checked;
             settings.OutputHtml = chkOutHtml.Checked;
+            settings.OutputPdf = chkOutPdf.Checked;
+            settings.OutputDocx = chkOutDocx.Checked;
+            settings.OpenPdfAfterSave = chkOpenPdf.Checked;
+            settings.OpenDocxAfterSave = chkOpenDocx.Checked;
+            settings.PandocPath = txtPandocPath.Text.Trim();
             settings.OutDir = string.IsNullOrWhiteSpace(txtOutDir.Text) ? AppSettings.DefaultOutDir : txtOutDir.Text.Trim();
             settings.ReportDir = txtReportDir.Text.Trim();
             SaveCaptureSettings();

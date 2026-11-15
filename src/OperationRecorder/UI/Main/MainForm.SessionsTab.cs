@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using OpRec;
 
@@ -24,6 +25,8 @@ namespace OperationRecorderApp
         CheckedListBox clbSesTemplates;
         Label lblSesInfo, lblStepInfo, lblStepEdited;
         Button btnSaveMeta, btnOutHtml, btnOutMd, btnOpenSaveFolder, btnDeleteSession, btnSaveStep, btnResetStep, btnDeleteStep, btnEditTemplates, btnMerge;
+        Button btnOutPdf, btnOutDocx;
+        bool documentExporting;
         List<ReportGenerator.StepInfo> currentSteps = new List<ReportGenerator.StepInfo>();
 
         bool HasUnsavedSessionEdits
@@ -127,7 +130,11 @@ namespace OperationRecorderApp
             btnOutHtml.Click += (s, e) => GenerateForSelected(true);
             btnOutMd = new Button { Text = "Markdown で出力", Width = 134, Height = 34, Font = new Font("Yu Gothic UI", 10f, FontStyle.Bold) };
             btnOutMd.Click += (s, e) => GenerateForSelected(false);
-            info.Controls.Add(Row(btnOutHtml, btnOutMd));
+            btnOutPdf = new Button { Name = nameof(btnOutPdf), Text = "PDF で出力", AutoSize = true, Height = 34 };
+            btnOutDocx = new Button { Name = nameof(btnOutDocx), Text = "DOCX で出力", AutoSize = true, Height = 34 };
+            btnOutPdf.Click += async (s, e) => await GenerateDocumentForSelected(pdf: true);
+            btnOutDocx.Click += async (s, e) => await GenerateDocumentForSelected(pdf: false);
+            info.Controls.Add(Row(btnOutHtml, btnOutMd, btnOutPdf, btnOutDocx));
             btnOpenSaveFolder = new Button { Text = "保存フォルダを開く", AutoSize = true };
             btnOpenSaveFolder.Click += (s, e) => { if (SelectedSession != null) OpenPath(SaveFolderOf(SelectedSession)); };
             info.Controls.Add(btnOpenSaveFolder);
@@ -202,7 +209,7 @@ namespace OperationRecorderApp
 
         void EnableSessionButtons(bool on)
         {
-            foreach (var c in new Control[] { txtSesCaption, txtSesDescription, btnSaveMeta, btnOutHtml, btnOutMd, btnOpenSaveFolder, btnDeleteSession })
+            foreach (var c in new Control[] { txtSesCaption, txtSesDescription, btnSaveMeta, btnOutHtml, btnOutMd, btnOutPdf, btnOutDocx, btnOpenSaveFolder, btnDeleteSession })
                 c.Enabled = on;
             btnMerge.Enabled = lvSessions.SelectedItems.Count > 0;
         }
@@ -500,6 +507,40 @@ namespace OperationRecorderApp
             catch (Exception ex) { ShowWarning("出力できませんでした: " + ex.Message); }
             finally { Cursor = Cursors.Default; }
         }
+        async Task GenerateDocumentForSelected(bool pdf)
+        {
+            var it = SelectedSession;
+            if (it == null || documentExporting) return;
+            var templates = CheckedTemplates(clbSesTemplates);
+            if (templates.Count == 0) { ShowInfo("出力するテンプレートを 1 つ以上選んでください。"); return; }
+            var options = new ReportGenerator.Options
+            {
+                SessionDir = it.Dir, TemplateDir = settings.EffectiveTemplateDir, Templates = templates,
+                ReportDir = txtSesReportDir.Text.Trim(), Caption = txtSesCaption.Text.Trim(),
+                Description = txtSesDescription.Text.Trim(), Marks = settings.ToMarkOptions()
+            };
+            var pandoc = txtPandocPath.Text.Trim();
+            documentExporting = true;
+            pageSessions.Enabled = false;
+            statusLabel.Text = pdf ? "PDFを出力しています…" : "DOCXを出力しています…";
+            try
+            {
+                var outputs = await Task.Run(() => new DocumentExporter(pdf, !pdf, pandoc).Export(options));
+                if (IsDisposed) return;
+                statusLabel.Text = "出力しました: " + string.Join(", ", outputs.Select(Path.GetFileName));
+                foreach (var path in outputs) OpenPath(path);
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed) ShowWarning("出力できませんでした: " + ex.Message);
+            }
+            finally
+            {
+                documentExporting = false;
+                if (!IsDisposed) pageSessions.Enabled = true;
+            }
+        }
+
         void DeleteSelectedSession()
         {
             var it = SelectedSession;

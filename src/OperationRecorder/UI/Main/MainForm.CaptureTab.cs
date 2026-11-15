@@ -55,13 +55,13 @@ namespace OperationRecorderApp
             chkRecordVideo = new CheckBox { Name = nameof(chkRecordVideo), Text = "撮影範囲を録画する（MP4）", AutoSize = true, Checked = settings.RecordVideo };
             chkRecordNarration = new CheckBox { Name = nameof(chkRecordNarration), Text = "マイクを録音し、説明を手順本文に追記する", AutoSize = true, Checked = settings.RecordNarration };
             p.Controls.Add(chkRecordVideo);
-            p.Controls.Add(MediaPath("FFmpegの実行ファイル", nameof(txtFfmpegPath), settings.FfmpegPath, false, out txtFfmpegPath));
+            p.Controls.Add(PathSelectionRow("FFmpegの実行ファイル", nameof(txtFfmpegPath), settings.FfmpegPath, false, out txtFfmpegPath));
             p.Controls.Add(chkRecordNarration);
-            p.Controls.Add(MediaPath("文字起こし用のPython", nameof(txtTranscriptionPython), settings.TranscriptionPython, false, out txtTranscriptionPython));
-            p.Controls.Add(MediaPath("文字起こし用のモデル", nameof(txtTranscriptionModel), settings.TranscriptionModel, true, out txtTranscriptionModel));
+            p.Controls.Add(PathSelectionRow("文字起こし用のPython", nameof(txtTranscriptionPython), settings.TranscriptionPython, false, out txtTranscriptionPython));
+            p.Controls.Add(PathSelectionRow("文字起こし用のモデル", nameof(txtTranscriptionModel), settings.TranscriptionModel, true, out txtTranscriptionModel));
         }
 
-        Control MediaPath(string label, string name, string value, bool folder, out TextBox box)
+        Control PathSelectionRow(string label, string name, string value, bool folder, out TextBox box)
         {
             var path = new TextBox { Name = name, AccessibleName = label, Width = 430, Text = value };
             box = path;

@@ -289,7 +289,19 @@ v1.2 までに記録したものは、画像に丸などを描いて保存して
 & "C:\Tools\操作記録ツール\OperationRecorder.exe" --export <記録フォルダ> --template user --format html | Write-Output
 ```
 
-`--template user,psr`(文章の種類)・`--format html,md`(形式)・`--embed`(画像を埋め込む)・`--out <フォルダ>`(出力先)が使えます。
+`--template user,psr`(文章の種類)・`--format html,md,pdf,docx`(形式)・`--embed`(画像を埋め込む)・`--out <フォルダ>`(出力先)が使えます。
+
+### PDF・DOCXで出力する
+
+「記録一覧・編集・出力」で記録とテンプレートを選び、「PDF で出力」または「DOCX で出力」を押します。記録の保存時に毎回作るには、「出力の設定」の「ファイルの形式」で該当する形式の「作る」をオンにします。
+
+- PDFの作成には、インストール済みのMicrosoft Edgeを使います。
+- DOCXの作成には [Pandoc](https://pandoc.org/installing.html) を使います。PATHにある場合は自動で見つけます。ZIP版を展開して使う場合は、「出力の設定」で `pandoc.exe` を指定します。
+- PDF・DOCXには操作画像を埋め込みます。選んだテンプレートの文章や画像を使い、DOCXはWord等で編集できます。
+
+```powershell
+& .\OperationRecorder.exe --export <記録フォルダ> --template user --format pdf,docx --pandoc 'C:\Tools\Pandoc\pandoc.exe' | Write-Output
+```
 exe の場所は、zip を展開したフォルダ(1.1 の例では `C:\Tools\操作記録ツール`)に読み替えてください。
 
 ### 3.6 複数の記録から1本の手順書を完成させる（0.1.3）
@@ -322,7 +334,7 @@ HTML はブラウザ(Edge・Chrome など)で開くと、そのまま読めま�
 - 表示切替・クリック拡大・閉じるボタンはJavaScript無効でも動きます。Escキーで閉じる機能にはJavaScriptが必要です。
   メールのプレビューなどCSSが効かない所では、テンプレートで出力した画像がそのまま並びます。
 md は、Visual Studio Code・Typora・Obsidian など Markdown を表示できるアプリで開くと、画像付きで読めます。
-Word にしたいときは、これらのアプリの出力機能や pandoc を使ってください。
+Wordで編集する場合は「DOCX で出力」を使えます。
 
 ### 3.8 記録から操作を再現する
 
@@ -443,7 +455,8 @@ Word にしたいときは、これらのアプリの出力機能や pandoc を�
 |---|---|---|
 | `--template` | テンプレート(カンマ区切り) | `user` |
 
-| `--format` | `html` / `md`(カンマ区切りで両方) | 両方 |
+| `--format` | `html` / `md` / `pdf` / `docx`（カンマ区切りで複数指定） | `html,md` |
+| `--pandoc` | DOCX変換に使う `pandoc.exe` の絶対パス | 既知のインストール先またはPATHから検索 |
 | `--embed` | 画像を埋め込む | PNG を参照 |
 | `--marks` | 操作前の画像に描く印。`pointer`(マウスポインタ)/ `circle`(丸)/ `arrow`(ドラッグの矢印)/ `frame`(部品の枠)/ `none` | `circle,arrow,frame` |
 | `--radius` | 丸の半径(px) | 14 |

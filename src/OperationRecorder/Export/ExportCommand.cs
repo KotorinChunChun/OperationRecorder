@@ -22,6 +22,9 @@ namespace OperationRecorderApp
 
             public bool Md = true;
             public bool Html = true;
+            public bool Pdf;
+            public bool Docx;
+            public string PandocPath;
             public bool Embed;
             public MarkOptions Marks = MarkOptions.Default();
             public string OutDir;
@@ -34,7 +37,7 @@ namespace OperationRecorderApp
 
         public const string Usage =
             "使い方: OperationRecorder.exe --export <記録フォルダ> [--template user,psr,ai,text]\n" +
-            "        [--format html,md] [--embed] [--marks pointer,circle,arrow,frame|none] [--radius <px>] [--out <フォルダ>] [--template-dir <フォルダ>]\n" +
+            "        [--format html,md,pdf,docx] [--pandoc <pandoc.exeの絶対パス>] [--embed] [--marks pointer,circle,arrow,frame|none] [--radius <px>] [--out <フォルダ>] [--template-dir <フォルダ>]\n" +
             "        [--caption <名前>] [--description <解説>] [--result <ファイル>]";
 
         public static bool IsExport(string[] args) =>
@@ -72,9 +75,11 @@ namespace OperationRecorderApp
                             break;
                         case "--format":
                             var f = Next(a).ToLowerInvariant().Split(',').Select(t => t.Trim()).ToList();
-                            if (f.Any(t => t != "html" && t != "md")) throw new ArgumentException("--format は html / md(カンマ区切りで両方も可)です");
+                            if (f.Any(t => t != "html" && t != "md" && t != "pdf" && t != "docx")) throw new ArgumentException("--format は html / md / pdf / docx をカンマ区切りで指定します");
                             o.Html = f.Contains("html"); o.Md = f.Contains("md");
+                            o.Pdf = f.Contains("pdf"); o.Docx = f.Contains("docx");
                             break;
+                        case "--pandoc": o.PandocPath = Next(a); break;
                         case "--out": o.OutDir = Next(a); break;
                         case "--template-dir": o.TemplateDir = Next(a); break;
                         case "--caption": o.Caption = Next(a); break;
@@ -101,9 +106,18 @@ namespace OperationRecorderApp
             string tplDir = string.IsNullOrWhiteSpace(o.TemplateDir) ? Path.Combine(AppContext.BaseDirectory, "templates") : Path.GetFullPath(o.TemplateDir);
             var mds = new List<string>();
             var htmls = new List<string>();
-            RecordingController.Export(tplDir, session, o.Templates, o.OutDir == null ? null : Path.GetFullPath(o.OutDir),
-                o.Embed, o.Md, o.Html, o.Caption, o.Description, mds, htmls, o.Marks);
-            return mds.Concat(htmls).ToList();
+            var converter = o.Pdf || o.Docx ? new DocumentExporter(o.Pdf, o.Docx, o.PandocPath) : null;
+            if (o.Md || o.Html)
+                RecordingController.Export(tplDir, session, o.Templates, o.OutDir == null ? null : Path.GetFullPath(o.OutDir),
+                    o.Embed, o.Md, o.Html, o.Caption, o.Description, mds, htmls, o.Marks);
+            var files = mds.Concat(htmls).ToList();
+            if (converter != null)
+                files.AddRange(converter.Export(new ReportGenerator.Options
+                {
+                    SessionDir = session, TemplateDir = tplDir, Templates = o.Templates, ReportDir = o.OutDir,
+                    Caption = o.Caption, Description = o.Description, Marks = o.Marks,
+                }));
+            return files;
         }
 
         [DllImport("kernel32.dll")] static extern bool AttachConsole(int pid);
