@@ -21,6 +21,7 @@ namespace OperationRecorderApp
             if (AutomationCommand.IsAutomation(args)) return AutomationCommand.Execute(args);
             // 出力だけならホットキーもフックも使わないので、起動中のアプリがあっても動かしてよい
             if (ExportCommand.IsExport(args)) return ExportCommand.Execute(args);
+            if (TranscriptionCommand.IsTranscription(args)) return TranscriptionCommand.Execute(args);
             AutomationInstance isolation;
             try { isolation = AutomationInstance.Parse(args); }
             catch (ArgumentException error) { CommandConsole.Prepare(); Console.Error.WriteLine(error.Message); return 2; }

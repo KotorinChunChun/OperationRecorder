@@ -13,7 +13,7 @@ namespace OperationRecorderApp
         NumericUpDown numBeforeMs, numAfterMs;
         CheckBox chkOverlay, chkTargetFrame, chkFlash, chkOverlayFlee;
         CheckBox chkRecordVideo, chkRecordNarration;
-        TextBox txtFfmpegPath, txtTranscriptionPython, txtTranscriptionModel;
+        TextBox txtFfmpegPath;
 
         void BuildCaptureTab()
         {
@@ -53,12 +53,11 @@ namespace OperationRecorderApp
                 new Label { Text = "ms 後の画面(画面の切り替わりが遅いアプリでは大きくする)", AutoSize = true, Margin = new Padding(3, 7, 3, 3) }));
 
             chkRecordVideo = new CheckBox { Name = nameof(chkRecordVideo), Text = "撮影範囲を録画する（MP4）", AutoSize = true, Checked = settings.RecordVideo };
-            chkRecordNarration = new CheckBox { Name = nameof(chkRecordNarration), Text = "マイクを録音し、説明を手順本文に追記する", AutoSize = true, Checked = settings.RecordNarration };
+            chkRecordNarration = new CheckBox { Name = nameof(chkRecordNarration), Text = "マイクを録音する（WAV）", AutoSize = true, Checked = settings.RecordNarration };
             p.Controls.Add(chkRecordVideo);
             p.Controls.Add(PathSelectionRow("FFmpegの実行ファイル", nameof(txtFfmpegPath), settings.FfmpegPath, false, out txtFfmpegPath));
             p.Controls.Add(chkRecordNarration);
-            p.Controls.Add(PathSelectionRow("文字起こし用のPython", nameof(txtTranscriptionPython), settings.TranscriptionPython, false, out txtTranscriptionPython));
-            p.Controls.Add(PathSelectionRow("文字起こし用のモデル", nameof(txtTranscriptionModel), settings.TranscriptionModel, true, out txtTranscriptionModel));
+            AddTranscriptionSettings(p);
         }
 
         Control PathSelectionRow(string label, string name, string value, bool folder, out TextBox box)
@@ -96,8 +95,7 @@ namespace OperationRecorderApp
             settings.RecordVideo = chkRecordVideo.Checked;
             settings.RecordNarration = chkRecordNarration.Checked;
             settings.FfmpegPath = txtFfmpegPath.Text.Trim();
-            settings.TranscriptionPython = txtTranscriptionPython.Text.Trim();
-            settings.TranscriptionModel = txtTranscriptionModel.Text.Trim();
+            SaveTranscriptionSettings();
             settings.ShowOverlay = chkOverlay.Checked;
             settings.OverlayFlee = chkOverlayFlee.Checked;
             overlay.FleeEnabled = settings.OverlayFlee;

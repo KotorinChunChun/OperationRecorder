@@ -38,7 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## NAudio.WinMM / NAudio.Core 2.2.1
 
-マイク録音にNAudioを使用しています。両NuGetパッケージのライセンスはMITです。
+マイク録音と文字起こし用WAVの読み書きにNAudioを使用しています。両NuGetパッケージのライセンスはMITです。
 
 ```text
 Copyright (c) Mark Heath 2023

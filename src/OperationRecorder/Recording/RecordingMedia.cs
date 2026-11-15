@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using NAudio.Wave;
 using OpRec;
@@ -13,7 +11,9 @@ namespace OperationRecorderApp
     sealed class RecordingMedia
     {
         readonly Recorder recorder;
-        readonly string ffmpeg, python, model;
+        readonly string ffmpeg;
+        readonly TranscriptionSettings transcription;
+        readonly string transcriptionConfigError;
         readonly bool audioEnabled;
         readonly object audioLock = new object();
         readonly TaskCompletionSource<Exception> audioEnded = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -30,8 +30,11 @@ namespace OperationRecorderApp
             this.recorder = recorder;
             audioEnabled = settings.RecordNarration;
             ffmpeg = settings.RecordVideo ? ExistingFile(settings.FfmpegPath, "FFmpeg") : null;
-            python = string.IsNullOrWhiteSpace(settings.TranscriptionPython) ? null : settings.TranscriptionPython.Trim();
-            model = string.IsNullOrWhiteSpace(settings.TranscriptionModel) ? null : settings.TranscriptionModel.Trim();
+            if (audioEnabled)
+            {
+                try { transcription = TranscriptionSettings.From(settings); }
+                catch (ArgumentException error) { transcriptionConfigError = error.Message; }
+            }
         }
 
         static string ExistingFile(string path, string name)
@@ -130,34 +133,13 @@ namespace OperationRecorderApp
         public void Transcribe()
         {
             if (!audioEnabled || !audioStartMs.HasValue) return;
-            string result = Path.Combine(directory, "narration-segments.tmp");
-            try
+            if (transcriptionConfigError != null)
             {
-                var launch = new ProcessStartInfo(ExistingFile(python, "文字起こし用Python")) { UseShellExecute = false, CreateNoWindow = true };
-                if (model == null || !Path.IsPathFullyQualified(model) || !File.Exists(Path.Combine(model, "model.bin")))
-                    throw new InvalidOperationException("faster-whisperのローカルモデルフォルダーを「撮影の設定」で指定してください。");
-                launch.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "scripts", "transcribe-narration.py"));
-                launch.ArgumentList.Add(Path.Combine(directory, "narration.wav"));
-                launch.ArgumentList.Add(model);
-                launch.ArgumentList.Add(result);
-                using var process = Process.Start(launch) ?? throw new IOException("文字起こしを開始できません。");
-                if (!process.WaitForExit(30 * 60 * 1000))
-                {
-                    process.Kill(entireProcessTree: true);
-                    process.WaitForExit(3000);
-                    throw new TimeoutException("文字起こしが30分以内に完了しませんでした。");
-                }
-                if (process.ExitCode != 0 || !File.Exists(result) || new FileInfo(result).Length > SessionTranscript.MaximumBytes)
-                    throw new IOException("文字起こしに失敗しました。Pythonのfaster-whisperとモデルを確認してください。");
-                SessionTranscript.Save(directory, JsonNode.Parse(File.ReadAllText(result)).AsArray(), audioStartMs.Value);
+                warnings.Add("本文への文字起こしを追加できません: " + transcriptionConfigError);
+                return;
             }
+            try { NarrationTranscription.Save(transcription, directory, audioStartMs.Value); }
             catch (Exception e) { warnings.Add("本文への文字起こしを追加できません: " + e.Message); }
-            finally
-            {
-                try { File.Delete(result); }
-                catch (IOException) { }
-                catch (UnauthorizedAccessException) { }
-            }
         }
     }
 }

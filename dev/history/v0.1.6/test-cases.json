@@ -4,8 +4,8 @@
   "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
   "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
   "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
-  "methodCount": 315,
-  "expandedCaseCount": 521,
+  "methodCount": 323,
+  "expandedCaseCount": 531,
   "additionalSuites": [
     {
       "id": "html-browser",
@@ -91,6 +91,13 @@
       "title": "記録の開始・取消・取り直し・保存と失敗処理",
       "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
       "caseCount": 17,
+      "status": "automated"
+    },
+    {
+      "id": "F-TRANSCRIPTION",
+      "title": "文字起こし方式、鍵保管、音声送信と時刻",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "caseCount": 8,
       "status": "automated"
     },
     {
@@ -4605,6 +4612,128 @@
       "boundary": "専用テンプレート、実フォーム、確認/ごみ箱を差替え",
       "displayNames": [
         "OperationRecorderApp.Tests.TemplateStoreTests.保存できる"
+      ]
+    },
+    {
+      "id": "TEST-3158C7959543",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.APIの失敗にキーや応答本文を含めない",
+      "title": "APIの失敗にキーや応答本文を含めない",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.APIの失敗にキーや応答本文を含めない"
+      ]
+    },
+    {
+      "id": "TEST-6394BAA79BDB",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.exeでキー未登録なら既存の文字起こしを残す",
+      "title": "exeでキー未登録なら既存の文字起こしを残す",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.exeでキー未登録なら既存の文字起こしを残す"
+      ]
+    },
+    {
+      "id": "TEST-12894545FA78",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.Geminiの音声と構造化出力を指定し時刻を読む",
+      "title": "Geminiの音声と構造化出力を指定し時刻を読む",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.Geminiの音声と構造化出力を指定し時刻を読む"
+      ]
+    },
+    {
+      "id": "TEST-8CBEFB3CCA84",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.OpenAIに時刻付きGPT形式を指定する",
+      "title": "OpenAIに時刻付きGPT形式を指定する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.OpenAIに時刻付きGPT形式を指定する"
+      ]
+    },
+    {
+      "id": "TEST-896B1FB4F363",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.キーを暗号化してサービスと接続先ごとに保管する",
+      "title": "キーを暗号化してサービスと接続先ごとに保管する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.キーを暗号化してサービスと接続先ごとに保管する"
+      ]
+    },
+    {
+      "id": "TEST-EB48EDC6A312",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する",
+      "title": "暗号化されない外部接続と資格情報付きURLを拒否する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する(address: \"http://asr.example.test/v1\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する(address: \"https://asr.example.test/?key=secret\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する(address: \"https://name:password@asr.example.test/\")"
+      ]
+    },
+    {
+      "id": "TEST-4C260591D749",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.互換サーバーのモデルを省略し分割後の時刻を戻す",
+      "title": "互換サーバーのモデルを省略し分割後の時刻を戻す",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.互換サーバーのモデルを省略し分割後の時刻を戻す"
+      ]
+    },
+    {
+      "id": "TEST-16A849DBC59A",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.録音だけを選べて既存のWhisper設定は引き継ぐ",
+      "title": "録音だけを選べて既存のWhisper設定は引き継ぐ",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.録音だけを選べて既存のWhisper設定は引き継ぐ"
       ]
     },
     {

@@ -49,6 +49,11 @@ namespace OperationRecorderApp
         public string FfmpegPath { get; set; } = "";
         public string TranscriptionPython { get; set; } = "";
         public string TranscriptionModel { get; set; } = "";
+        public string NarrationProvider { get; set; }
+        public string TranscriptionServerUrl { get; set; } = "";
+        public string TranscriptionServerModel { get; set; } = "";
+        public string TranscriptionOpenAIModel { get; set; } = "gpt-4o-transcribe-diarize";
+        public string TranscriptionGeminiModel { get; set; } = "gemini-3.5-flash-lite";
         public bool ShowOverlay { get; set; } = true;        // 記録中に撮影ログのオーバーレイを出す
         public bool OverlayFlee { get; set; } = true;        // オーバーレイが、マウスポインタのあるウィンドウから逃げる
         public bool ShowTargetFrame { get; set; } = true;    // 記録の対象になっているウィンドウを枠で囲う

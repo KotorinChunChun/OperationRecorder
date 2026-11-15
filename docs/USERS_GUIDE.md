@@ -424,13 +424,40 @@ Wordで編集する場合は「DOCX で出力」を使えます。
 
 ## 録画・マイク録音と手順本文
 
-「撮影の設定」で「撮影範囲を録画する（MP4）」と「マイクを録音し、説明を手順本文に追記する」を個別に有効にできます。初期状態ではどちらもオフです。
+「撮影の設定」で「撮影範囲を録画する（MP4）」と「マイクを録音する（WAV）」を個別に有効にできます。初期状態ではどちらもオフです。
 
 - 録画にはH.264エンコーダー `libx264` を含むFFmpegを用意し、「FFmpegの実行ファイル」に `ffmpeg.exe` を指定します。選択した撮影範囲を1280×720の枠に収め、毎秒5フレームで `screen.mp4` に保存します。ウィンドウ撮影で対象外の画面が重なる部分には静止画と同じマスクが入ります。対象を選ぶまでの時間も経過時刻に含みます。
-- 録音にはWindowsの既定のマイクを使い、`narration.wav` に保存します。「文字起こし用のPython」に [faster-whisper](https://github.com/SYSTRAN/faster-whisper) をインストールしたPythonの実行ファイルを、「文字起こし用のモデル」にローカルのCTranslate2モデルのフォルダーを指定します。
-- 保存時にこのPC上で文字起こしを行い、区間ごとの開始・終了時刻を `transcript.json` に残します。発話を始めた時刻より前で最も近い操作の本文に追記します。最初の操作より前の説明は最初の手順に入ります。操作の直後にその手順を説明すると対応を確認しやすくなります。
+- 録音にはWindowsの既定のマイクを使い、`narration.wav` に保存します。「文字起こししない」を選ぶと音声だけを保存します。本文に追記するには、下記のいずれかの方式を選びます。
+- 記録の保存時に文字起こしを行い、区間ごとの開始・終了時刻を `transcript.json` に残します。発話を始めた時刻より前で最も近い操作の本文に追記します。最初の操作より前の説明は最初の手順に入ります。操作の直後にその手順を説明すると対応を確認しやすくなります。
 - `media.json` に記録開始からの動画・音声の開始時刻をミリ秒で保存します。動画と音声は別ファイルです。手順本文の時刻も記録開始を基準とします。
 - 文字起こしに失敗した場合は、保存した操作と取得済みの音声を残して警告を表示します。「記録一覧・編集・出力」で本文を編集できます。手修正した本文は、後から文字起こしを取り込んでも優先されます。
+
+### 文字起こし方式の設定
+
+| 方式 | 利用に必要な設定 |
+|---|---|
+| 文字起こししない（初期値） | 追加の設定は不要です。以前の版でPythonとローカルモデルを設定済みの場合は、Whisperを引き継ぎます。 |
+| Whisper（ローカル） | 利用するPython環境に `python -m pip install faster-whisper` で導入します。「文字起こし用のPython」にその環境の `python.exe`、「ローカルモデルのフォルダー」に `model.bin` を含むCTranslate2版Whisperモデルを指定します。[faster-whisper](https://github.com/SYSTRAN/faster-whisper) |
+| Haas（ローカル） | 利用するPython環境に `python -m pip install sherpa-onnx numpy` で導入します。Pythonの実行ファイルと、`encoder.onnx`、`decoder.onnx`、`joiner.onnx`、`tokens.txt` を含むsherpa-onnx対応のHaasモデルフォルダーを指定します。[Haas-ASR](https://github.com/third-intelligence/Haas-ASR)・[対応ONNXモデルの例](https://huggingface.co/oboroge0/Haas-ja-v1.0-onnx) |
+| 互換サーバー | OpenAI互換の `/v1/audio/transcriptions` に接続します。例として同じPCで動く speech.cpp なら `http://127.0.0.1:8080`、whisper.cpp のネイティブAPIなら `http://127.0.0.1:8080/inference` を指定します。別PCの接続先はHTTPSを使用します。サーバーから指定されている場合はモデルIDとAPIキーを入力します。[speech.cppのAPI仕様](https://github.com/nyosegawa/speech.cpp/blob/main/docs/server.md)・[whisper.cppのサーバー仕様](https://github.com/ggml-org/whisper.cpp/tree/master/examples/server) |
+| OpenAI GPT | OpenAIのAPIキーを保存します。既定の `gpt-4o-transcribe-diarize` と `whisper-1` では応答の区間時刻を使用します。モデルID欄で `gpt-4o-transcribe` などの文字起こしモデルに変更できます。[OpenAIの文字起こしAPI](https://developers.openai.com/api/docs/guides/speech-to-text) |
+| Gemini | Gemini Developer APIのAPIキーを保存します。既定は `gemini-3.5-flash-lite` です。音声入力と構造化出力に対応したモデルIDに変更できます。[Geminiの音声入力](https://aistudio.google.com/docs/audio) |
+
+ローカル方式を選ぶ場合だけPythonパッケージとモデルを導入します。モデルのダウンロードやインストールは利用者が行います。
+
+サーバーまたはAPIを選ぶと、文字起こし時にマイク音声が指定先へ送られます。キーは「撮影の設定」で入力して「キーを保存」を押します。WindowsのDPAPIで現在のユーザー向けに暗号化して保管し、接続先を変えた場合はその接続先のキーを登録します。「キーを削除」で選択中のサービスまたはサーバーのキーを消去できます。WindowsアカウントやPCを移行した場合はキーを登録し直してください。
+
+Haasの区間時刻は発話前後の音量から求めた目安です。Geminiの区間時刻はモデルが推定します。互換サーバーやOpenAIから本文だけが返った場合は、送信した音声区間の開始時刻に対応付けます。説明が意図した手順に入ったか確認し、必要に応じて本文を編集してください。
+
+### 保存済みの録音をCLIから文字起こしする
+
+「撮影の設定」で方式を選び、アプリをタスクトレイのメニューから終了して設定を保存します。既存の記録フォルダーに `narration.wav` と `media.json` があれば、次のコマンドで文字起こしできます。別の設定フォルダーを使う場合は末尾に `--settings-dir <設定フォルダー>` を指定します。
+
+```powershell
+& .\OperationRecorder.exe --transcribe "C:\記録\session-20261115-100000"
+```
+
+成功時に `transcript.json` を更新します。手順書に反映するには「記録一覧・編集・出力」から出力し直すか、CLIで `--export` を実行します。
 
 ## 付録: コマンドで使う(PowerShell 7)
 
