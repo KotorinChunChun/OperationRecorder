@@ -1,10 +1,6 @@
 # OperationRecorder
 
-PCの操作と操作前後の画面を記録し、スクリーンショット付きのMarkdown・HTML手順書を作るWindowsアプリです。
-
-[KotorinToys](https://github.com/KotorinChunChun/KotorinToys)のコレクションからインストール・更新・起動できます。単体のインストーラーは[GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)から入手できます。
-
-画像や動画の撮影、操作の記録に使うツールを選ぶときは、[画面・操作記録ツールの使い分け](https://github.com/KotorinChunChun/KotorinToys/blob/main/docs/recording-tools.md)を参照してください。
+OperationRecorderは、PCの操作風景を記録し、スクリーンショット付きのHTML操作マニュアルを作成するWindowsアプリです。
 
 ## 入力と出力
 
@@ -19,6 +15,19 @@ flowchart LR
     R --> G["録画（MP4）・マイク録音（WAV）・時刻付き文字起こし（任意）"]
     R --> H["操作再生用の設定（JSON）"]
 ```
+
+## 成果物はこちら
+
+- [操作前後](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/user.md)
+- [操作前のみ](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/user-before.md)
+- [ステップ記録ツール](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/psr.md)
+- [AI向け](https://github.com/KotorinChunChun/OperationRecorder/blob/main/samples/check-capture-settings/ai.md)
+
+リンク先で手順書をプレビューできます。HTML版は同じフォルダーにあり、画像と一緒にダウンロードして開けます。
+
+[KotorinToys](https://github.com/KotorinChunChun/KotorinToys)のコレクションからインストール・更新・起動できます。単体のインストーラーは[GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)から入手できます。
+
+画像や動画の撮影、操作の記録に使うツールを選ぶときは、[画面・操作記録ツールの使い分け](https://github.com/KotorinChunChun/KotorinToys/blob/main/docs/recording-tools.md)を参照してください。
 
 ## できること
 
