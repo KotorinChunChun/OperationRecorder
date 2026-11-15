@@ -51,3 +51,13 @@ flowchart LR
 - [第三者ソフトウェアの通知](THIRD-PARTY-NOTICES.md)
 
 開発に参加する場合は[開発者ガイド](docs/DEVELOPERS_GUIDE.md)を参照してください。
+
+## 使用言語とライブラリ
+
+- 使用言語はC#（本体）、Python（文字起こし）です。
+- .NET 10、Windows Forms、WPF。Markdown処理にはMarkdig、音声入力にはNAudio.WinMMを使います。動画を記録する場合はFFmpegを別途指定します。
+- 依存定義と資料 [プロジェクトの依存定義](src/OperationRecorder/OperationRecorderApp.csproj)・[第三者コンポーネント](THIRD-PARTY-NOTICES.md)
+
+## ライセンス
+
+OperationRecorderの独自コードと文書には[MITライセンス](LICENSE)が適用されます。依存ライブラリーの条件は[第三者コンポーネント](THIRD-PARTY-NOTICES.md)を参照してください。
