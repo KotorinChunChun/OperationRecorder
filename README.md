@@ -4,6 +4,8 @@ PCの操作と操作前後の画面を記録し、スクリーンショット付
 
 [KotorinToys](https://github.com/KotorinChunChun/KotorinToys)のコレクションからインストール・更新・起動できます。単体のインストーラーは[GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)から入手できます。
 
+画像や動画の撮影、操作の記録に使うツールを選ぶときは、[画面・操作記録ツールの使い分け](https://github.com/KotorinChunChun/KotorinToys/blob/main/docs/recording-tools.md)を参照してください。
+
 ## 入力と出力
 
 ```mermaid
@@ -26,12 +28,9 @@ flowchart LR
 - 記録をconfigへ変換し、対象ウィンドウや画像を監視しながら操作を再生する。
 - 名前やクラスが変動する対象について、複数記録からCodex CLIで再生条件の案を作る。
 
-## 使い始める
+## 操作手順
 
-起動後、「記録する」で対象と保存先を選び、記録を開始します。保存した記録は「記録一覧」で編集・合成・出力できます。操作キーは「ショートカットキー」タブで変更できます。
-
-画面の×はタスクトレイへの格納です。終了するときはトレイメニュー、またはKotorinToysの「停止」を使います。記録中・保存中は停止を拒否するため、先に記録を保存してください。
-
+- [画面付きの操作手順](docs/operation-steps.md)
 - [操作記録マニュアル](docs/USERS_GUIDE.md)
 - [手順の見出し表記](docs/step-headings.md)
 - [ウィンドウの表示・切り替えの記録](docs/window-events.md)
@@ -41,41 +40,5 @@ flowchart LR
 - [既定の操作キー](config/shortcuts.json)
 - [版番号の訂正履歴](docs/version-numbering.md)
 - [第三者ソフトウェアの通知](THIRD-PARTY-NOTICES.md)
-
-## 画面で見る操作
-
-以下は0.1.6の画面です。説明用の設定とOfficeAssistのプレビュー画面を使っています。
-
-### 1. 対象を選ぶ
-
-「記録対象」で撮影モードと対象を選び、記録の名前を入力します。例は1つのウィンドウだけを記録するWindowモードです。「記録を開始」を押すと、この画面は隠れます。
-
-![記録対象と専用保存先を指定](docs/images/readme/01-target.png)
-
-### 2. 撮影条件を確認する
-
-「撮影の設定」で、記録する操作と操作前後の画像を選びます。キー入力やデスクトップ全体を記録すると、意図しない情報も残るため、必要な対象だけを選んでください。
-
-![操作ごとの撮影条件](docs/images/readme/02-capture-settings.png)
-
-### 3. 記録に説明を加える
-
-対象画面を操作し、Ctrl+Shift+F12で保存します。「記録一覧・編集・出力」で記録と手順を選び、本文を補足して「この手順の文章を保存」を押します。
-
-![保存した操作の説明を編集](docs/images/readme/03-edit-step.png)
-
-### 4. 手順書を出力する
-
-テンプレートを選び、「HTMLで出力」または「Markdownで出力」を押します。画面下部の出力完了表示を確認し、「保存フォルダを開く」から成果物を確認できます。
-
-![HTML出力完了の表示](docs/images/readme/04-export.png)
-
-画像の斜線は、対象を覆う別ウィンドウなどの写り込みを防いだ領域です。例では操作の記録・文章編集・出力を説明しています。対象の画面内容も残したい場合は、重なったウィンドウを避けて記録し直してください。
-
-### 5. 操作キーを確認する
-
-「ショートカットキー」で開始・取消・取り直し・保存終了のキーを確認できます。変更するときは他アプリと重複しない組合せを選びます。
-
-![開始と保存終了などの操作キー](docs/images/readme/05-shortcuts.png)
 
 開発に参加する場合は[開発者ガイド](docs/DEVELOPERS_GUIDE.md)を参照してください。
