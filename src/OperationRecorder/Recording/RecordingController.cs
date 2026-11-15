@@ -139,7 +139,8 @@ namespace OperationRecorderApp
                 string how = rec != null && rec.PickTarget
                     ? (rec.Mode == CaptureMode.Desktop ? "記録したいディスプレイに映っているウィンドウを 1 回クリックしてください。" : "記録したいウィンドウを 1 回クリックしてください。")
                     : "ふだんどおりに操作してください。";
-                Notify?.Invoke("記録を始めました", (targetNote != null ? targetNote + "\n" : "") + how + "\n" + UiTexts.NotifySaveKey(s.Hotkeys), ToolTipIcon.Info);
+                string mediaNote = s.RecordNarration ? "\nマイク録音が有効です。" : "";
+                Notify?.Invoke("記録を始めました", (targetNote != null ? targetNote + "\n" : "") + how + mediaNote + "\n" + UiTexts.NotifySaveKey(s.Hotkeys), ToolTipIcon.Info);
             }
             catch (Exception ex)
             {
@@ -205,7 +206,7 @@ namespace OperationRecorderApp
                 }
             }
 
-            return new NativeRecordingSession(rec);
+            return new NativeRecordingSession(rec, s);
         }
 
         static bool ApplyReuse(Recorder rec, RecordingTargetReuse r)
@@ -264,6 +265,7 @@ namespace OperationRecorderApp
                 var htmls = new List<string>();
                 string error = null;
                 bool stopped = false;
+                var native = session as NativeRecordingSession;
                 try
                 {
                     session.Stop(); stopped = true;
@@ -272,10 +274,14 @@ namespace OperationRecorderApp
                         if (dependencies.DeleteDirectory != null) dependencies.DeleteDirectory(session.SessionDir);
                         else Directory.Delete(session.SessionDir, true);
                     }
-                    else if (session.SavedCount > 0 && s.Templates.Count > 0 && (s.OutputMd || s.OutputHtml))
+                    else
                     {
-                        if (dependencies.Export != null) dependencies.Export(s, session.SessionDir, mds, htmls);
-                        else Export(s, session.SessionDir, s.Templates, s.ReportDir, s.EmbedImages, s.OutputMd, s.OutputHtml, null, null, mds, htmls);
+                        native?.Transcribe();
+                        if (session.SavedCount > 0 && s.Templates.Count > 0 && (s.OutputMd || s.OutputHtml))
+                        {
+                            if (dependencies.Export != null) dependencies.Export(s, session.SessionDir, mds, htmls);
+                            else Export(s, session.SessionDir, s.Templates, s.ReportDir, s.EmbedImages, s.OutputMd, s.OutputHtml, null, null, mds, htmls);
+                        }
                     }
                 }
                 catch (Exception ex) { error = ex.Message; }
@@ -288,6 +294,7 @@ namespace OperationRecorderApp
                     EnableStartHotkey(); SetState(RecState.Idle);
                     if (error != null) Notify?.Invoke(save ? "記録の保存・出力に失敗しました" : "記録の取り消しに失敗しました", error, ToolTipIcon.Error);
                     else if (!save) Notify?.Invoke("記録を取り消しました", UiTexts.NotifyRestarted(s.Hotkeys), ToolTipIcon.Info);
+                    else if (native?.MediaWarning != null) Notify?.Invoke("記録を保存しました（録画・録音の確認が必要です）", native.MediaWarning, ToolTipIcon.Warning);
                     else if (session.SavedCount == 0) Notify?.Invoke("記録を保存しました", "操作が 0 件だったので、報告書は出力していません。", ToolTipIcon.Warning);
                     else Notify?.Invoke("記録を保存しました", session.SavedCount + " 件の操作を保存しました。" + (mds.Count + htmls.Count > 0 ? "報告書を出力しました。" : ""), ToolTipIcon.Info);
                     if (save && stopped) Saved?.Invoke(session.SessionDir, mds, htmls);

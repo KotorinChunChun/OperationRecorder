@@ -66,6 +66,48 @@ namespace OperationRecorderApp.Tests
     public class BasicAutomationTests
     {
         [Fact]
+        public void タイムスタンプ付きの説明がCLIで取り込まれ手修正と両形式の出力に反映される()
+        {
+            using var scope = new AutomationScope();
+            var session = scope.Session();
+            var events = Path.Combine(session, "events.jsonl");
+            var original = File.ReadAllText(events);
+            var segments = scope.Workspace.Resolve("narration.json");
+            File.WriteAllText(segments, """
+                [{"startMs":2000,"endMs":2250,"text":"入力を確定します"},
+                 {"startMs":0,"endMs":700,"text":"はじめに対象を選びます"},
+                 {"startMs":800,"endMs":1200,"text":"登録内容を確認します"}]
+                """);
+            JsonObject Execute(string action, JsonObject arguments = null)
+            {
+                arguments ??= new JsonObject();
+                arguments["action"] = action;
+                arguments["session"] = session;
+                var response = scope.Run("session", arguments);
+                Assert.Equal(0, response.Code);
+                return response.Result["result"].AsObject();
+            }
+            JsonArray Apply() => Execute("transcript", new JsonObject
+                { ["transcript"] = segments, ["offsetMs"] = 250 })["steps"].AsArray();
+
+            var steps = Apply();
+            Assert.Contains("[0:00:00.250] はじめに対象を選びます", steps[0]["body"].GetValue<string>());
+            Assert.Contains("[0:00:01.050] 登録内容を確認します", steps[0]["body"].GetValue<string>());
+            Assert.Contains("[0:00:02.250] 入力を確定します", steps[1]["body"].GetValue<string>());
+            Assert.DoesNotContain("入力を確定します", steps[0]["body"].GetValue<string>());
+            Execute("edit", new JsonObject { ["seq"] = 2, ["headline"] = "確定", ["body"] = "手修正した説明" });
+            Assert.Equal("手修正した説明", Apply()[1]["body"].GetValue<string>());
+            foreach (var file in Execute("export", new JsonObject { ["marks"] = "none" })["files"].AsArray())
+            {
+                var report = File.ReadAllText(file.GetValue<string>());
+                Assert.Contains("[0:00:01.050] 登録内容を確認します", report);
+                Assert.Contains("手修正した説明", report);
+                Assert.DoesNotContain("入力を確定します", report);
+            }
+            Assert.Equal(original, File.ReadAllText(events));
+        }
+
+        [Fact]
         public void 記録の名前文章削除と両形式出力を同じサービス経路で実行する()
         {
             using var scope = new AutomationScope(); var session = scope.Session();

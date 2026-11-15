@@ -44,6 +44,11 @@ namespace OperationRecorderApp
         public Dictionary<string, CaptureRule> Rules { get; set; } = CaptureRules.Defaults();
         public int BeforeMs { get; set; } = 200;             // 操作前: 操作した瞬間の何 ms 前の画面を使うか
         public int AfterMs { get; set; } = 500;              // 操作後: 操作が終わってから何 ms 後の画面を使うか
+        public bool RecordVideo { get; set; }
+        public bool RecordNarration { get; set; }
+        public string FfmpegPath { get; set; } = "";
+        public string TranscriptionPython { get; set; } = "";
+        public string TranscriptionModel { get; set; } = "";
         public bool ShowOverlay { get; set; } = true;        // 記録中に撮影ログのオーバーレイを出す
         public bool OverlayFlee { get; set; } = true;        // オーバーレイが、マウスポインタのあるウィンドウから逃げる
         public bool ShowTargetFrame { get; set; } = true;    // 記録の対象になっているウィンドウを枠で囲う

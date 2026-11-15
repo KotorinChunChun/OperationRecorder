@@ -100,6 +100,7 @@ namespace OpRec
             WriteSession(false);
 
             InitializeWindowChanges();
+            StartMedia?.Invoke(SessionDir);
 
             captureThread = StartThread(CaptureLoop, "capture");
             dispatchThread = StartThread(DispatchLoop, "dispatch");
@@ -114,6 +115,10 @@ namespace OpRec
             if (pendingLog != null) { Log(pendingLog); pendingLog = null; }
             return SessionDir;
         }
+
+        public long ElapsedMilliseconds => sw.ElapsedMilliseconds;
+        public Action<string> StartMedia { get; set; }
+        public Action<long, Bitmap> RecordVideoFrame { get; set; }
 
         List<Rectangle> allMonitors;   // AllDesktops で撮るディスプレイ(記録を始めた時点の構成)
 

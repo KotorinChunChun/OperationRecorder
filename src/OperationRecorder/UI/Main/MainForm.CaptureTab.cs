@@ -12,6 +12,8 @@ namespace OperationRecorderApp
         readonly Dictionary<string, CheckBox[]> ruleBoxes = new Dictionary<string, CheckBox[]>();   // [記録する, 操作前, 操作後]
         NumericUpDown numBeforeMs, numAfterMs;
         CheckBox chkOverlay, chkTargetFrame, chkFlash, chkOverlayFlee;
+        CheckBox chkRecordVideo, chkRecordNarration;
+        TextBox txtFfmpegPath, txtTranscriptionPython, txtTranscriptionModel;
 
         void BuildCaptureTab()
         {
@@ -50,6 +52,34 @@ namespace OperationRecorderApp
             p.Controls.Add(Row(new Label { Text = "操作後: 操作が終わってから", AutoSize = true, Margin = new Padding(3, 7, 3, 3) }, numAfterMs,
                 new Label { Text = "ms 後の画面(画面の切り替わりが遅いアプリでは大きくする)", AutoSize = true, Margin = new Padding(3, 7, 3, 3) }));
 
+            chkRecordVideo = new CheckBox { Name = nameof(chkRecordVideo), Text = "撮影範囲を録画する（MP4）", AutoSize = true, Checked = settings.RecordVideo };
+            chkRecordNarration = new CheckBox { Name = nameof(chkRecordNarration), Text = "マイクを録音し、説明を手順本文に追記する", AutoSize = true, Checked = settings.RecordNarration };
+            p.Controls.Add(chkRecordVideo);
+            p.Controls.Add(MediaPath("FFmpegの実行ファイル", nameof(txtFfmpegPath), settings.FfmpegPath, false, out txtFfmpegPath));
+            p.Controls.Add(chkRecordNarration);
+            p.Controls.Add(MediaPath("文字起こし用のPython", nameof(txtTranscriptionPython), settings.TranscriptionPython, false, out txtTranscriptionPython));
+            p.Controls.Add(MediaPath("文字起こし用のモデル", nameof(txtTranscriptionModel), settings.TranscriptionModel, true, out txtTranscriptionModel));
+        }
+
+        Control MediaPath(string label, string name, string value, bool folder, out TextBox box)
+        {
+            var path = new TextBox { Name = name, AccessibleName = label, Width = 430, Text = value };
+            box = path;
+            var choose = new Button { Text = "参照…", AccessibleName = label + "を参照", AutoSize = true };
+            choose.Click += (_, _) =>
+            {
+                if (folder)
+                {
+                    using var dialog = new FolderBrowserDialog { SelectedPath = path.Text };
+                    if (dialog.ShowDialog(this) == DialogResult.OK) path.Text = dialog.SelectedPath;
+                }
+                else
+                {
+                    using var dialog = new OpenFileDialog { Filter = "実行ファイル (*.exe)|*.exe", FileName = path.Text, CheckFileExists = true };
+                    if (dialog.ShowDialog(this) == DialogResult.OK) path.Text = dialog.FileName;
+                }
+            };
+            return Row(new Label { Text = label, AutoSize = true, Margin = new Padding(3, 7, 3, 3) }, path, choose);
         }
 
         void SaveCaptureSettings()
@@ -63,6 +93,11 @@ namespace OperationRecorderApp
             }
             settings.BeforeMs = (int)numBeforeMs.Value;
             settings.AfterMs = (int)numAfterMs.Value;
+            settings.RecordVideo = chkRecordVideo.Checked;
+            settings.RecordNarration = chkRecordNarration.Checked;
+            settings.FfmpegPath = txtFfmpegPath.Text.Trim();
+            settings.TranscriptionPython = txtTranscriptionPython.Text.Trim();
+            settings.TranscriptionModel = txtTranscriptionModel.Text.Trim();
             settings.ShowOverlay = chkOverlay.Checked;
             settings.OverlayFlee = chkOverlayFlee.Checked;
             overlay.FleeEnabled = settings.OverlayFlee;

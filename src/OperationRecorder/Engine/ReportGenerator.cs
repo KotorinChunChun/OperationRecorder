@@ -533,12 +533,15 @@ namespace OpRec
         {
             var steps = new List<object>();
             var edits = LoadEdits(sessionDir);
+            var narration = SessionTranscript.ByStep(sessionDir, events);
             int n = 0;
             foreach (var e in events)
             {
                 n++;
                 string headline, body, action, inputText;
                 ComposeTexts(e, out headline, out body, out action, out inputText);
+                if (narration.TryGetValue((long)Num(e["seq"]), out var spoken))
+                    body = string.IsNullOrEmpty(body) ? spoken : body + "\n\n" + spoken;
                 string originalHeadline = headline, originalBody = body;
                 JsonObject ed;
                 bool edited = edits.TryGetValue((long)Num(e["seq"]), out ed);

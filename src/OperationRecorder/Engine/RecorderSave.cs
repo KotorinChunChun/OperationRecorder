@@ -137,19 +137,7 @@ namespace OpRec
             {
                 using (var g = Graphics.FromImage(bmp))
                 {
-                    using (var mask = new Region(new Rectangle(0, 0, bmp.Width, bmp.Height)))
-                    using (var vis = f.Visible.Clone())
-                    {
-                        vis.Translate(-f.Area.X, -f.Area.Y);
-                        mask.Exclude(vis);
-                        masked = !mask.IsEmpty(g);
-                        if (masked)
-                        {
-                            // 対象外の領域(重なった他ウィンドウ・背景)は斜線で塗りつぶす
-                            using (var br = new HatchBrush(HatchStyle.WideUpwardDiagonal, Color.FromArgb(160, 160, 160), Color.FromArgb(220, 220, 220)))
-                                g.FillRegion(br, mask);
-                        }
-                    }
+                    masked = MaskOutsideTarget(g, f);
                 }
                 bmp.Save(Path.Combine(SessionDir, "img", Path.GetFileName(rel)), ImageFormat.Png);
             }
@@ -167,6 +155,36 @@ namespace OpRec
                 { "area", WinUtil.Rc(f.Area) },
                 { "masked", masked },
             };
+        }
+        long nextVideoFrame;
+
+        void RecordMaskedVideoFrame(Frame frame)
+        {
+            if (frame.Ts < nextVideoFrame) return;
+            nextVideoFrame = (frame.Ts / 200 + 1) * 200;
+            try
+            {
+                using (var bitmap = new Bitmap(frame.Bmp))
+                {
+                    using (var graphics = Graphics.FromImage(bitmap)) MaskOutsideTarget(graphics, frame);
+                    RecordVideoFrame(frame.Ts, bitmap);
+                }
+            }
+            catch (Exception ex) { Log("録画フレームを取得できません: " + ex.Message); }
+        }
+
+        static bool MaskOutsideTarget(Graphics graphics, Frame frame)
+        {
+            using (var mask = new Region(new Rectangle(0, 0, frame.Bmp.Width, frame.Bmp.Height)))
+            using (var visible = frame.Visible.Clone())
+            {
+                visible.Translate(-frame.Area.X, -frame.Area.Y);
+                mask.Exclude(visible);
+                if (mask.IsEmpty(graphics)) return false;
+                using (var brush = new HatchBrush(HatchStyle.WideUpwardDiagonal, Color.FromArgb(160, 160, 160), Color.FromArgb(220, 220, 220)))
+                    graphics.FillRegion(brush, mask);
+                return true;
+            }
         }
     }
 }

@@ -185,7 +185,11 @@ namespace OpRec
                     if (TargetReady.WaitOne(0))
                     {
                         Frame f = CaptureFrame();
-                        if (f != null) AddFrame(f);
+                        if (f != null)
+                        {
+                            if (RecordVideoFrame != null) RecordMaskedVideoFrame(f);
+                            AddFrame(f);
+                        }
                     }
                     ExpireAfters();
                     if (captureFailing) { captureFailing = false; Log("撮影を再開しました"); }

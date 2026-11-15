@@ -4,6 +4,20 @@ PCの操作と操作前後の画面を記録し、スクリーンショット付
 
 [KotorinToys](https://github.com/KotorinChunChun/KotorinToys)のコレクションからインストール・更新・起動できます。単体のインストーラーは[GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases)から入手できます。
 
+## 入力と出力
+
+```mermaid
+flowchart LR
+    A["Windowsでの操作"] --> R["OperationRecorder"]
+    B["選択したウィンドウ・ディスプレイの画面"] --> R
+    C["マイクで話す説明（任意）"] --> R
+    D["保存済みの操作記録（編集・合成）"] --> R
+    R --> E["操作記録・操作前後のPNG"]
+    R --> F["画像と説明付きの手順書（Markdown・HTML）"]
+    R --> G["録画（MP4）・マイク録音（WAV）・時刻付き文字起こし（任意）"]
+    R --> H["操作再生用の設定（JSON）"]
+```
+
 ## できること
 
 - 操作前後の画面をPNGで記録し、クリック位置やドラッグの矢印を付けて手順書を出力する。

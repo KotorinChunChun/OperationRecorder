@@ -91,7 +91,7 @@ function Get-Layer([string]$ClassName, [string]$MethodName) {
     if ($ClassName -eq 'ManagementTests' -and $MethodName -match '未保存') { return 'sta' }
     if ($ClassName -eq 'AutomationInstanceTests' -and $MethodName -match 'プロセス|IPC|pipe|EXE') { return 'cli' }
     if ($ClassName -eq 'AutomationCommandTests') { return $(if ($MethodName -match '^試験領域') { 'api' } else { 'cli' }) }
-    if ($ClassName -eq 'BasicAutomationTests' -and $MethodName -match '再解析ポイントを読み込む前') { return 'cli' }
+    if ($ClassName -eq 'BasicAutomationTests' -and $MethodName -match '再解析ポイントを読み込む前|説明がCLI') { return 'cli' }
     if ($ClassName -eq 'CliParityTests' -or $MethodName -match 'exe|EXE|通常起動を呼ばない|引数エラーを返す|終了コード|同一指定を処理前') { return 'cli' }
     if ($ClassName -match '^Composition.*Tests$|^BasicAutomationTests$|^TemplateStoreTests$|^SessionEditorTests$|^ExportTests$|^MarkTests$|^HtmlViewTests$') { return 'api' }
     return 'unit'

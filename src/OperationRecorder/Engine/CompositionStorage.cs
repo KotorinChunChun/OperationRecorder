@@ -145,6 +145,13 @@ namespace OpRec
                 if (edits["steps"] != null && !(edits["steps"] is JsonObject)) throw new IOException("手順の編集情報が不正です。");
                 files.Add("edits.json");
             }
+            var transcript = SafeFile(original, SessionTranscript.FileName);
+            if (File.Exists(transcript))
+            {
+                if (new FileInfo(transcript).Length > SessionTranscript.MaximumBytes)
+                    throw new IOException("文字起こしが容量上限を超えています。");
+                files.Add(SessionTranscript.FileName);
+            }
             var images = ImageReferences(events).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             foreach (var image in images) CheckImage(SafeFile(original, image));
             files.AddRange(images);
@@ -195,6 +202,9 @@ namespace OpRec
             }
             var editPath = SafeFile(directory, "edits.json");
             if (File.Exists(editPath) && !listed.ContainsKey("edits.json")) throw new IOException("台帳にない手順編集情報があります。");
+            var transcript = SafeFile(directory, SessionTranscript.FileName);
+            if (File.Exists(transcript) && !listed.ContainsKey(SessionTranscript.FileName))
+                throw new IOException("台帳にない文字起こしがあります。");
             var steps = ReportGenerator.ListSteps(directory);
             return new LoadedSource { Session = session, Events = events, BySeq = events.ToDictionary(Seq), Steps = steps, Files = listed };
         }

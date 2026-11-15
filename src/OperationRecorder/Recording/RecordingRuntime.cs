@@ -52,7 +52,18 @@ namespace OperationRecorderApp
     sealed class NativeRecordingSession : IRecordingSession
     {
         readonly Recorder recorder;
-        public NativeRecordingSession(Recorder recorder) { this.recorder = recorder; }
+        readonly RecordingMedia media;
+        public NativeRecordingSession(Recorder recorder, AppSettings settings)
+        {
+            this.recorder = recorder;
+            if (settings.RecordVideo || settings.RecordNarration)
+            {
+                media = new RecordingMedia(recorder, settings);
+                recorder.StartMedia = media.Start;
+            }
+        }
+        public string MediaWarning => media?.Warning;
+        public void Transcribe() => media?.Transcribe();
         public Recorder NativeRecorder => recorder;
         public string SessionDir => recorder.SessionDir;
         public int SavedCount => recorder.SavedCount;
@@ -67,7 +78,11 @@ namespace OperationRecorderApp
         public event Action<int> StepRemoved { add { recorder.StepRemoved += value; } remove { recorder.StepRemoved -= value; } }
         public event Action<string, Point?> StepCaptured { add { recorder.StepCaptured += value; } remove { recorder.StepCaptured -= value; } }
         public string Start(string outputRoot) => recorder.Start(outputRoot);
-        public void Stop() => recorder.Stop();
+        public void Stop()
+        {
+            try { recorder.Stop(); }
+            finally { media?.Stop(); }
+        }
         public void Undo() => recorder.RequestUndo();
         public void RequestStop() => recorder.StopRequested.Set();
         public void RequestRestart() => recorder.RestartRequested.Set();

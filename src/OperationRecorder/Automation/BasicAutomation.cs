@@ -19,6 +19,7 @@ namespace OperationRecorderApp
             {
                 ["complete"] = new[] { "sample", "session", "caption", "description" },
                 ["inspect"] = new[] { "session" }, ["metadata"] = new[] { "session", "caption", "description" },
+                ["transcript"] = new[] { "session", "transcript", "offsetMs" },
                 ["edit"] = new[] { "session", "seq", "headline", "body" },
                 ["reset"] = new[] { "session", "seq" }, ["delete-step"] = new[] { "session", "seq" },
                 ["export"] = new[] { "session", "templates", "out", "templateDirectory", "md", "html", "embed", "caption", "description", "marks", "radius" },
@@ -58,6 +59,15 @@ namespace OperationRecorderApp
             switch (action)
             {
                 case "inspect": break;
+                case "transcript":
+                    var transcript = workspace.Resolve(Required(request, "transcript"), true);
+                    workspace.Resolve(Path.Combine(directory, SessionTranscript.FileName));
+                    if (new FileInfo(transcript).Length > SessionTranscript.MaximumBytes)
+                        throw new ArgumentException("文字起こしが大きすぎます。");
+                    var segments = JsonNode.Parse(File.ReadAllText(transcript)) as JsonArray
+                        ?? throw new ArgumentException("文字起こしにはJSON配列を指定してください。");
+                    SessionTranscript.Save(directory, segments, Integer(request, "offsetMs", 0, 86_400_000));
+                    break;
                 case "metadata":
                     if (request.ContainsKey("caption")) session["caption"] = Required(request, "caption").Trim();
                     if (request.ContainsKey("description")) session["description"] = Required(request, "description").Trim();
@@ -199,6 +209,7 @@ namespace OperationRecorderApp
                 }
             }
             var edits = Path.Combine(directory, "edits.json"); if (File.Exists(edits)) ReadObject(workspace.Resolve(edits, true));
+            workspace.Resolve(Path.Combine(directory, SessionTranscript.FileName));
             return directory;
         }
 
@@ -230,6 +241,10 @@ namespace OperationRecorderApp
                     case "settings": ValidateSettings(field.Value); break;
                     case "seq": PositiveLong(request, field.Key); break;
                     case "radius": Integer(request, field.Key, 14); if (field.Value == null) throw new ArgumentException("radiusは0～200の整数です。"); break;
+                    case "offsetMs":
+                        if (field.Value == null) throw new ArgumentException("offsetMsは整数です。");
+                        Integer(request, field.Key, 0, 86_400_000);
+                        break;
                     case "md": case "html": case "embed":
                         if (field.Value == null) throw new ArgumentException(field.Key + "はtrue/falseです。");
                         Boolean(request, field.Key, true); break;
@@ -240,7 +255,7 @@ namespace OperationRecorderApp
                         break;
                     default:
                         string text = StringValue(field.Value, field.Key);
-                        if (new[] { "sample", "session", "directory", "out", "templateDirectory" }.Contains(field.Key) && string.IsNullOrWhiteSpace(text))
+                        if (new[] { "sample", "session", "directory", "out", "templateDirectory", "transcript" }.Contains(field.Key) && string.IsNullOrWhiteSpace(text))
                             throw new ArgumentException(field.Key + "は空でないパスです。");
                         if (field.Key == "name") CheckName(text);
                         break;
@@ -252,6 +267,7 @@ namespace OperationRecorderApp
                 if (action == "metadata" && !request.ContainsKey("caption") && !request.ContainsKey("description"))
                     throw new ArgumentException("metadataにはcaptionかdescriptionが必要です。");
                 if (action == "edit") { Required(request, "headline"); Required(request, "body"); }
+                if (action == "transcript") Required(request, "transcript");
                 if (action == "edit" || action == "reset" || action == "delete-step") PositiveLong(request, "seq");
                 if (action == "export")
                 {
@@ -292,11 +308,11 @@ namespace OperationRecorderApp
         static string StringValue(JsonNode node, string key) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text : throw new ArgumentException(key + " は文字列です。");
         internal static JsonArray Array(JsonObject node, string key) => node[key] as JsonArray ?? throw new ArgumentException(key + " は配列です。");
         static bool Boolean(JsonObject node, string key, bool fallback) => node[key] == null ? fallback : node[key] is JsonValue value && value.TryGetValue<bool>(out var result) ? result : throw new ArgumentException(key + " は真偽値です。");
-        static int Integer(JsonObject node, string key, int fallback)
+        static int Integer(JsonObject node, string key, int fallback, int maximum = 200)
         {
             if (node[key] == null) return fallback;
-            if (node[key] is JsonValue value && value.TryGetValue<int>(out var result) && result >= 0 && result <= 200) return result;
-            throw new ArgumentException(key + " は0～200の整数です。");
+            if (node[key] is JsonValue value && value.TryGetValue<int>(out var result) && result >= 0 && result <= maximum) return result;
+            throw new ArgumentException(key + " は0～" + maximum + "の整数です。");
         }
         static void CheckName(string name)
         {
