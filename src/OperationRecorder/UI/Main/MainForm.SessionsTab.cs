@@ -28,6 +28,7 @@ namespace OperationRecorderApp
         Label lblSesInfo, lblStepInfo, lblStepEdited;
         Button btnSaveMeta, btnOutHtml, btnOutMd, btnOpenSaveFolder, btnDeleteSession, btnSaveStep, btnResetStep, btnDeleteStep, btnEditTemplates, btnMerge;
         Button btnOutPdf, btnOutDocx;
+        Button btnSkillDraft;
         bool documentExporting;
         List<ReportGenerator.StepInfo> currentSteps = new List<ReportGenerator.StepInfo>();
 
@@ -68,6 +69,19 @@ namespace OperationRecorderApp
             var resume = new Button { Text = "合成作業を再開…", Name = "resumeComposition", AutoSize = true };
             resume.Click += (s, e) => ResumeMerge();
             top.Controls.AddRange(new Control[] { btnMerge, resume });
+            btnSkillDraft = new Button { Name = "analyzeSkillDraft", Text = "手順案を分析…", AutoSize = true, Enabled = false };
+            btnSkillDraft.Click += (_, _) =>
+            {
+                if (SelectedSession is not { } session) return;
+                if (HasUnsavedSessionEdits)
+                {
+                    ShowInfo("編集中の名前・解説・手順文章を記録へ保存してください。");
+                    return;
+                }
+                try { SkillDraftDialog.Analyze(this, session.Dir); }
+                catch (Exception error) { ShowWarning("手順案の分析を開けませんでした: " + error.Message); }
+            };
+            top.Controls.Add(btnSkillDraft);
 
             var split = new SplitContainer { Dock = DockStyle.Fill, FixedPanel = FixedPanel.Panel1 };
             pageSessions.Controls.Add(split);
@@ -218,6 +232,7 @@ namespace OperationRecorderApp
             foreach (var c in new Control[] { txtSesCaption, txtSesDescription, btnSaveMeta, btnOutHtml, btnOutMd, btnOutPdf, btnOutDocx, btnOpenSaveFolder, btnDeleteSession })
                 c.Enabled = on;
             btnMerge.Enabled = lvSessions.SelectedItems.Count > 0;
+            btnSkillDraft.Enabled = on;
         }
 
         void EnableStepEditor(bool on)

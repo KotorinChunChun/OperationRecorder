@@ -23,6 +23,7 @@ namespace OperationRecorderApp
             if (ExportCommand.IsExport(args)) return ExportCommand.Execute(args);
             if (TranscriptionCommand.IsTranscription(args)) return TranscriptionCommand.Execute(args);
             if (args.Length > 0 && args[0] == "--local-transcription-model") return LocalModelCommand.Execute(args);
+            if (args.Length > 0 && args[0] == "--skill") return SkillCommand.Execute(args);
             AutomationInstance isolation;
             try { isolation = AutomationInstance.Parse(args); }
             catch (ArgumentException error) { CommandConsole.Prepare(); Console.Error.WriteLine(error.Message); return 2; }

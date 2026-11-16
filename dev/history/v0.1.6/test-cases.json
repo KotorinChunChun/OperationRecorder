@@ -4,8 +4,8 @@
   "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
   "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
   "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
-  "methodCount": 325,
-  "expandedCaseCount": 540,
+  "methodCount": 329,
+  "expandedCaseCount": 544,
   "additionalSuites": [
     {
       "id": "html-browser",
@@ -98,6 +98,13 @@
       "title": "文字起こし方式、鍵保管、音声送信と時刻",
       "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
       "caseCount": 14,
+      "status": "automated"
+    },
+    {
+      "id": "F-SKILL-DRAFT",
+      "title": "根拠付き手順案、送信内容の確認、スキル出力",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "caseCount": 4,
       "status": "automated"
     },
     {
@@ -4202,6 +4209,66 @@
       "boundary": "OSごみ箱は差替え。画像移動失敗でも手順削除を続ける既存best effortを維持",
       "displayNames": [
         "OperationRecorderApp.Tests.SessionEditorTests.無い手順は消さない"
+      ]
+    },
+    {
+      "id": "TEST-9D692F92628E",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.拡大縮小した表示でマスクの座標を元画像へ変換する",
+      "title": "拡大縮小した表示でマスクの座標を元画像へ変換する",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.拡大縮小した表示でマスクの座標を元画像へ変換する"
+      ]
+    },
+    {
+      "id": "TEST-FF506071639F",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.古い記録の画像が無くても文章だけを分析に選べる",
+      "title": "古い記録の画像が無くても文章だけを分析に選べる",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.古い記録の画像が無くても文章だけを分析に選べる"
+      ]
+    },
+    {
+      "id": "TEST-63B2D28ABABF",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.承認済みの文章とマスク画像だけ送信し編集案からスキルと手順書を作成する",
+      "title": "承認済みの文章とマスク画像だけ送信し編集案からスキルと手順書を作成する",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.承認済みの文章とマスク画像だけ送信し編集案からスキルと手順書を作成する"
+      ]
+    },
+    {
+      "id": "TEST-CB9ECCBC466A",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.送信対象にない操作を根拠とする応答を拒否する",
+      "title": "送信対象にない操作を根拠とする応答を拒否する",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.送信対象にない操作を根拠とする応答を拒否する"
       ]
     },
     {

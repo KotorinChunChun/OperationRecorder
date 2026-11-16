@@ -117,6 +117,7 @@ namespace OpRec
             public string TimeText, Screen, PointInWindow, ClassName, UiElements, Program, PsrText;
             public string OriginalHeadline, OriginalBody;   // 自動で作った文章(手で直す前)
             public string BodyWithoutNarration;
+            public string Narration, EditedBody;
             public long StartMs;
             public bool Edited;                             // edits.json で直してあるか
             public MarkSpec BeforeMarks;                    // 操作前の画像に描く印の位置(古い記録は画像に描いてあるので null)
@@ -171,7 +172,9 @@ namespace OpRec
             return headline;
         }
 
-        public static List<StepInfo> ListSteps(string sessionDir)
+        public static List<StepInfo> ListSteps(string sessionDir) => ListSteps(sessionDir, restrictImagePaths: false);
+
+        internal static List<StepInfo> ListSteps(string sessionDir, bool restrictImagePaths)
         {
             sessionDir = Path.GetFullPath(sessionDir);
             var session = JsonNode.Parse(File.ReadAllText(Path.Combine(sessionDir, "session.json"), Encoding.UTF8)).AsObject();
@@ -181,6 +184,12 @@ namespace OpRec
                 foreach (var line in File.ReadAllLines(eventsPath, Encoding.UTF8))
                     if (line.Trim().Length > 0) events.Add(JsonNode.Parse(line).AsObject());
             events = events.OrderBy(e => Num(e["tMs"])).ThenBy(e => Num(e["seq"])).ToList();
+            if (restrictImagePaths)
+                foreach (var entry in events)
+                {
+                    CheckImagePath(entry["before"], sessionDir, allowMissing: true);
+                    CheckImagePath(entry["after"], sessionDir, allowMissing: true);
+                }
             var model = BuildModel(session, events, sessionDir, sessionDir, new Options { Marks = MarkOptions.None() });
             var list = new List<StepInfo>();
             foreach (Dictionary<string, object> s in (List<object>)model["steps"])
@@ -197,6 +206,8 @@ namespace OpRec
                     OriginalHeadline = s["originalHeadline"] as string,
                     OriginalBody = s["originalBody"] as string,
                     BodyWithoutNarration = s["bodyWithoutNarration"] as string,
+                    Narration = s["narration"] as string,
+                    EditedBody = s["editedBody"] as string,
                     StartMs = (long)s["startMs"],
                     Edited = s["edited"] is bool && (bool)s["edited"],
                     WindowTitle = s["windowTitle"] as string,
@@ -374,7 +385,7 @@ namespace OpRec
             return "![" + alt + "](" + rel + ")";
         }
 
-        static void CheckImagePath(JsonNode node, string sessionDir)
+        static void CheckImagePath(JsonNode node, string sessionDir, bool allowMissing = false)
         {
             if (node == null) return;
             string file = Str(node["file"]);
@@ -386,7 +397,7 @@ namespace OpRec
                 !string.Equals(Path.GetExtension(path), ".png", StringComparison.OrdinalIgnoreCase))
                 throw new IOException("記録フォルダ内のPNGだけを出力できます。");
             for (; !string.Equals(path, root, StringComparison.OrdinalIgnoreCase); path = Path.GetDirectoryName(path))
-                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                if ((!allowMissing || File.Exists(path) || Directory.Exists(path)) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
                     throw new IOException("リンク先の画像は出力できません。");
         }
 
@@ -618,6 +629,7 @@ namespace OpRec
                     { "screenHeadline", ScreenHeadline(e, headline, edited && ed["headline"] != null) },
                     { "actionSentence", action }, { "inputText", inputText }, { "body", body },
                     { "bodyWithoutNarration", bodyWithoutNarration }, { "startMs", Math.Max(0L, (long)Num(e["tMs"])) },
+                    { "narration", spoken }, { "editedBody", Str(ed?["body"]) },
                     { "originalHeadline", originalHeadline }, { "originalBody", originalBody }, { "edited", edited },
                     { "uiElements", UiElements(uia) }, { "psrText", PsrText(e, inputLines0(e)) }, { "timeText", TimeText(Str(e["time"])) },
                     { "windowTitle", win != null ? Str(win["title"]) : null },
