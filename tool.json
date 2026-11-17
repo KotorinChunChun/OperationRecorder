@@ -11,7 +11,7 @@
   "manual": "docs/kotorintoys-integration.md",
   "readme": "README.md",
   "shortcuts": "config/shortcuts.json",
-  "distributionStatus": "published",
+  "distributionStatus": "development",
   "repositoryUrl": "https://github.com/KotorinChunChun/OperationRecorder",
   "supportedEnvironment": "windows11-x64",
   "investigationStatus": "confirmed",

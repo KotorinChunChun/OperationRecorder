@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/OperationRecorder/OperationRecorderApp.csproj" />
+    <ProjectReference Include="../OperationRecorder.EvidenceFixture/OperationRecorder.EvidenceFixture.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

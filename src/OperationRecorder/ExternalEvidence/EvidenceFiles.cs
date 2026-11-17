@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -41,7 +42,7 @@ public static class EvidenceFiles
         using (var graphics = Graphics.FromImage(bitmap)) graphics.Clear(Color.Black);
         using var output = new MemoryStream(); bitmap.Save(output, ImageFormat.Png); return output.ToArray();
     }
-    public static string Save(CaptureWork work, byte[] protectedPng, EvidenceUi safeUi, DateTimeOffset capturedAt, byte[] protectedVideo = null)
+    public static string Save(CaptureWork work, byte[] protectedPng, EvidenceUi safeUi, DateTimeOffset capturedAt, byte[] protectedVideo = null, long? timelineOffsetMs = null)
     {
         if (DateTimeOffset.UtcNow >= work.DeadlineUtc) throw new EvidenceUnavailableException("deadline-exceeded");
         RequireLocalUnlinkedPath(work.Directory);
@@ -52,7 +53,7 @@ public static class EvidenceFiles
         AtomicBytes(Path.Combine(work.Directory, "ui.json"), uiBytes);
         if (protectedVideo != null) AtomicBytes(Path.Combine(work.Directory, "frame.mp4"), protectedVideo);
         var commit = new EvidenceCommit(1, work.SessionId, work.StepId, work.StepToken, work.Phase, capturedAt, DateTimeOffset.UtcNow,
-            (long)(capturedAt - work.SessionStartedUtc).TotalMilliseconds,
+            timelineOffsetMs ?? (long)(capturedAt - work.SessionStartedUtc).TotalMilliseconds,
             assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0],
             HashFile(assembly.Location), Hash(protectedPng), Hash(uiBytes), protectedVideo == null ? null : Hash(protectedVideo));
         string path = Path.Combine(work.Directory, "commit.json"); AtomicJson(path, commit); return path;

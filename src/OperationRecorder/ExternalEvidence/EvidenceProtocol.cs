@@ -51,15 +51,19 @@ public sealed record EvidenceReply
     public Guid StepToken { get; init; }
     public string Status { get; init; }
     public bool OperationAllowed { get; init; }
+    public string Outcome { get; init; }
     public DateTimeOffset? SavedAt { get; init; }
     public string[] EvidencePaths { get; init; } = Array.Empty<string>();
     public Guid[] PendingSteps { get; init; } = Array.Empty<Guid>();
     public string[] Capabilities { get; init; } = Array.Empty<string>();
+    public EvidenceStepSummary[] StepStates { get; init; } = Array.Empty<EvidenceStepSummary>();
+    public bool HasMoreSteps { get; init; }
 }
+public sealed record EvidenceStepSummary(Guid StepId, Guid StepToken, string Status, bool BeforeSaved, bool AfterSaved, bool FailureSaved, string Outcome);
 public sealed record EvidenceNode(int ControlTypeId, int X, int Y, int Width, int Height, bool IsPassword, bool Enabled);
 public sealed record EvidenceUi(IReadOnlyList<EvidenceNode> Elements, bool Truncated, string VisualProtection = "opaque-all", bool TextRead = false);
 public sealed record CaptureWork(Guid SessionId, Guid StepId, Guid StepToken, string Phase, EvidenceTarget Target,
-    EvidencePolicy Policy, string Directory, DateTimeOffset SessionStartedUtc, DateTimeOffset DeadlineUtc);
+    EvidencePolicy Policy, string Directory, DateTimeOffset SessionStartedUtc, DateTimeOffset DeadlineUtc, long SessionClockStartTicks = 0);
 public sealed record EvidenceCommit(int SchemaVersion, Guid SessionId, Guid StepId, Guid StepToken, string Phase,
     DateTimeOffset CapturedAt, DateTimeOffset SavedAt, long TimelineOffsetMs, string ProductVersion, string ImplementationSha256,
     string ImageSha256, string UiSha256, string VideoSha256 = null);

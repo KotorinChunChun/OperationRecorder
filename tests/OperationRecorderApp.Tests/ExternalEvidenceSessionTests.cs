@@ -137,6 +137,14 @@ public sealed class ExternalEvidenceSessionTests
         Assert.Equal(0, c.Backend.Calls);
     }
     [Fact]
+    public async Task 操作結果が不明なら画像保存後も未確定として列挙する()
+    {
+        using var c = new Context(); await c.Start(); var begin = await c.Session.HandleAsync(c.Request("BeginStep", Guid.NewGuid()));
+        var end = await c.Session.HandleAsync(c.Request("EndStep", token: begin.StepToken) with { Outcome = "unknown" });
+        Assert.Equal("after-saved", end.Status); Assert.Equal("unknown", end.Outcome); Assert.Contains(begin.StepId, end.PendingSteps);
+        var flush = await c.Session.HandleAsync(c.Request("Flush")); Assert.Contains(begin.StepId, flush.PendingSteps);
+    }
+    [Fact]
     public void 不透明画像は文字や元画素を保持せず固定ローカル出力だけ許可する()
     {
         byte[] png = EvidenceFiles.OpaquePng(new Size(24,24));

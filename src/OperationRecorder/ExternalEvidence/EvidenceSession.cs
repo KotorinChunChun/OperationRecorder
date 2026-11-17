@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,6 +39,7 @@ public sealed class EvidenceSession : IDisposable
     EvidencePolicy policy;
     string directory;
     DateTimeOffset started;
+    long clockStart;
     bool stopped;
     public EvidenceSession(IEvidenceBackend backend, IEvidenceTargetValidator validator) { this.backend = backend; this.validator = validator; }
     public async Task<EvidenceReply> HandleAsync(EvidenceRequest request, CancellationToken cancellationToken = default)
@@ -43,8 +47,8 @@ public sealed class EvidenceSession : IDisposable
         Guid id = request?.RequestId ?? Guid.Empty;
         EvidenceReply Reply(string status, EvidenceStep step = null, bool allowed = false, DateTimeOffset? saved = null, params string[] paths) => new()
         { RequestId = id, SessionId = sessionId, StepId = step?.StepId ?? request?.StepId ?? Guid.Empty, StepToken = step?.Token ?? Guid.Empty,
-            Status = status, OperationAllowed = allowed, SavedAt = saved, EvidencePaths = paths,
-            PendingSteps = steps.Values.Where(s => s.Status != "completed").Select(s => s.StepId).ToArray() };
+            Status = status, OperationAllowed = allowed, Outcome = step?.Outcome, SavedAt = saved, EvidencePaths = paths,
+            PendingSteps = steps.Values.Where(s => s.Status != "completed" || s.Outcome == "unknown").Select(s => s.StepId).ToArray() };
         bool entered = false;
         EvidenceStep processing = null;
         try
@@ -58,6 +62,7 @@ public sealed class EvidenceSession : IDisposable
             if (requestHashes.TryGetValue(id, out var previous)) return Reply(previous == hash ? "duplicate-request" : "request-conflict");
             if (requestHashes.Count >= 20000) return Reply("session-limit");
             requestHashes.Add(id, hash);
+            if (request.Method == "InspectSession") return Inspect(request);
             if (request.Method == "StartSession")
             {
                 if (sessionId != Guid.Empty) return Reply(request.SessionId == sessionId ? "already-started" : "session-conflict");
@@ -69,9 +74,13 @@ public sealed class EvidenceSession : IDisposable
                 EvidenceFiles.RequireLocalUnlinkedPath(output);
                 if (Directory.Exists(output)) return Reply("output-exists");
                 Directory.CreateDirectory(output);
+                var security = new DirectorySecurity(); security.SetAccessRuleProtection(true, false);
+                security.AddAccessRule(new FileSystemAccessRule(System.Security.Principal.WindowsIdentity.GetCurrent().User, FileSystemRights.FullControl,
+                    InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
+                new DirectoryInfo(output).SetAccessControl(security);
                 sessionLock = new FileStream(Path.Combine(output, "external.lock"), FileMode.CreateNew, FileAccess.Write, FileShare.None);
-                directory = output; target = request.Target; policy = selectedPolicy; started = DateTimeOffset.UtcNow; sessionId = request.SessionId;
-                EvidenceFiles.AtomicJson(Path.Combine(directory, "external-session.json"), new { schemaVersion = 1, sessionId, started, target, policy, status = "open" });
+                directory = output; target = request.Target; policy = selectedPolicy; started = DateTimeOffset.UtcNow; clockStart = Stopwatch.GetTimestamp(); sessionId = request.SessionId;
+                EvidenceFiles.AtomicJson(Path.Combine(directory, "external-session.json"), new { product = "operation-recorder-evidence", schemaVersion = 1, sessionId, started, target, policy, status = "open" });
                 SaveCompatibility();
                 return Reply("started") with { Capabilities = new[] { "durable-before-after", "explicit-steps", "opaque-all", "geometry-only", "snapshot-video-segments", "no-input-hooks" } };
             }
@@ -132,6 +141,49 @@ public sealed class EvidenceSession : IDisposable
     static bool ValidState(EvidenceState state) => state == null ||
         ((state.ControlTypeId == null || state.ControlTypeId is >= 50000 and <= 50100) &&
         (state.FingerprintSha256 == null || EvidenceProtocol.IsHash(state.FingerprintSha256)));
+    EvidenceReply Inspect(EvidenceRequest request)
+    {
+        string root = request.OutputDirectory;
+        EvidenceFiles.RequireLocalUnlinkedPath(root);
+        var manifestFile = Path.Combine(root, "external-session.json");
+        EvidenceFiles.RequireLocalUnlinkedPath(manifestFile);
+        if (new FileInfo(manifestFile).Length > EvidenceProtocol.MaxMessageBytes) throw new EvidenceUnavailableException("message-limit");
+        using var manifest = JsonDocument.Parse(File.ReadAllBytes(manifestFile));
+        var value = manifest.RootElement;
+        if (value.GetProperty("product").GetString() != "operation-recorder-evidence" || value.GetProperty("schemaVersion").GetInt32() != 1 || value.GetProperty("sessionId").GetGuid() != request.SessionId)
+            throw new EvidenceUnavailableException("session-mismatch");
+        string stepRoot = Path.Combine(root, "steps");
+        var summaries = new List<EvidenceStepSummary>();
+        if (Directory.Exists(stepRoot)) foreach (var folder in Directory.EnumerateDirectories(stepRoot).Take(10001))
+        {
+            if (summaries.Count >= 10000) throw new EvidenceUnavailableException("session-limit");
+            EvidenceFiles.RequireLocalUnlinkedPath(folder);
+            if (!Guid.TryParseExact(Path.GetFileName(folder), "N", out var id) || request.StepId != Guid.Empty && request.StepId != id) continue;
+            string file = Path.Combine(folder, "step.json"); EvidenceFiles.RequireLocalUnlinkedPath(file);
+            if (new FileInfo(file).Length > EvidenceProtocol.MaxMessageBytes) throw new EvidenceUnavailableException("message-limit");
+            var step = JsonSerializer.Deserialize<EvidenceStep>(File.ReadAllBytes(file), EvidenceProtocol.Json);
+            if (step.StepId != id) throw new EvidenceUnavailableException("save-unconfirmed");
+            bool Saved(string phase)
+            {
+                var path = Path.Combine(folder, phase);
+                try
+                {
+                    var work = new CaptureWork(request.SessionId, id, step.Token, phase,
+                        value.GetProperty("target").Deserialize<EvidenceTarget>(EvidenceProtocol.Json),
+                        value.GetProperty("policy").Deserialize<EvidencePolicy>(EvidenceProtocol.Json), path,
+                        value.GetProperty("started").GetDateTimeOffset(), request.DeadlineUtc);
+                    EvidenceFiles.Verify(work); return true;
+                }
+                catch { return false; }
+            }
+            bool before = Saved("before"), after = Saved("after");
+            string outcome = step.Outcome is "success" or "failure" or "unknown" ? step.Outcome : "unknown";
+            summaries.Add(new(id, step.Token, step.Status == "completed" && before && after && outcome != "unknown" ? "completed" : "indeterminate", before, after, Saved("failure"), outcome));
+        }
+        return new EvidenceReply { RequestId = request.RequestId, SessionId = request.SessionId, Status = "inspected", OperationAllowed = false,
+            StepStates = summaries.Take(100).ToArray(), HasMoreSteps = summaries.Count > 100,
+            PendingSteps = summaries.Where(s => s.Status != "completed").Select(s => s.StepId).Take(100).ToArray() };
+    }
     string StepDirectory(EvidenceStep step) => Path.Combine(directory, "steps", step.StepId.ToString("N"));
     string PhaseDirectory(EvidenceStep step, string phase) => Path.Combine(StepDirectory(step), phase);
     void SaveStep(EvidenceStep step) => EvidenceFiles.AtomicJson(Path.Combine(StepDirectory(step), "step.json"), step);
@@ -141,7 +193,7 @@ public sealed class EvidenceSession : IDisposable
         string path = PhaseDirectory(step, phase);
         Directory.CreateDirectory(path);
         EvidenceFiles.AtomicJson(Path.Combine(path, "started.json"), new { schemaVersion = 1, request.RequestId, step.StepId, step.Token, phase });
-        var work = new CaptureWork(sessionId, step.StepId, step.Token, phase, target, policy, path, started, request.DeadlineUtc);
+        var work = new CaptureWork(sessionId, step.StepId, step.Token, phase, target, policy, path, started, request.DeadlineUtc, clockStart);
         await backend.CaptureAndSaveAsync(work, token).WaitAsync(token);
         token.ThrowIfCancellationRequested();
         if (!validator.Matches(target)) throw new EvidenceUnavailableException("target-mismatch");
@@ -154,7 +206,8 @@ public sealed class EvidenceSession : IDisposable
         EvidenceFiles.AtomicJson(Path.Combine(directory, "session.json"), new { tool = "operation-recorder", source = "external-evidence", schemaVersion = 1,
             sessionId, mode = "Window", caption = "外部操作記録", start = started, end = DateTimeOffset.UtcNow, eventCount = complete.Length,
             targetWindow = new { hwnd = target.WindowHandle, title = "対象アプリ（文字情報非取得）" } });
-        var events = complete.Select(s => JsonSerializer.Serialize(new { seq = s.Sequence, kind = "capture", time = started, tMs = (long)(JsonSerializer.Deserialize<EvidenceCommit>(File.ReadAllBytes(s.Before), EvidenceProtocol.Json).CapturedAt - started).TotalMilliseconds,
+        var events = complete.Select(s => JsonSerializer.Serialize(new { seq = s.Sequence, kind = "capture", time = JsonSerializer.Deserialize<EvidenceCommit>(File.ReadAllBytes(s.Before), EvidenceProtocol.Json).CapturedAt,
+            tMs = JsonSerializer.Deserialize<EvidenceCommit>(File.ReadAllBytes(s.Before), EvidenceProtocol.Json).TimelineOffsetMs,
             stepId = s.StepId, before = new { file = Path.GetRelativePath(directory, Path.Combine(Path.GetDirectoryName(s.Before), "frame.png")).Replace('\\','/') },
             after = new { file = Path.GetRelativePath(directory, Path.Combine(Path.GetDirectoryName(s.After), "frame.png")).Replace('\\','/') } }, EvidenceProtocol.Json));
         EvidenceFiles.AtomicBytes(Path.Combine(directory, "events.jsonl"), Encoding.UTF8.GetBytes(string.Join("\n", events) + (complete.Length == 0 ? "" : "\n")));
