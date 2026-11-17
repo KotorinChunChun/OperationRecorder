@@ -60,7 +60,7 @@ public static class EvidenceServer
 }
 public static class ExternalEvidenceCommand
 {
-    public static bool IsEvidence(string[] args) => args.Length > 0 && args[0] is "--evidence-host" or "--evidence-worker";
+    public static bool IsEvidence(string[] args) => args.Length > 0 && args[0].StartsWith("--evidence-", StringComparison.Ordinal);
     public static int Execute(string[] args)
     {
         try

@@ -55,7 +55,7 @@ public static class EvidenceFiles
         var commit = new EvidenceCommit(1, work.SessionId, work.StepId, work.StepToken, work.Phase, capturedAt, DateTimeOffset.UtcNow,
             timelineOffsetMs ?? (long)(capturedAt - work.SessionStartedUtc).TotalMilliseconds,
             assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0],
-            HashFile(assembly.Location), Hash(protectedPng), Hash(uiBytes), protectedVideo == null ? null : Hash(protectedVideo));
+            HashFile(string.IsNullOrEmpty(assembly.Location) ? Environment.ProcessPath : assembly.Location), Hash(protectedPng), Hash(uiBytes), protectedVideo == null ? null : Hash(protectedVideo));
         string path = Path.Combine(work.Directory, "commit.json"); AtomicJson(path, commit); return path;
     }
     public static EvidenceCommit Verify(CaptureWork work)

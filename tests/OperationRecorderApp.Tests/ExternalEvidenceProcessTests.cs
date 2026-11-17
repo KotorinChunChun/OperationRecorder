@@ -44,11 +44,29 @@ public sealed class ExternalEvidenceProcessTests
         try
         {
             var backend = new EvidenceWorkerBackend(() => { var info = new ProcessStartInfo(FixtureExe); info.ArgumentList.Add(mode); return info; });
-            var work = new CaptureWork(Guid.NewGuid(),Guid.NewGuid(),Guid.NewGuid(),"before",new(1,DateTimeOffset.UtcNow,"C:/fixture.exe",1,2),new(),root,DateTimeOffset.UtcNow,DateTimeOffset.UtcNow.AddMilliseconds(800));
-            var watch = Stopwatch.StartNew();
-            var error = await Assert.ThrowsAsync<EvidenceUnavailableException>(() => backend.CaptureAndSaveAsync(work,CancellationToken.None));
-            Assert.Equal("deadline-exceeded", error.Code); Assert.True(watch.Elapsed < TimeSpan.FromSeconds(4));
-            if (mode == "--worker-save-hang") Assert.True(File.Exists(Path.Combine(root,"commit.json")));
+            var work = new CaptureWork(Guid.NewGuid(),Guid.NewGuid(),Guid.NewGuid(),"before",new(1,DateTimeOffset.UtcNow,"C:/fixture.exe",1,2),new(),root,DateTimeOffset.UtcNow,
+                mode == "--worker-save-hang" ? DateTimeOffset.UtcNow.AddSeconds(10) : DateTimeOffset.UtcNow.AddMilliseconds(800));
+            if (mode == "--worker-save-hang")
+            {
+                using var cancel = new CancellationTokenSource();
+                var running = backend.CaptureAndSaveAsync(work,cancel.Token);
+                try
+                {
+                    var ready = Stopwatch.StartNew();
+                    while (!File.Exists(Path.Combine(root,"commit.json")) && ready.Elapsed < TimeSpan.FromSeconds(5)) await Task.Delay(20);
+                    Assert.True(File.Exists(Path.Combine(root,"commit.json")),"保存後ハングの注入前にcommitが必要");
+                    var watch = Stopwatch.StartNew(); cancel.Cancel();
+                    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+                    Assert.True(watch.Elapsed < TimeSpan.FromSeconds(2));
+                }
+                finally { cancel.Cancel(); try { await running; } catch { } }
+            }
+            else
+            {
+                var watch = Stopwatch.StartNew();
+                var error = await Assert.ThrowsAsync<EvidenceUnavailableException>(() => backend.CaptureAndSaveAsync(work,CancellationToken.None));
+                Assert.Equal("deadline-exceeded", error.Code); Assert.True(watch.Elapsed < TimeSpan.FromSeconds(4));
+            }
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root,true); }
     }
@@ -128,6 +146,30 @@ public sealed class ExternalEvidenceProcessTests
         var limited=ProtectedEvidenceUi.Collect(root,77,new Rectangle(0,0,80,60),new(MaxElements:1),CancellationToken.None);
         Assert.Single(limited.Elements); Assert.True(limited.Truncated);
         var source=JsonSerializer.Serialize(ui); Assert.DoesNotContain("DUMMY_SECRET",source);
+    }
+    [Fact]
+    public async Task 実encoderプロセスの失敗や停止でも期限内に制御を戻す()
+    {
+        var png=EvidenceFiles.OpaquePng(new Size(24,24));
+        using(var timeout=new CancellationTokenSource(5000))
+        {
+            var failure=await Assert.ThrowsAsync<EvidenceUnavailableException>(()=>EvidenceVideo.EncodeAsync(FixtureExe,png,timeout.Token));
+            Assert.Equal("video-unavailable",failure.Code);
+        }
+        // Keep the generated test executable in the ignored build folder; never replace a running fixture.
+        string hanging=Path.Combine(Path.GetDirectoryName(FixtureExe),"encoder-hang-"+Guid.NewGuid().ToString("N")+".exe");
+        File.Copy(FixtureExe,hanging);
+        using var deadline=new CancellationTokenSource(800);
+        var watch=Stopwatch.StartNew();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(()=>EvidenceVideo.EncodeAsync(hanging,png,deadline.Token));
+        Assert.True(watch.Elapsed<TimeSpan.FromSeconds(3));
+    }
+    [Fact]
+    public void 不正なAPI引数でも通常GUIを起動しない()
+    {
+        using var scope = new AutomationScope();
+        Assert.Equal(2, scope.Process("--evidence-host").Code);
+        Assert.Equal(2, scope.Process("--evidence-unknown").Code);
     }
     [Fact]
     public async Task 過大IPCと秘密の環境継承を拒否する()

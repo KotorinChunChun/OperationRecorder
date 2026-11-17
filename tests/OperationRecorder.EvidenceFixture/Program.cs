@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
 using OperationRecorderApp.ExternalEvidence;
 
@@ -18,6 +19,8 @@ internal static class Program
     }
     static async Task<int> Run(string[] args)
     {
+        if (args.Contains("-loglevel") && Path.GetFileName(Environment.ProcessPath!).StartsWith("encoder-hang-", StringComparison.Ordinal))
+        { await Task.Delay(Timeout.Infinite); return 0; }
         if (args.Length == 1 && args[0] == "--idle") { await Task.Delay(Timeout.Infinite); return 0; }
         if (args.Length == 1 && args[0].StartsWith("--worker-", StringComparison.Ordinal))
         {
@@ -26,7 +29,7 @@ internal static class Program
             if (args[0] == "--worker-save-hang") EvidenceFiles.Save(work, EvidenceFiles.OpaquePng(new Size(12,12)), new EvidenceUi(Array.Empty<EvidenceNode>(),false), DateTimeOffset.UtcNow);
             await Task.Delay(Timeout.Infinite); return 0;
         }
-        if (args.Length == 4 && args[0] == "--host")
+        if (args.Length == 4 && args[0] is "--host" or "--evidence-host")
             return await EvidenceServer.RunAsync(args[1], int.Parse(args[2]), long.Parse(args[3]), new FakeBackend(), new AnyTarget());
         if (args.Length == 1 && args[0] == "--spawn-broker-then-exit")
         {

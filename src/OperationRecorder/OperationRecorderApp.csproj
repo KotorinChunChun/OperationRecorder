@@ -29,6 +29,7 @@
     <None Include="../../templates/*.md" Link="templates/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../scripts/Invoke-OperationReplay.ps1;../../scripts/New-OperationReplayWithCodex.ps1" Link="scripts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../scripts/transcribe-narration.py" Link="scripts/transcribe-narration.py" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../scripts/OperationRecorderEvidence.psm1" Link="scripts/OperationRecorderEvidence.psm1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!-- 正本はdocs。アプリ内表示と既存の配布リンクのため、出力時だけ互換コピーを作る。 -->
     <None Include="../../docs/USERS_GUIDE.md" Link="MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../docs/USERS_GUIDE.md" Link="operation-recorder/MANUAL.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

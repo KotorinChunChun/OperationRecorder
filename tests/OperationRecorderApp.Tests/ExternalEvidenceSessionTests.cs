@@ -65,6 +65,7 @@ public sealed class ExternalEvidenceSessionTests
     [Theory]
     [InlineData("capture-unavailable")]
     [InlineData("save-unavailable")]
+    [InlineData("video-unavailable")]
     [InlineData("deadline-exceeded")]
     public async Task before失敗やタイムアウトなら模擬操作を一度も実行しない(string code)
     {
@@ -135,6 +136,17 @@ public sealed class ExternalEvidenceSessionTests
         Assert.Equal("invalid-metadata", (await c.Session.HandleAsync(c.Request("BeginStep", Guid.NewGuid()) with { ExpectedStateMetadata = new(FingerprintSha256: "DUMMY_SECRET") })).Status);
         Assert.Equal("invalid-request", (await c.Session.HandleAsync(c.Request("BeginStep", Guid.NewGuid()) with { OperationName = "DUMMY_SECRET" })).Status);
         Assert.Equal(0, c.Backend.Calls);
+    }
+    [Fact]
+    public async Task 要求数の上限でも開始済み工程の確定とFlushとStopを妨げない()
+    {
+        using var c = new Context(); using var capped = new EvidenceSession(c.Backend,c.Validator,maxRequests:2);
+        Assert.Equal("started",(await capped.HandleAsync(c.Request("StartSession") with {Target=new(1,DateTimeOffset.UtcNow,"C:/fixture.exe",1,2),OutputDirectory=Path.Combine(c.Root,"capped")})).Status);
+        var begin=await capped.HandleAsync(c.Request("BeginStep",Guid.NewGuid())); Assert.True(begin.OperationAllowed);
+        Assert.Equal("after-saved",(await capped.HandleAsync(c.Request("EndStep",token:begin.StepToken))).Status);
+        var limited=await capped.HandleAsync(c.Request("BeginStep",Guid.NewGuid())); Assert.Equal("session-limit",limited.Status);Assert.False(limited.OperationAllowed);
+        Assert.Equal("flushed",(await capped.HandleAsync(c.Request("Flush"))).Status);
+        Assert.Equal("stopped",(await capped.HandleAsync(c.Request("StopSession"))).Status);
     }
     [Fact]
     public async Task 操作結果が不明なら画像保存後も未確定として列挙する()

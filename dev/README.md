@@ -4,6 +4,8 @@
 
 ## 版別資料
 
+- [0.1.7 要求](history/v0.1.7/v0.1.7-req.md)・[計画と報告](history/v0.1.7/v0.1.7-imp.md)・[進捗](history/v0.1.7/v0.1.7-task.md)：外部証拠API
+
 - [0.1.6 要求](history/v0.1.6/v0.1.6-req.md)・[計画と報告](history/v0.1.6/v0.1.6-imp.md)・[ケース一覧](history/v0.1.6/test-cases.json)
 - [0.1.5 要求](history/v0.1.5/v0.1.5-req.md)・[計画と報告](history/v0.1.5/v0.1.5-imp.md)
 - その他の版は`history/vX.Y.Z/`に保存する。過去の配置やコマンドを含む記録は当時の証跡として扱う。

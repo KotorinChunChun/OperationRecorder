@@ -30,6 +30,7 @@ public sealed class EvidenceSession : IDisposable
 {
     readonly IEvidenceBackend backend;
     readonly IEvidenceTargetValidator validator;
+    readonly int maxRequests;
     readonly Dictionary<Guid, EvidenceStep> steps = new();
     readonly Dictionary<Guid, string> requestHashes = new();
     readonly SemaphoreSlim gate = new(1, 1);
@@ -41,7 +42,11 @@ public sealed class EvidenceSession : IDisposable
     DateTimeOffset started;
     long clockStart;
     bool stopped;
-    public EvidenceSession(IEvidenceBackend backend, IEvidenceTargetValidator validator) { this.backend = backend; this.validator = validator; }
+    public EvidenceSession(IEvidenceBackend backend, IEvidenceTargetValidator validator, int maxRequests = 20000)
+    {
+        if (maxRequests < 1 || maxRequests > 20000) throw new ArgumentOutOfRangeException(nameof(maxRequests));
+        this.backend = backend; this.validator = validator; this.maxRequests = maxRequests;
+    }
     public async Task<EvidenceReply> HandleAsync(EvidenceRequest request, CancellationToken cancellationToken = default)
     {
         Guid id = request?.RequestId ?? Guid.Empty;
@@ -60,8 +65,9 @@ public sealed class EvidenceSession : IDisposable
             await gate.WaitAsync(deadline.Token); entered = true;
             string hash = EvidenceFiles.Hash(JsonSerializer.SerializeToUtf8Bytes(request, EvidenceProtocol.Json));
             if (requestHashes.TryGetValue(id, out var previous)) return Reply(previous == hash ? "duplicate-request" : "request-conflict");
-            if (requestHashes.Count >= 20000) return Reply("session-limit");
-            requestHashes.Add(id, hash);
+            // Quotas stop new work; they must not prevent committing/inspecting/closing existing work.
+            if (requestHashes.Count >= maxRequests && request.Method is not ("EndStep" or "RecordFailure" or "Flush" or "StopSession" or "InspectSession")) return Reply("session-limit");
+            if (requestHashes.Count < maxRequests) requestHashes.Add(id, hash);
             if (request.Method == "InspectSession") return Inspect(request);
             if (request.Method == "StartSession")
             {
@@ -100,7 +106,7 @@ public sealed class EvidenceSession : IDisposable
                 if (request.StepId == Guid.Empty || !new[] { "invoke", "set-value", "native-message", "select", "observe", "custom" }.Contains(request.OperationName)) return Reply("invalid-request");
                 if (steps.TryGetValue(request.StepId, out var duplicate)) return Reply("duplicate-step", duplicate, paths: ExistingPaths(duplicate));
                 if (steps.Count >= 10000) return Reply("session-limit");
-                if (steps.Values.Any(s => s.Status != "completed")) return Reply("pending-step");
+                if (steps.Values.Any(s => s.Status != "completed" || s.Outcome == "unknown")) return Reply("pending-step");
                 var step = new EvidenceStep { StepId = request.StepId, Token = Guid.NewGuid(), Sequence = steps.Count + 1, OperationName = request.OperationName, Expected = request.ExpectedStateMetadata };
                 processing = step;
                 steps.Add(step.StepId, step); SaveStep(step);

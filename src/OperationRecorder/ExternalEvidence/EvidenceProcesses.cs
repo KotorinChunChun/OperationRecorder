@@ -54,7 +54,13 @@ public sealed class EvidenceWorkerBackend : IEvidenceBackend
                 throw new EvidenceUnavailableException(result.Status is "target-mismatch" or "deadline-exceeded" or "save-unavailable" or "video-unavailable" ? result.Status : "capture-unavailable");
             return Path.Combine(work.Directory, "commit.json");
         }
-        catch (OperationCanceledException) { throw new EvidenceUnavailableException(DateTimeOffset.UtcNow >= work.DeadlineUtc ? "deadline-exceeded" : "caller-unavailable"); }
+        catch (OperationCanceledException)
+        {
+            // CancelAfter may fire just before the wall-clock deadline. Use cancellation provenance,
+            // not a second wall-clock comparison, to distinguish the worker's own timeout.
+            if (token.IsCancellationRequested) throw;
+            throw new EvidenceUnavailableException("deadline-exceeded");
+        }
         catch (EvidenceUnavailableException) { throw; }
         catch { throw new EvidenceUnavailableException("worker-unavailable"); }
         finally { try { if (!process.HasExited) process.Kill(true); } catch { } }

@@ -26,6 +26,8 @@ C#は各プロジェクト配下のSDK標準Compile規則で取り込む。記�
 
 リポジトリ参照方式の現行スキルは `skills/operation-recorder`、導入処理は `scripts/Install-OperationRecorderSkill.ps1`。他PCへの導入と更新は[AIスキルの導入](ai-skill.md)を参照する。エンジンやテンプレートをスキルへ複製しない。
 
+外部自動操作の証拠は `ExternalEvidence/` の専用broker/workerで扱う。既存のRecorder.RequestSnapshotとは保存完了の契約が異なる。[公開契約とPS7利用例](external-evidence.md)を参照する。
+
 ## ビルドとデバッグ起動
 
 ```powershell
