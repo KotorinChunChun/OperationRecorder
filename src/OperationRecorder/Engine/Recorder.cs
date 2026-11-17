@@ -173,7 +173,7 @@ namespace OpRec
             if (stopped) return;
             stopped = true;
 
-            if (hookTid != 0) N.PostThreadMessage(hookTid, 0x12 /*WM_QUIT*/, IntPtr.Zero, IntPtr.Zero);
+            if (hookTid != 0) N.PostThreadMessage(hookTid, N.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
             if (hookThread != null) hookThread.Join(3000);
 
             rawQ.CompleteAdding();
@@ -327,7 +327,7 @@ namespace OpRec
         void RaiseStepRemoved(int seq) { try { StepRemoved?.Invoke(seq); } catch { } }
 
         // 直前 1 手の取消を頼む(Ctrl+Shift+F10 と同じ。アプリのトレイメニューから呼ぶ)
-        public void RequestUndo() { Enqueue(new Raw { Type = 5, Ts = sw.ElapsedMilliseconds }); }
+        public void RequestUndo() { Enqueue(new Raw { Type = RawType.Undo, Ts = sw.ElapsedMilliseconds }); }
 
         // OSの切り取り画面やグローバルキーを起動せず、同じ振り分け経路へ撮影を要求する。
         public void RequestSnapshot(SnapshotTrigger trigger = SnapshotTrigger.Manual)
@@ -335,7 +335,7 @@ namespace OpRec
             if (trigger != SnapshotTrigger.Manual && trigger != SnapshotTrigger.WindowsSnip)
                 throw new ArgumentOutOfRangeException(nameof(trigger));
             if (stopped || !sw.IsRunning) return;
-            Enqueue(new Raw { Type = 6, Vk = (int)trigger, Ts = sw.ElapsedMilliseconds, Fg = N.GetForegroundWindow() });
+            Enqueue(new Raw { Type = RawType.Snapshot, Vk = (int)trigger, Ts = sw.ElapsedMilliseconds, Fg = N.GetForegroundWindow() });
         }
 
         static readonly uint OwnPid = (uint)Environment.ProcessId;
@@ -371,6 +371,19 @@ namespace OpRec
             }
         }
 
+        // 操作に割り当てた操作前・操作後の画像の固定を外す
+        void ReleaseFrames(Ev ev)
+        {
+            if (ev.Before != null) Unpin(ev.Before);
+            if (ev.After != null) Unpin(ev.After);
+        }
+
+        // 割り当て済みの操作後の画像を外す(撮り直すとき)
+        void DropAfter(Ev ev)
+        {
+            if (ev.After != null) { Unpin(ev.After); ev.After = null; }
+        }
+
         static void DisposeFrame(Frame f)
         {
             if (f.Disposed) return;
@@ -397,22 +410,19 @@ namespace OpRec
         void TrySendLocked(Ev ev)
         {
             if (ev.ObserveUntil > sw.ElapsedMilliseconds) return;
+            if (ev.Sent || !ev.InfoDone || (ev.After == null && !ev.AfterMissing)) return;
             // ホイールを回して元に戻した(合計 0)ものは、手順にせず捨てる
-            if (!ev.Sent && ev.Kind == "wheel" && WheelRules.IsCancelled(ev.WheelNet) && ev.InfoDone && (ev.After != null || ev.AfterMissing))
+            if (ev.Kind == EventKinds.Wheel && WheelRules.IsCancelled(ev.WheelNet))
             {
                 ev.Sent = true;
                 pending.Remove(ev);
-                if (ev.Before != null) Unpin(ev.Before);
-                if (ev.After != null) Unpin(ev.After);
+                ReleaseFrames(ev);
                 Log("記録しません: ホイールを回して元に戻した操作");
                 return;
             }
-            if (!ev.Sent && ev.InfoDone && (ev.After != null || ev.AfterMissing))
-            {
-                ev.Sent = true;
-                pending.Remove(ev);
-                saverQ.Add(ev);
-            }
+            ev.Sent = true;
+            pending.Remove(ev);
+            saverQ.Add(ev);
         }
     }
 }
