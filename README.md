@@ -71,6 +71,8 @@ flowchart LR
 
 開発に参加する場合は[開発者ガイド](docs/DEVELOPERS_GUIDE.md)を参照してください。
 
+Codex・Claude Codeから操作記録や手順書の再出力を行う場合は、[AIスキルの導入](docs/ai-skill.md)を参照してください。別のPCにも導入できるリポジトリ参照方式のスキルを同梱しています。
+
 ## 使用言語とライブラリ
 
 - 使用言語はC#（本体）、Python（文字起こし）です。

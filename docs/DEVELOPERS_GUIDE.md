@@ -24,6 +24,8 @@ C#は各プロジェクト配下のSDK標準Compile規則で取り込む。記�
 
 旧スキルの記述は[来歴資料](development/legacy-skill.md)として残す。現在の操作指示や導入手順の正本にはしない。
 
+リポジトリ参照方式の現行スキルは `skills/operation-recorder`、導入処理は `scripts/Install-OperationRecorderSkill.ps1`。他PCへの導入と更新は[AIスキルの導入](ai-skill.md)を参照する。エンジンやテンプレートをスキルへ複製しない。
+
 ## ビルドとデバッグ起動
 
 ```powershell
