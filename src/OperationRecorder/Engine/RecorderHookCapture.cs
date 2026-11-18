@@ -91,6 +91,8 @@ namespace OpRec
                 case N.WM_RBUTTONUP: button = RawButton.Right; return RawType.MouseUp;
                 case N.WM_MBUTTONDOWN: button = RawButton.Middle; return RawType.MouseDown;
                 case N.WM_MBUTTONUP: button = RawButton.Middle; return RawType.MouseUp;
+                case N.WM_XBUTTONDOWN: return RawType.MouseDown;
+                case N.WM_XBUTTONUP: return RawType.MouseUp;
                 case N.WM_MOUSEWHEEL: return RawType.Wheel;   // 縦のホイール
                 default: return RawType.None;
             }
@@ -101,11 +103,19 @@ namespace OpRec
             if (nCode >= 0)
             {
                 int btn;
-                RawType type = MouseMessageType((int)w, out btn);
+                int message = (int)w;
+                RawType type = MouseMessageType(message, out btn);
                 if (type != RawType.None)
                 {
                     if (hCtrl || hShift) snapSpoiled = true;   // Ctrl+Shift+クリックはキャプチャではない
                     var s = Marshal.PtrToStructure<N.MSLLHOOKSTRUCT>(l);
+                    if (message is N.WM_XBUTTONDOWN or N.WM_XBUTTONUP)
+                    {
+                        uint extended = s.mouseData >> 16;
+                        if (extended is not (N.XBUTTON1 or N.XBUTTON2))
+                            return N.CallNextHookEx(IntPtr.Zero, nCode, w, l);
+                        btn = extended == N.XBUTTON1 ? RawButton.Back : RawButton.Forward;
+                    }
                     var raw = new Raw { Type = type, Button = btn, X = s.pt.X, Y = s.pt.Y, Ts = sw.ElapsedMilliseconds };
                     if (type == RawType.Wheel) raw.Vk = (short)(s.mouseData >> 16);   // ホイールの回転量(正 = 上 / 奥、負 = 下 / 手前。1 ノッチ = 120)
                     Enqueue(raw);

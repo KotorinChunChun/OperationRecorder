@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using NAudio.Wave;
 using OpRec;
@@ -13,14 +11,19 @@ namespace OperationRecorderApp
     sealed class RecordingMedia
     {
         readonly Recorder recorder;
-        readonly string ffmpeg, python, model;
-        readonly bool audioEnabled;
+        readonly string ffmpeg;
+        readonly TranscriptionSettings transcription;
+        readonly string transcriptionConfigError;
+        readonly bool audioEnabled, realtime;
         readonly object audioLock = new object();
         readonly TaskCompletionSource<Exception> audioEnded = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
         readonly List<string> warnings = new List<string>();
         ScreenVideo video;
         WaveInEvent microphone;
         WaveFileWriter wave;
+        LiveNarration live;
+        long recordedBytes, publishedBytes;
+        bool discardTranscript;
         string directory;
         long? audioStartMs;
         bool finished;
@@ -29,19 +32,30 @@ namespace OperationRecorderApp
         {
             this.recorder = recorder;
             audioEnabled = settings.RecordNarration;
+            realtime = settings.RealtimeTranscription;
             ffmpeg = settings.RecordVideo ? ExistingFile(settings.FfmpegPath, "FFmpeg") : null;
-            python = string.IsNullOrWhiteSpace(settings.TranscriptionPython) ? null : settings.TranscriptionPython.Trim();
-            model = string.IsNullOrWhiteSpace(settings.TranscriptionModel) ? null : settings.TranscriptionModel.Trim();
+            if (audioEnabled)
+            {
+                try { transcription = TranscriptionSettings.From(settings); }
+                catch (ArgumentException error) { transcriptionConfigError = error.Message; }
+            }
         }
 
         static string ExistingFile(string path, string name)
         {
             if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path.Trim()) || !File.Exists(path.Trim()))
-                throw new InvalidOperationException(name + "の実行ファイルを「撮影の設定」で指定してください。");
+                throw new InvalidOperationException(name + "の実行ファイルを「記録対象」で指定してください。");
             return path.Trim();
         }
 
         public string Warning => warnings.Count == 0 ? null : string.Join("\n", warnings);
+        public string LiveText => live?.Latest;
+
+        public void DiscardTranscript()
+        {
+            discardTranscript = true;
+            live?.Cancel();
+        }
 
         public void Start(string sessionDirectory)
         {
@@ -59,7 +73,10 @@ namespace OperationRecorderApp
             try
             {
                 microphone = new WaveInEvent { WaveFormat = new WaveFormat(16000, 16, 1), BufferMilliseconds = 100 };
-                wave = new WaveFileWriter(Path.Combine(directory, "narration.wav"), microphone.WaveFormat);
+                string audio = Path.Combine(directory, "narration.wav");
+                wave = new WaveFileWriter(new FileStream(audio, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite), microphone.WaveFormat);
+                if (realtime && transcription is { Provider: not TranscriptionProvider.None })
+                    live = new LiveNarration(transcription, audio, audioLock);
                 microphone.DataAvailable += (_, e) =>
                 {
                     lock (audioLock)
@@ -67,6 +84,13 @@ namespace OperationRecorderApp
                         if (wave == null || e.BytesRecorded == 0) return;
                         audioStartMs ??= Math.Max(0, recorder.ElapsedMilliseconds - e.BytesRecorded * 1000L / wave.WaveFormat.AverageBytesPerSecond);
                         wave.Write(e.Buffer, 0, e.BytesRecorded);
+                        recordedBytes += e.BytesRecorded;
+                        if (live != null && recordedBytes - publishedBytes >= LiveNarration.ClipBytes)
+                        {
+                            wave.Flush();
+                            publishedBytes = recordedBytes;
+                            live.Publish(recordedBytes);
+                        }
                     }
                 };
                 microphone.RecordingStopped += (_, e) => audioEnded.TrySetResult(e.Exception);
@@ -76,6 +100,8 @@ namespace OperationRecorderApp
             {
                 warnings.Add("マイク録音を開始できません: " + e.Message);
                 CloseMicrophone();
+                live?.ReleaseAfterCancellation();
+                live = null;
             }
         }
 
@@ -94,6 +120,15 @@ namespace OperationRecorderApp
                 }
                 catch (Exception e) { warnings.Add("録音を停止できません: " + e.Message); }
                 finally { CloseMicrophone(); }
+            }
+            if (live != null)
+            {
+                if (discardTranscript || !audioStartMs.HasValue)
+                {
+                    live.ReleaseAfterCancellation();
+                    live = null;
+                }
+                else live.Publish(recordedBytes, complete: true);
             }
 
             if (video != null)
@@ -130,34 +165,17 @@ namespace OperationRecorderApp
         public void Transcribe()
         {
             if (!audioEnabled || !audioStartMs.HasValue) return;
-            string result = Path.Combine(directory, "narration-segments.tmp");
+            if (transcriptionConfigError != null)
+            {
+                warnings.Add("本文への文字起こしを追加できません: " + transcriptionConfigError);
+                return;
+            }
             try
             {
-                var launch = new ProcessStartInfo(ExistingFile(python, "文字起こし用Python")) { UseShellExecute = false, CreateNoWindow = true };
-                if (model == null || !Path.IsPathFullyQualified(model) || !File.Exists(Path.Combine(model, "model.bin")))
-                    throw new InvalidOperationException("faster-whisperのローカルモデルフォルダーを「撮影の設定」で指定してください。");
-                launch.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "scripts", "transcribe-narration.py"));
-                launch.ArgumentList.Add(Path.Combine(directory, "narration.wav"));
-                launch.ArgumentList.Add(model);
-                launch.ArgumentList.Add(result);
-                using var process = Process.Start(launch) ?? throw new IOException("文字起こしを開始できません。");
-                if (!process.WaitForExit(30 * 60 * 1000))
-                {
-                    process.Kill(entireProcessTree: true);
-                    process.WaitForExit(3000);
-                    throw new TimeoutException("文字起こしが30分以内に完了しませんでした。");
-                }
-                if (process.ExitCode != 0 || !File.Exists(result) || new FileInfo(result).Length > SessionTranscript.MaximumBytes)
-                    throw new IOException("文字起こしに失敗しました。Pythonのfaster-whisperとモデルを確認してください。");
-                SessionTranscript.Save(directory, JsonNode.Parse(File.ReadAllText(result)).AsArray(), audioStartMs.Value);
+                if (live != null) live.Save(directory, audioStartMs.Value);
+                else NarrationTranscription.Save(transcription, directory, audioStartMs.Value);
             }
             catch (Exception e) { warnings.Add("本文への文字起こしを追加できません: " + e.Message); }
-            finally
-            {
-                try { File.Delete(result); }
-                catch (IOException) { }
-                catch (UnauthorizedAccessException) { }
-            }
         }
     }
 }

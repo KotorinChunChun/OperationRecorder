@@ -7,7 +7,7 @@ namespace OpRec
     // マウス: クリック・ダブルクリック・ドラッグ・ホイール
     public sealed partial class Recorder
     {
-        readonly Ev[] openDown = new Ev[3];   // ボタン(RawButton)ごとの、押したまま離していない操作
+        readonly Ev[] openDown = new Ev[RawButton.Count];   // ボタンごとの、押したまま離していない操作
         Ev lastClick;
         bool swallowPickUp;
 
@@ -38,7 +38,12 @@ namespace OpRec
             }
 
             // 撮影ルールで記録しない操作は、ここで捨てる
-            var mrule = Rule(r.Button == RawButton.Left ? CaptureRules.LeftClick : r.Button == RawButton.Right ? CaptureRules.RightClick : CaptureRules.MiddleClick);
+            var mrule = Rule(r.Button switch
+            {
+                RawButton.Left => CaptureRules.LeftClick, RawButton.Right => CaptureRules.RightClick,
+                RawButton.Middle => CaptureRules.MiddleClick, RawButton.Back => CaptureRules.MouseBack,
+                _ => CaptureRules.MouseForward,
+            });
             if (!mrule.Record)
             {
                 openDown[r.Button] = null;
@@ -122,7 +127,8 @@ namespace OpRec
             {
                 if (ev.Sent) return;
                 int tx = Math.Max(8, N.GetSystemMetrics(N.SM_CXDRAG) * 2), ty = Math.Max(8, N.GetSystemMetrics(N.SM_CYDRAG) * 2);
-                if (ev.Kind != EventKinds.DoubleClick && (Math.Abs(r.X - ev.X) > tx || Math.Abs(r.Y - ev.Y) > ty))
+                if (ev.Button < RawButton.Back && ev.Kind != EventKinds.DoubleClick &&
+                    (Math.Abs(r.X - ev.X) > tx || Math.Abs(r.Y - ev.Y) > ty))
                 {
                     ev.Kind = EventKinds.DragOf(ev.Button);
                     ev.EndX = r.X;

@@ -77,6 +77,8 @@ namespace OperationRecorderApp
         {
             var p = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true };
             pageSettings.Controls.Add(p);
+            chkOverlay = new CheckBox { Text = "撮影ログのオーバーレイを表示する", AutoSize = true, Checked = settings.ShowOverlay };
+            p.Controls.Add(chkOverlay);
 
             p.Controls.Add(Caption("スタートメニュー", true));
             p.Controls.Add(WideNote("このユーザーのスタートメニューに「操作記録ツール」フォルダを作り、次の 2 つを登録します(管理者権限は要りません)。"));

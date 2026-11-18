@@ -67,7 +67,7 @@ pwsh -NoProfile -File .\dev\scripts\Build-OperationRecorder.ps1 -SkipTests
 | `LaunchOptions.cs` | 起動の引数と起動済みのときの動き(`LaunchOptions`)、起動中のアプリへの合図(`InstanceSignal`。名前付きイベント)、旧スタートアップ登録の検出 |
 | `ExportCommand.cs` | `--export`(画面を出さずに、記録フォルダから md / HTML を出力する) |
 | `OutputChoices.cs` | 「出力する報告書」のテンプレートの一覧と表示(画像の並べ方はテンプレートの `{{images.…}}` で決める) |
-| `OverlayPlacement.cs` | オーバーレイが、ポインタのあるウィンドウから逃げるときの行き先の計算 |
+| `OverlayProximity.cs` | ポインターの距離と修飾キーに応じたオーバーレイの透過判定 |
 | `TemplateStore.cs` / `TemplateEditorForm.cs` | テンプレートのエディタ(追加・削除・書き方の確認・保存・プレビューは TemplateStore、画面は受け渡しだけ) |
 | `MergeForm*.cs` | 複数記録の合成画面。候補比較・挿入・移動・採否・文章編集・Undo/Redo・途中保存と再開 |
 | `UiTexts.cs` | 画面・トレイ・通知の文字のうち、操作キーの設定で変わるもの |
@@ -108,7 +108,7 @@ pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite Core
 | `CliParityTests` | 旧PowerShell入口の `New-OperationReport.ps1`(pwsh)とアプリで同じ md になるか(pwsh が無ければ省略) |
 | `WheelRulesTests` / `ImageCompareTests` / `CaptureRulesTests` | ホイールのまとめ方と相殺、同じ画面かの判定、撮影ルールの既定(ホイールだけオフ) |
 | `AppSettingsTests` | 設定の既定値、v1.1 の設定からの移行(ホイールをオフ・user-table / user-before の読み替え)、保存して読み直し |
-| `OverlayPlacementTests` / `OutputChoicesTests` | オーバーレイの逃げ先とオン・オフ、テンプレートの並び順と表示、並べ方の選択肢 |
+| `OverlayProximityTests` / `OutputChoicesTests` | オーバーレイの透過と解除、テンプレートの並び順と表示、並べ方の選択肢 |
 | `LaunchTests` | `--settings` / `--startup` / `--record` の読み取り、起動済みのときの動き(startup なら何もしない・settings なら設定の画面を出す・record なら記録を始める)、起動中のアプリへの合図、旧スタートアップ登録の読み取りと非変更(一時フォルダで) |
 | `HtmlViewTests` | HTML の、JavaScript を使わない操作前 / 操作後の切り替え(ラジオボタンが本文より前・表の列と縦並びの見出しの印・1 枚にまとめた画像は隠さない)、クリックで拡大(画像が増えない)、印刷では両方を出す |
 | `FormSmokeTests` | 記録の合成・テンプレートのエディタの画面を画面外に表示して、表示しただけで例外が出ないか(操作はしない) |

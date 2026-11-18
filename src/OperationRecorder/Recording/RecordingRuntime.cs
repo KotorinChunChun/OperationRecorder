@@ -63,6 +63,8 @@ namespace OperationRecorderApp
             }
         }
         public string MediaWarning => media?.Warning;
+        public string LiveText => media?.LiveText;
+        public void DiscardTranscript() => media?.DiscardTranscript();
         public void Transcribe() => media?.Transcribe();
         public Recorder NativeRecorder => recorder;
         public string SessionDir => recorder.SessionDir;

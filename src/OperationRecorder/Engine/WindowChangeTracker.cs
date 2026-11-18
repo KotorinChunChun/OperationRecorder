@@ -52,7 +52,8 @@ namespace OpRec
             if (observedTime < actionTime || observedTime - actionTime > AssociationMs) return false;
             if (!sameProcess && !navigation) return false;
             return kind == EventKinds.Click || kind == EventKinds.DoubleClick || kind == EventKinds.RightClick
-                || kind == EventKinds.MiddleClick || kind == EventKinds.Key;
+                || kind == EventKinds.MiddleClick || kind == EventKinds.MouseBack || kind == EventKinds.MouseForward
+                || kind == EventKinds.Key;
         }
 
         public static bool IsNavigationKey(string key)

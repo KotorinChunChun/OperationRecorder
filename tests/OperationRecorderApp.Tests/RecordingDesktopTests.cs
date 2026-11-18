@@ -86,6 +86,8 @@ namespace OperationRecorderApp.Tests
         [InlineData("doubleclick", "doubleclick")]
         [InlineData("rightclick", "rightclick")]
         [InlineData("middleclick", "middleclick")]
+        [InlineData("mouseback", "mouseback")]
+        [InlineData("mouseforward", "mouseforward")]
         [InlineData("drag", "drag")]
         [InlineData("rightdrag", "rightdrag")]
         [InlineData("wheel", "wheel")]
@@ -105,6 +107,8 @@ namespace OperationRecorderApp.Tests
                 case "doubleclick": test.Input.Click(test.Fixture.Rect("action"), twice: true); break;
                 case "rightclick": test.Input.Click(test.Fixture.Rect("drag"), button: 1); break;
                 case "middleclick": test.Input.Click(test.Fixture.Rect("drag"), button: 2); break;
+                case "mouseback": test.Input.Click(test.Fixture.Rect("drag"), button: 3); break;
+                case "mouseforward": test.Input.Click(test.Fixture.Rect("drag"), button: 4); break;
                 case "drag": test.Input.Drag(test.Fixture.Rect("drag"), false); break;
                 case "rightdrag": test.Input.Drag(test.Fixture.Rect("drag"), true); break;
                 case "wheel": test.Input.Wheel(test.Fixture.Rect("wheel")); break;
@@ -121,6 +125,8 @@ namespace OperationRecorderApp.Tests
             test.Stop();
             var row = Assert.Single(ReadEvents(recorder.SessionDir), row => row.GetProperty("kind").GetString() == kind);
             Assert.Equal(test.Fixture.Pid, row.GetProperty("window").GetProperty("pid").GetInt32());
+            if (kind is "mouseback" or "mouseforward")
+                Assert.Equal(kind == "mouseback" ? "x1" : "x2", row.GetProperty("button").GetString());
             Assert.True(row.GetProperty("before").ValueKind == JsonValueKind.Object || row.GetProperty("after").ValueKind == JsonValueKind.Object);
             test.Complete();
         }
@@ -555,9 +561,12 @@ namespace OperationRecorderApp.Tests
                 union = new InputUnion { keyboard = new KEYBDINPUT { key = (ushort)key, scan = unicode, flags = flags } } };
             public void Click(Rectangle rectangle, int button = 0, bool twice = false)
             {
-                Move(Center(rectangle)); uint down = button == 1 ? 0x0008u : button == 2 ? 0x0020u : 0x0002u;
+                Move(Center(rectangle));
+                uint down = button switch { 1 => 0x0008u, 2 => 0x0020u, 3 or 4 => 0x0080u, _ => 0x0002u };
                 uint up = down << 1;
-                Send(Mouse(down), Mouse(up)); if (twice) { Thread.Sleep(60); Send(Mouse(down), Mouse(up)); }
+                uint data = button >= 3 ? (uint)(button - 2) : 0;
+                Send(Mouse(down, data), Mouse(up, data));
+                if (twice) { Thread.Sleep(60); Send(Mouse(down, data), Mouse(up, data)); }
             }
             public void Drag(Rectangle rectangle, bool right)
             {
