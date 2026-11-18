@@ -62,6 +62,7 @@ public sealed record EvidenceReply
     public bool HasMoreSteps { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public GroupQuality Quality { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public WindowGraphSnapshot WindowGraph { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public DateTimeOffset? CollectionEndedUtc { get; init; }
 }
 public sealed record EvidenceStepSummary(Guid StepId, Guid StepToken, string Status, bool BeforeSaved, bool AfterSaved, bool FailureSaved, string Outcome);
 public sealed record EvidenceNode(int ControlTypeId, int X, int Y, int Width, int Height, bool IsPassword, bool Enabled);

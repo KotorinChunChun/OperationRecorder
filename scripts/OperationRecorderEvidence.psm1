@@ -54,6 +54,21 @@ function Send-OperationEvidenceRequest {
     $json = $body | ConvertTo-Json -Depth 12 -Compress
     $Session.Connection.SendJsonAsync($json, $TimeoutMilliseconds).GetAwaiter().GetResult() | ConvertFrom-Json
 }
+function Get-OperationEvidenceSnapshot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Session,
+        [Guid]$RequestId = [Guid]::NewGuid(),
+        [ValidateRange(200,30000)][int]$TimeoutMilliseconds = 5000
+    )
+    if ($Session.PSObject.Properties['SchemaVersion'].Value -ne 2) {
+        throw '単発取得にはSchemaVersion 2の外部証拠セッションが必要です。'
+    }
+    if ($RequestId -eq [Guid]::Empty) { throw 'RequestIdは空にできません。' }
+    Send-OperationEvidenceRequest -Session $Session -Request @{
+        method = 'CaptureSnapshot'; requestId = $RequestId.ToString()
+    } -TimeoutMilliseconds $TimeoutMilliseconds
+}
 function Invoke-OperationEvidenceStep {
     [CmdletBinding()]
     param(
@@ -88,4 +103,4 @@ function Close-OperationEvidenceSession {
     try { Send-OperationEvidenceRequest -Session $Session -Request @{method='StopSession'} -TimeoutMilliseconds $TimeoutMilliseconds }
     finally { $Session.Closed = $true; $Session.Connection.Dispose() }
 }
-Export-ModuleMember -Function New-OperationEvidenceSession,Send-OperationEvidenceRequest,Invoke-OperationEvidenceStep,Close-OperationEvidenceSession
+Export-ModuleMember -Function New-OperationEvidenceSession,Send-OperationEvidenceRequest,Get-OperationEvidenceSnapshot,Invoke-OperationEvidenceStep,Close-OperationEvidenceSession

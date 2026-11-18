@@ -27,8 +27,9 @@ public sealed class GroupEvidenceSession : IDisposable
     }
     public async Task<EvidenceReply> HandleAsync(EvidenceRequest request,CancellationToken cancellation=default)
     {
+        bool snapshotRequest = request?.Method == "CaptureSnapshot";
         EvidenceReply Reply(string status,EvidenceStep step=null,GroupQuality quality=null,string[] paths=null)=>new()
-        {SchemaVersion=2,RequestId=request?.RequestId??Guid.Empty,SessionId=id,StepId=step?.StepId??request?.StepId??Guid.Empty,
+        {SchemaVersion=2,RequestId=request?.RequestId??Guid.Empty,SessionId=id,StepId=snapshotRequest?Guid.Empty:step?.StepId??request?.StepId??Guid.Empty,
             StepToken=step?.Token??Guid.Empty,Status=status,Outcome=step?.Outcome,Quality=quality,EvidencePaths=paths??Array.Empty<string>(),
             PendingSteps=steps.Values.Where(s=>s.Status!="completed"||s.Outcome=="unknown").Select(s=>s.StepId).ToArray()};
         bool entered=false;EvidenceStep current=null;
@@ -63,9 +64,22 @@ public sealed class GroupEvidenceSession : IDisposable
                 fileLock=new FileStream(Path.Combine(root,"external.lock"),FileMode.CreateNew,FileAccess.Write,FileShare.None);
                 id=request.SessionId;directory=root;started=DateTimeOffset.UtcNow;
                 EvidenceFiles.AtomicJson(Path.Combine(root,"external-session.json"),new{schemaVersion=2,product="operation-recorder-evidence-group",sessionId=id,target,appHash,policy,started});
-                return Reply("started") with{WindowGraph=windows,Capabilities=new[]{"wgc-required","window-groups","explicit-window-approval","approved-pixel-png","opaque-default","geometry-only","quality-gated","snapshot-only"}};
+                return Reply("started") with{WindowGraph=windows,Capabilities=new[]{"wgc-required","window-groups","explicit-window-approval","approved-pixel-png","opaque-default","geometry-only","quality-gated","snapshot-only","capture-snapshot"}};
             }
             if(id==Guid.Empty||id!=request.SessionId)return Reply("session-mismatch");
+            if (snapshotRequest)
+            {
+                if (stopped) return Reply("session-stopped");
+                if (!IsSnapshotRequest(request)) return Reply("invalid-request");
+                var result = await SnapshotLease.RunAsync(() => CaptureSnapshot(request, deadline.Token), deadline.Token);
+                deadline.Token.ThrowIfCancellationRequested();
+                return Reply(result.Manifest.Quality.RequirementsMet ? "snapshot-saved" : "snapshot-inadequate",
+                    quality: result.Manifest.Quality, paths: new[] { result.CommitPath }) with
+                {
+                    SavedAt = DateTimeOffset.UtcNow,
+                    CollectionEndedUtc = result.Manifest.CollectionEnded.ToUniversalTime()
+                };
+            }
             if(request.GroupPolicy!=null)return Reply("policy-fixed-for-session");
             if(request.Method is "Flush" or "StopSession")
             {
@@ -132,6 +146,26 @@ public sealed class GroupEvidenceSession : IDisposable
         catch{return Reply("save-unavailable",current);}
         finally{if(entered)gate.Release();}
     }
+    static bool IsSnapshotRequest(EvidenceRequest request) => request.Target == null && request.OutputDirectory == null &&
+        request.Policy == null && request.GroupPolicy == null && request.WindowApprovals == null &&
+        request.StepId == Guid.Empty && request.StepToken == Guid.Empty && request.OperationName == null &&
+        request.ExpectedStateMetadata == null && request.ActualStateMetadata == null && request.Outcome == null && request.ErrorCode == null;
+
+    async Task<(GroupEvidenceManifest Manifest, string CommitPath)> CaptureSnapshot(EvidenceRequest request, CancellationToken token)
+    {
+        var observed = snapshot(target, policy.MaxWindows);
+        string path = Path.Combine(directory, "snapshots", request.RequestId.ToString("N"));
+        EvidenceFiles.RequireLocalUnlinkedPath(path);
+        if (Directory.Exists(path) || File.Exists(path)) throw new EvidenceUnavailableException("output-exists");
+
+        // Artifact correlation uses the request ID without creating an EvidenceStep or granting an operation token.
+        var work = new CaptureWork(id, request.RequestId, Guid.Empty, "snapshot", target, new(), path, started,
+            request.DeadlineUtc, GroupPlan: new(observed, policy, appHash));
+        var manifest = await Capture(work, request.RequestId, token, waitForWorkerCleanup: true);
+        manifest = FinalizeFreshness(work, manifest);
+        token.ThrowIfCancellationRequested();
+        return (manifest, Path.Combine(path, "commit.json"));
+    }
     WindowApproval[] Bind(WindowApproval[] approvals,WindowGraphSnapshot graph,bool initial)
     {
         if(graph.Truncated||approvals.Length==0||approvals.Length>32||approvals.Select(a=>a.Hwnd).Distinct().Count()!=approvals.Length)throw new EvidenceUnavailableException("invalid-window-approval");
@@ -145,15 +179,28 @@ public sealed class GroupEvidenceSession : IDisposable
     }
     string CommitPath(EvidenceStep step,string phase)=>Path.Combine(directory,"steps",step.StepId.ToString("N"),phase,"commit.json");
     void Save(EvidenceStep step)=>EvidenceFiles.AtomicJson(Path.Combine(directory,"steps",step.StepId.ToString("N"),"step.json"),step);
-    async Task<GroupEvidenceManifest> Capture(EvidenceStep step,string phase,EvidenceRequest request,WindowGraphSnapshot graph,CancellationToken token)
+    Task<GroupEvidenceManifest> Capture(EvidenceStep step, string phase, EvidenceRequest request, WindowGraphSnapshot graph, CancellationToken token)
     {
+        string path = Path.GetDirectoryName(CommitPath(step, phase));
+        var work = new CaptureWork(id, step.StepId, step.Token, phase, target, new(), path, started,
+            request.DeadlineUtc, GroupPlan: new(graph, policy, appHash));
+        return Capture(work, request.RequestId, token);
+    }
+
+    async Task<GroupEvidenceManifest> Capture(CaptureWork work, Guid requestId, CancellationToken token, bool waitForWorkerCleanup = false)
+    {
+        var graph = work.GroupPlan.Snapshot;
+        string path = work.Directory;
         foreach(var a in policy.Approvals)
             if(!graph.Windows.Any(w=>w.Hwnd==a.Hwnd&&w.WindowId==a.WindowId&&w.Generation==a.Generation))throw new EvidenceUnavailableException("window-generation-mismatch");
-        string path=Path.GetDirectoryName(CommitPath(step,phase));Directory.CreateDirectory(path);
-        EvidenceFiles.AtomicJson(Path.Combine(path,"started.json"),new{schemaVersion=2,request.RequestId,step.StepId,step.Token,phase});
-        var work=new CaptureWork(id,step.StepId,step.Token,phase,target,new(),path,started,request.DeadlineUtc,GroupPlan:new(graph,policy,appHash));
+        token.ThrowIfCancellationRequested();
+        EvidenceFiles.AtomicJson(Path.Combine(path,"started.json"),new{schemaVersion=2,requestId,work.StepId,Token=work.StepToken,work.Phase});
         EvidenceFiles.AtomicJson(Path.Combine(path,"plan.json"),work.GroupPlan);
-        await backend.CaptureAndSaveAsync(work,token).WaitAsync(token);token.ThrowIfCancellationRequested();EvidenceFiles.Verify(work);
+        var capture = backend.CaptureAndSaveAsync(work, token);
+        // A single-shot lease is held until the backend has stopped its process on cancellation.
+        if (waitForWorkerCleanup) await capture;
+        else await capture.WaitAsync(token);
+        token.ThrowIfCancellationRequested();EvidenceFiles.Verify(work);
         var result=JsonSerializer.Deserialize<GroupEvidenceManifest>(File.ReadAllBytes(Path.Combine(path,"group.json")),EvidenceProtocol.Json);
         GroupEvidenceValidation.Verify(work,result);
         var after=snapshot(target,policy.MaxWindows);
@@ -172,6 +219,13 @@ public sealed class GroupEvidenceSession : IDisposable
     }
     GroupEvidenceManifest FinalizeFreshness(EvidenceStep step,string phase,EvidenceRequest request,GroupEvidenceManifest result)
     {
+        string path = Path.GetDirectoryName(CommitPath(step, phase));
+        var work = new CaptureWork(id, step.StepId, step.Token, phase, target, new(), path, started, request.DeadlineUtc);
+        return FinalizeFreshness(work, result);
+    }
+
+    GroupEvidenceManifest FinalizeFreshness(CaptureWork work, GroupEvidenceManifest result)
+    {
         // Current acknowledgements are checked after step.json is durable, not just when a frame
         // arrives. Historical InspectSession deliberately does not apply today's QPC age.
         long now=WgcCaptureBackend.Clock100ns();
@@ -180,8 +234,8 @@ public sealed class GroupEvidenceSession : IDisposable
             (row.FrameTime100ns==null || now-row.FrameTime100ns.Value<0 || now-row.FrameTime100ns.Value>policy.MaxFrameAgeMs*10000L))
             .Select(row=>row.Window.WindowId).ToHashSet();
         if(expired.Count==0)return result;
-        string path=Path.GetDirectoryName(CommitPath(step,phase));
-        var plan=JsonSerializer.Deserialize<GroupCapturePlan>(ReadMetadata(Path.Combine(path,"plan.json")),EvidenceProtocol.Json);
+        string path = work.Directory;
+        var plan = work.GroupPlan ?? JsonSerializer.Deserialize<GroupCapturePlan>(ReadMetadata(Path.Combine(path,"plan.json")),EvidenceProtocol.Json);
         var rows=result.Windows.Select(row=>
         {
             bool stale=expired.Contains(row.Window.WindowId);
@@ -195,7 +249,7 @@ public sealed class GroupEvidenceSession : IDisposable
         quality=quality with{RequirementsMet=false,DiagnosticStatus="insufficient",Reasons=quality.Reasons.Concat(result.Quality.Reasons).Distinct(StringComparer.Ordinal).ToArray()};
         var updated=result with{Windows=rows,Quality=quality};
         EvidenceFiles.AtomicJson(Path.Combine(path,"group.json"),updated);
-        var work=new CaptureWork(id,step.StepId,step.Token,phase,target,new(),path,started,request.DeadlineUtc,GroupPlan:plan);
+        work = work with { GroupPlan = plan };
         EvidenceFiles.Save(work,EvidenceFiles.OpaquePng(new System.Drawing.Size(16,16)),new EvidenceUi(Array.Empty<EvidenceNode>(),false),DateTimeOffset.UtcNow);
         EvidenceFiles.Verify(work);GroupEvidenceValidation.Verify(work,updated);
         return updated;

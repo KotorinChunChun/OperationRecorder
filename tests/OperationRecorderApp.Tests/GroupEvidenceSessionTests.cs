@@ -15,9 +15,12 @@ public sealed class GroupEvidenceSessionTests
     sealed class Backend : IEvidenceBackend
     {
         public int Calls;public bool Good=true;public bool Empty;public Action After;public long FrameShift100ns;
-        public Task<string> CaptureAndSaveAsync(CaptureWork work,CancellationToken token)
+        public Func<CaptureWork,CancellationToken,Task> BeforeCapture;
+        public async Task<string> CaptureAndSaveAsync(CaptureWork work,CancellationToken token)
         {
-            Calls++;var plan=work.GroupPlan;var window=plan.Snapshot.Windows[0];var grant=plan.Policy.Approvals[0];
+            Calls++;
+            if(BeforeCapture!=null)await BeforeCapture(work,token);
+            var plan=work.GroupPlan;var window=plan.Snapshot.Windows[0];var grant=plan.Policy.Approvals[0];
             string image="windows/"+window.WindowId.ToString("N")+"/frame.png",ui="windows/"+window.WindowId.ToString("N")+"/ui.json";
             using var bitmap=new Bitmap(24,24);using(var graphics=Graphics.FromImage(bitmap))graphics.Clear(Good?Color.Blue:Color.Red);
             var decision=DisclosureGate.Apply(bitmap,plan.AppSha256,grant.Role,96,plan.Policy.Disclosure,Array.Empty<Rectangle>(),true);
@@ -26,7 +29,7 @@ public sealed class GroupEvidenceSessionTests
             var rows=Empty?Array.Empty<WindowEvidence>():new[]{row};var quality=GroupEvidenceValidation.Evaluate(plan,rows,true);
             if(Empty)quality=quality with{RequirementsMet=true};
             var result=new GroupEvidenceManifest(2,work.SessionId,work.StepId,work.StepToken,work.Phase,plan.Snapshot.Revision,EvidenceFiles.Hash(JsonSerializer.SerializeToUtf8Bytes(plan.Policy,EvidenceProtocol.Json)),DateTimeOffset.UtcNow,DateTimeOffset.UtcNow,rows,quality);
-            EvidenceFiles.AtomicJson(Path.Combine(work.Directory,"group.json"),result);string path=EvidenceFiles.Save(work,png,new EvidenceUi(Array.Empty<EvidenceNode>(),false),DateTimeOffset.UtcNow);After?.Invoke();return Task.FromResult(path);
+            EvidenceFiles.AtomicJson(Path.Combine(work.Directory,"group.json"),result);string path=EvidenceFiles.Save(work,png,new EvidenceUi(Array.Empty<EvidenceNode>(),false),DateTimeOffset.UtcNow);After?.Invoke();return path;
         }
     }
     sealed class Context:IDisposable
@@ -40,6 +43,8 @@ public sealed class GroupEvidenceSessionTests
             Session=new(Backend,(_,_)=>Graph);
         }
         public EvidenceRequest Request(string method,Guid step=default,Guid token=default)=>new(){SchemaVersion=2,RequestId=Guid.NewGuid(),SessionId=Id,Method=method,StepId=step,StepToken=token,DeadlineUtc=DateTimeOffset.UtcNow.AddSeconds(5),OperationName="invoke",Outcome="success"};
+        public string SessionDirectory => Path.Combine(Root,"session");
+        public EvidenceRequest SnapshotRequest() => Request("CaptureSnapshot") with { OperationName=null, Outcome=null };
         public Task<EvidenceReply> Start()
         {
             using var bitmap=new Bitmap(24,24);using(var graphics=Graphics.FromImage(bitmap))graphics.Clear(Color.Blue);
@@ -141,5 +146,210 @@ public sealed class GroupEvidenceSessionTests
         var selected=await inspector.HandleAsync(c.Request("InspectSession") with{OutputDirectory=root,StepId=last});
         Assert.Equal("inspected",selected.Status);Assert.False(selected.HasMoreSteps);Assert.Equal(last,Assert.Single(selected.StepStates).StepId);
         Assert.Equal(last,Assert.Single(selected.PendingSteps));
+    }
+
+    [Fact]
+    public async Task 単発取得は専用の場所に確定して操作工程を作らない()
+    {
+        using var context=new Context();
+        Assert.Equal("started",(await context.Start()).Status);
+        var request=context.SnapshotRequest();
+        var reply=await context.Session.HandleAsync(request);
+
+        Assert.Equal("snapshot-saved",reply.Status);
+        AssertSnapshotReply(reply,request);
+        Assert.True(reply.Quality.RequirementsMet);
+        Assert.Empty(reply.PendingSteps);
+        Assert.False(Directory.Exists(Path.Combine(context.SessionDirectory,"steps")));
+        string commitPath=Assert.Single(reply.EvidencePaths);
+        string output=Path.Combine(context.SessionDirectory,"snapshots",request.RequestId.ToString("N"));
+        Assert.Equal(Path.Combine(output,"commit.json"),commitPath);
+        var commit=JsonSerializer.Deserialize<EvidenceCommit>(File.ReadAllBytes(commitPath),EvidenceProtocol.Json);
+        Assert.Equal("snapshot",commit.Phase);
+        Assert.Equal(context.Id,commit.SessionId);
+        string groupPath=Path.Combine(output,"group.json");
+        var group=JsonSerializer.Deserialize<GroupEvidenceManifest>(File.ReadAllBytes(groupPath),EvidenceProtocol.Json);
+        Assert.Equal(group.CollectionEnded,reply.CollectionEndedUtc);
+        Assert.Equal(EvidenceFiles.HashFile(groupPath),commit.GroupSha256);
+        Assert.Equal(EvidenceFiles.HashFile(Path.Combine(output,"frame.png")),commit.ImageSha256);
+        using(var image=new Bitmap(Path.Combine(output,"frame.png")))
+            Assert.Equal(Color.Blue.ToArgb(),image.GetPixel(10,10).ToArgb());
+
+        var duplicate=await context.Session.HandleAsync(request);
+        Assert.Equal("duplicate-request",duplicate.Status);
+        Assert.False(duplicate.OperationAllowed);
+        Assert.Empty(duplicate.EvidencePaths);
+        Assert.Equal(1,context.Backend.Calls);
+        Assert.Equal(commit.ImageSha256,EvidenceFiles.HashFile(Path.Combine(output,"frame.png")));
+
+        var inspect=await context.Session.HandleAsync(context.Request("InspectSession") with { OutputDirectory=context.SessionDirectory });
+        Assert.Equal("inspected",inspect.Status);
+        Assert.Empty(inspect.StepStates);
+        Assert.Empty(inspect.PendingSteps);
+    }
+
+    [Fact]
+    public async Task 単発取得の要求で対象と保存先と工程を差し替えられない()
+    {
+        using var context=new Context();
+        Assert.Equal("started",(await context.Start()).Status);
+        var target=new EvidenceTarget(456,DateTimeOffset.UtcNow,typeof(EvidenceSession).Assembly.Location,1,20);
+        string otherDirectory=Path.Combine(context.Root,"unrelated");
+        var invalidRequests=new[]
+        {
+            context.SnapshotRequest() with { Target=target },
+            context.SnapshotRequest() with { OutputDirectory=otherDirectory },
+            context.SnapshotRequest() with { StepId=Guid.NewGuid() },
+            context.SnapshotRequest() with { OperationName="invoke" }
+        };
+        foreach(var request in invalidRequests)
+        {
+            var reply=await context.Session.HandleAsync(request);
+            Assert.Equal("invalid-request",reply.Status);
+            Assert.False(reply.OperationAllowed);
+            Assert.Empty(reply.EvidencePaths);
+        }
+        Assert.Equal(0,context.Backend.Calls);
+        Assert.False(Directory.Exists(otherDirectory));
+        Assert.False(Directory.Exists(Path.Combine(context.SessionDirectory,"snapshots")));
+        Assert.False(Directory.Exists(Path.Combine(context.SessionDirectory,"steps")));
+    }
+
+    [Fact]
+    public async Task 単発取得は保留中の前後工程と操作許可を変更しない()
+    {
+        using var context=new Context();
+        Assert.Equal("started",(await context.Start()).Status);
+        var stepId=Guid.NewGuid();
+        var before=await context.Session.HandleAsync(context.Request("BeginStep",stepId));
+        Assert.True(before.OperationAllowed,before.Status);
+
+        var request=context.SnapshotRequest();
+        var reply=await context.Session.HandleAsync(request);
+        Assert.Equal("snapshot-saved",reply.Status);
+        AssertSnapshotReply(reply,request);
+        Assert.Equal(stepId,Assert.Single(reply.PendingSteps));
+        var next=await context.Session.HandleAsync(context.Request("BeginStep",Guid.NewGuid()));
+        Assert.Equal("pending-step",next.Status);
+        Assert.False(next.OperationAllowed);
+
+        var after=await context.Session.HandleAsync(context.Request("EndStep",token:before.StepToken));
+        Assert.Equal("after-saved",after.Status);
+        Assert.Empty(after.PendingSteps);
+        var inspect=await context.Session.HandleAsync(context.Request("InspectSession") with { OutputDirectory=context.SessionDirectory });
+        var savedStep=Assert.Single(inspect.StepStates);
+        Assert.Equal(stepId,savedStep.StepId);
+        Assert.Equal("completed",savedStep.Status);
+        Assert.True(savedStep.BeforeSaved);
+        Assert.True(savedStep.AfterSaved);
+        Assert.Equal(3,context.Backend.Calls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task 公開不一致や応答時の鮮度不足でも単発取得は黒画素だけを確定する(bool stale)
+    {
+        using var context=new Context();
+        Assert.Equal("started",(await context.Start()).Status);
+        context.Backend.Good=stale;
+        if(stale)context.Backend.FrameShift100ns=-TimeSpan.FromSeconds(4).Ticks;
+        var request=context.SnapshotRequest();
+        var reply=await context.Session.HandleAsync(request);
+
+        Assert.Equal("snapshot-inadequate",reply.Status);
+        AssertSnapshotReply(reply,request);
+        Assert.False(reply.Quality.RequirementsMet);
+        Assert.Equal("insufficient",reply.Quality.DiagnosticStatus);
+        Assert.Empty(reply.PendingSteps);
+        string output=Path.GetDirectoryName(Assert.Single(reply.EvidencePaths));
+        var group=JsonSerializer.Deserialize<GroupEvidenceManifest>(File.ReadAllBytes(Path.Combine(output,"group.json")),EvidenceProtocol.Json);
+        var row=Assert.Single(group.Windows);
+        Assert.False(group.Quality.RequirementsMet);
+        Assert.Equal(stale?"stale-frame":"fresh",row.CaptureStatus);
+        foreach(string leaf in new[]{"frame.png",row.ImageFile})
+        {
+            string path=Path.Combine(output,leaf);
+            using var bitmap=new Bitmap(path);
+            for(int y=0;y<bitmap.Height;y++)
+                for(int x=0;x<bitmap.Width;x++)
+                    Assert.Equal(Color.Black.ToArgb(),bitmap.GetPixel(x,y).ToArgb());
+        }
+        Assert.Equal(row.ImageSha256,EvidenceFiles.HashFile(Path.Combine(output,row.ImageFile)));
+    }
+
+    [Fact]
+    public async Task 別セッションの単発取得が使用中なら即時拒否して開放後に新規要求を処理する()
+    {
+        using var first=new Context();
+        using var second=new Context();
+        Assert.Equal("started",(await first.Start()).Status);
+        Assert.Equal("started",(await second.Start()).Status);
+        var entered=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        first.Backend.BeforeCapture=async (_,token)=>
+        {
+            entered.SetResult();
+            await release.Task.WaitAsync(token);
+        };
+        var firstRequest=first.SnapshotRequest() with { DeadlineUtc=DateTimeOffset.UtcNow.AddSeconds(15) };
+        var active=first.Session.HandleAsync(firstRequest);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(4));
+            var secondRequest=second.SnapshotRequest();
+            var busy=await second.Session.HandleAsync(secondRequest).WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Equal("snapshot-busy",busy.Status);
+            Assert.False(busy.OperationAllowed);
+            Assert.Empty(busy.EvidencePaths);
+            Assert.Equal(0,second.Backend.Calls);
+            Assert.False(Directory.Exists(Path.Combine(second.SessionDirectory,"snapshots")));
+
+            // The single-snapshot lease must not block the established before/after flow.
+            var before=await second.Session.HandleAsync(second.Request("BeginStep",Guid.NewGuid()));
+            Assert.True(before.OperationAllowed,before.Status);
+            var after=await second.Session.HandleAsync(second.Request("EndStep",token:before.StepToken));
+            Assert.Equal("after-saved",after.Status);
+        }
+        finally
+        {
+            release.TrySetResult();
+            await active;
+        }
+        Assert.Equal("snapshot-saved",(await active).Status);
+        var next=await second.Session.HandleAsync(second.SnapshotRequest());
+        Assert.Equal("snapshot-saved",next.Status);
+        Assert.Equal(3,second.Backend.Calls);
+    }
+
+    [Fact]
+    public async Task 単発取得で期限を超えると保存成功を返さず次の要求は取得できる()
+    {
+        using var context=new Context();
+        Assert.Equal("started",(await context.Start()).Status);
+        context.Backend.BeforeCapture=(_,token)=>Task.Delay(Timeout.InfiniteTimeSpan,token);
+        var request=context.SnapshotRequest() with { DeadlineUtc=DateTimeOffset.UtcNow.AddSeconds(1) };
+        var expired=await context.Session.HandleAsync(request).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal("deadline-exceeded",expired.Status);
+        Assert.False(expired.OperationAllowed);
+        Assert.Null(expired.SavedAt);
+        Assert.Empty(expired.EvidencePaths);
+        Assert.False(File.Exists(Path.Combine(context.SessionDirectory,"snapshots",request.RequestId.ToString("N"),"commit.json")));
+
+        context.Backend.BeforeCapture=null;
+        Assert.Equal("snapshot-saved",(await context.Session.HandleAsync(context.SnapshotRequest())).Status);
+    }
+
+    static void AssertSnapshotReply(EvidenceReply reply,EvidenceRequest request)
+    {
+        Assert.Equal(2,reply.SchemaVersion);
+        Assert.Equal(request.RequestId,reply.RequestId);
+        Assert.Equal(request.SessionId,reply.SessionId);
+        Assert.Equal(Guid.Empty,reply.StepId);
+        Assert.Equal(Guid.Empty,reply.StepToken);
+        Assert.False(reply.OperationAllowed);
+        Assert.NotNull(reply.SavedAt);
+        Assert.NotNull(reply.CollectionEndedUtc);
+        Assert.NotNull(reply.Quality);
     }
 }

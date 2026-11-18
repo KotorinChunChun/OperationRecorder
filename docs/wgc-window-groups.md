@@ -65,12 +65,43 @@ BeginStepは `before-saved`、operationAllowed=true、必要品質の充足が�
 
 InspectSessionはファイルの存在だけでなくハッシュと群の対応を検証します。過去の成果物には現在時刻からの鮮度制約を適用しません。最大100工程を返し、100件を超える場合はhasMoreSteps=true、特定工程はstepIdで確認します。従来schema1へ拡張フィールドを無断で返さず、新契約の失敗を旧方式へ自動降格しません。
 
+<a id="capture-snapshot"></a>
+
+## 通常記録と並行する単発取得（0.1.10以降）
+
+別ツールは通常記録とは別に、同じ `OperationRecorder.exe` の非表示brokerへ接続します。通常記録の開始・停止や書き込み先とは独立しています。単発取得の出力先には新しい外部証拠用フォルダーを指定します。通常記録の保存済みデータは、利用者ガイドの記録フォルダーから読み取れます。
+
+```powershell
+# $exe、$targetは上の起動例と同じ。出力先には新規のフォルダーを指定する。
+$session = New-OperationEvidenceSession -Executable $exe -Target $target `
+  -OutputDirectory 'D:/Evidence/単発取得用の新規フォルダー' -SchemaVersion 2
+try {
+    # HWNDの関係と幾何だけが必要な場合は ListWindows を使用する。
+    $snapshot = Get-OperationEvidenceSnapshot -Session $session -TimeoutMilliseconds 5000
+    $snapshot | Select-Object status, quality, collectionEndedUtc, evidencePaths
+} finally { $null = Close-OperationEvidenceSession -Session $session }
+```
+
+直接IPCの場合は、開始済みschema 2セッションに `method:'CaptureSnapshot'` と共通項目 `schemaVersion/requestId/sessionId/deadlineUtc` を送ります。`StartSession` の `capabilities` に `capture-snapshot` があることを確認できます。対象と公開方針は開始時のものを使います。`BeginStep` と `EndStep` は操作前後の取得に引き続き使用します。
+
+| 応答 | 意味 |
+|---|---|
+| `snapshot-saved` | 取得結果を保存し、セッションの要求品質を満たした |
+| `snapshot-inadequate` | 保護済みの結果は保存できたが、取得・公開の要求品質が不足した。`quality` で理由と欠落を確認する |
+| `snapshot-busy` | 同一ユーザー・Windowsセッションに別の単発取得がある。空きを待たず返す。後で取得する場合は新しい `requestId` を使う |
+| `deadline-exceeded` / `response-unconfirmed` | 期限内に取得または応答を確認できなかった |
+
+保存先は外部証拠フォルダー配下の `snapshots/<requestIdの32桁N形式>/` です。`evidencePaths` は検証済み `commit.json` へのパス、`collectionEndedUtc` は窓群の収集終了時刻です。各画像の取得時刻は `group.json` の `frameTime100ns` を参照します。単発取得の `operationAllowed` は常にfalseで、工程IDや操作トークンを発行しません。`InspectSession` の工程一覧には含めません。
+
+公開条件は前後撮影と共通です。既定では画素を黒く保護し、UI構造に文字や値を含めません。WGCで画像を取得できなかった窓は結果に欠落として現れます。窓の関係だけを調べる場合は `ListWindows` を使えます。空き待ちで通常記録を止めることを避けるため、単発取得は同時1件に制限します。
+
 ## 検証コマンドと未受入
 
 ```powershell
 pwsh -NoProfile -File ./dev/scripts/Test-OperationRecorder.ps1 -Suite Core
 pwsh -NoProfile -File ./dev/scripts/Test-OperationRecorder.ps1 -Suite WindowGraph
 pwsh -NoProfile -File ./dev/scripts/Test-OperationRecorder.ps1 -Suite Wgc
+pwsh -NoProfile -File ./dev/scripts/Test-OperationRecorder.ps1 -Suite Snapshot
 ```
 
 初期実行はOpenInputDesktop参照拒否でWGC_BLOCKEDとなり、runnerでblocked/終了コード3へ分類しました。その後、pwshの子プロセス経由で実行した専用試験では取得が成立しました。OS解除やdesktop切替は行っておらず、実行条件の差の原因は未特定です。blockedを成功/skipへ置き換えません。
