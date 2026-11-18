@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
     <Nullable>disable</Nullable>
@@ -10,7 +10,7 @@
     <RootNamespace>OperationRecorderApp</RootNamespace>
     <ApplicationIcon>../../Assets/app.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <Version>0.1.8</Version>
+    <Version>0.1.9</Version>
     <Product>OperationRecorder</Product>
     <Company>OperationRecorder</Company>
     <Description>PC の操作を記録して、スクリーンショット付きの操作手順書(md)を作るツール</Description>

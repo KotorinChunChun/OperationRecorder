@@ -2,7 +2,7 @@
 
   <!-- アプリと同じサービス・フォーム・CLIを通す機能試験。入口はdev/scripts/Test-OperationRecorder.ps1。 -->
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
     <Nullable>disable</Nullable>
