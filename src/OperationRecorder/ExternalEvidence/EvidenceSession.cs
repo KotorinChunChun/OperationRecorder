@@ -42,6 +42,7 @@ public sealed class EvidenceSession : IDisposable
     DateTimeOffset started;
     long clockStart;
     bool stopped;
+    GroupEvidenceSession groupSession;
     public EvidenceSession(IEvidenceBackend backend, IEvidenceTargetValidator validator, int maxRequests = 20000)
     {
         if (maxRequests < 1 || maxRequests > 20000) throw new ArgumentOutOfRangeException(nameof(maxRequests));
@@ -49,6 +50,14 @@ public sealed class EvidenceSession : IDisposable
     }
     public async Task<EvidenceReply> HandleAsync(EvidenceRequest request, CancellationToken cancellationToken = default)
     {
+        if(request?.SchemaVersion==2)
+        {
+            if(sessionId!=Guid.Empty)return new EvidenceReply { SchemaVersion=2,RequestId=request.RequestId,Status="schema-mismatch" };
+            groupSession??=new GroupEvidenceSession(backend);
+            return await groupSession.HandleAsync(request,cancellationToken);
+        }
+        if(groupSession!=null)return new EvidenceReply { RequestId=request?.RequestId??Guid.Empty,Status="schema-mismatch" };
+        if(request?.GroupPolicy!=null || request?.WindowApprovals!=null)return new EvidenceReply{RequestId=request.RequestId,Status="schema-mismatch"};
         Guid id = request?.RequestId ?? Guid.Empty;
         EvidenceReply Reply(string status, EvidenceStep step = null, bool allowed = false, DateTimeOffset? saved = null, params string[] paths) => new()
         { RequestId = id, SessionId = sessionId, StepId = step?.StepId ?? request?.StepId ?? Guid.Empty, StepToken = step?.Token ?? Guid.Empty,
@@ -219,5 +228,5 @@ public sealed class EvidenceSession : IDisposable
         EvidenceFiles.AtomicBytes(Path.Combine(directory, "events.jsonl"), Encoding.UTF8.GetBytes(string.Join("\n", events) + (complete.Length == 0 ? "" : "\n")));
         EvidenceFiles.AtomicJson(Path.Combine(directory, "edits.json"), new { steps = complete.ToDictionary(s => s.Sequence.ToString(), s => new { headline = "外部操作 " + s.OperationName, body = s.Outcome }) });
     }
-    public void Dispose() { sessionLock?.Dispose(); gate.Dispose(); }
+    public void Dispose() { groupSession?.Dispose(); sessionLock?.Dispose(); gate.Dispose(); }
 }

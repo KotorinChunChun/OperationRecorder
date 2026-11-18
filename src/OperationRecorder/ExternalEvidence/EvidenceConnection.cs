@@ -51,14 +51,14 @@ public sealed class EvidenceConnection : IDisposable
             await gate.WaitAsync(deadline.Token); entered = true;
             await EvidenceWire.WriteAsync(pipe, request, deadline.Token);
             var response = await EvidenceWire.ReadAsync<EvidenceReply>(pipe, deadline.Token);
-            if (response.RequestId != request.RequestId || response.SessionId != Guid.Empty && response.SessionId != request.SessionId) throw new EvidenceUnavailableException("response-mismatch");
+            if (response.SchemaVersion != request.SchemaVersion || response.RequestId != request.RequestId || response.SessionId != Guid.Empty && response.SessionId != request.SessionId) throw new EvidenceUnavailableException("response-mismatch");
             return response;
         }
         catch
         {
             // A timed-out connection is poisoned; never read a late response as a later request's reply.
             Dispose();
-            return new EvidenceReply { RequestId = request.RequestId, SessionId = request.SessionId, StepId = request.StepId, StepToken = request.StepToken,
+            return new EvidenceReply { SchemaVersion=request.SchemaVersion, RequestId = request.RequestId, SessionId = request.SessionId, StepId = request.StepId, StepToken = request.StepToken,
                 Status = "response-unconfirmed", OperationAllowed = false };
         }
         finally { if (entered) gate.Release(); }

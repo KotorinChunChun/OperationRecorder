@@ -55,7 +55,8 @@ public static class EvidenceFiles
         var commit = new EvidenceCommit(1, work.SessionId, work.StepId, work.StepToken, work.Phase, capturedAt, DateTimeOffset.UtcNow,
             timelineOffsetMs ?? (long)(capturedAt - work.SessionStartedUtc).TotalMilliseconds,
             assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0],
-            HashFile(string.IsNullOrEmpty(assembly.Location) ? Environment.ProcessPath : assembly.Location), Hash(protectedPng), Hash(uiBytes), protectedVideo == null ? null : Hash(protectedVideo));
+            HashFile(string.IsNullOrEmpty(assembly.Location) ? Environment.ProcessPath : assembly.Location), Hash(protectedPng), Hash(uiBytes), protectedVideo == null ? null : Hash(protectedVideo),
+            work.GroupPlan == null ? null : HashFile(Path.Combine(work.Directory,"group.json")));
         string path = Path.Combine(work.Directory, "commit.json"); AtomicJson(path, commit); return path;
     }
     public static EvidenceCommit Verify(CaptureWork work)
@@ -66,7 +67,8 @@ public static class EvidenceFiles
             commit.StepToken != work.StepToken || commit.Phase != work.Phase ||
             commit.ImageSha256 != HashFile(Path.Combine(work.Directory, "frame.png")) ||
             commit.UiSha256 != HashFile(Path.Combine(work.Directory, "ui.json")) ||
-            (work.Policy.RecordVideo && (commit.VideoSha256 == null || commit.VideoSha256 != HashFile(Path.Combine(work.Directory, "frame.mp4")))))
+            (work.Policy.RecordVideo && (commit.VideoSha256 == null || commit.VideoSha256 != HashFile(Path.Combine(work.Directory, "frame.mp4")))) ||
+            (work.GroupPlan != null && (commit.GroupSha256 == null || commit.GroupSha256 != HashFile(Path.Combine(work.Directory,"group.json")))))
             throw new EvidenceUnavailableException("save-unconfirmed");
         return commit;
     }

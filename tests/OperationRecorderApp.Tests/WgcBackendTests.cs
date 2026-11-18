@@ -31,6 +31,57 @@ public sealed class WgcBackendTests
         Assert.InRange(second-first,10000,10000000);
     }
 
+    [Fact,Trait("Category","Desktop")]
+    public async Task 親WGCフレームから専用子領域を切出し既知色を照合する()
+    {
+        var observed=new ConcurrentDictionary<string,string>();
+        observed["parent-crop"]="not-tested";
+        try
+        {
+            if(!WgcCaptureBackend.IsInputDesktopAvailable())
+            {
+                observed["parent-crop"]="input-desktop-unavailable";
+                throw new InvalidOperationException("WGC_BLOCKED: 親cropの取得条件を満たしません。");
+            }
+            using var fixture=new WgcFixture();
+            using var process=System.Diagnostics.Process.GetCurrentProcess();
+            var target=new EvidenceTarget(process.Id,process.StartTime.ToUniversalTime(),process.MainModule.FileName,process.SessionId,fixture.Handle);
+            using var registry=new WindowGraphRegistry();
+            using var frame=await new WgcCaptureBackend().CaptureAsync(fixture.Handle,DateTimeOffset.UtcNow.AddSeconds(8),CancellationToken.None);
+            var graph=registry.Snapshot(target,256);
+            var parent=graph.Windows.Single(w=>w.Hwnd==fixture.Handle);
+            var child=graph.Windows.Single(w=>w.Hwnd==fixture.ChildHandle);
+            var rectangle=new Rectangle(child.Bounds.X-parent.Bounds.X,child.Bounds.Y-parent.Bounds.Y,child.Bounds.Width,child.Bounds.Height);
+            string measurements=System.Text.Json.JsonSerializer.Serialize(new
+            {
+                parentBounds=new{parent.Bounds.X,parent.Bounds.Y,parent.Bounds.Width,parent.Bounds.Height},parentDpi=parent.Dpi,parentCloaked=parent.Cloaked,
+                childBounds=new{child.Bounds.X,child.Bounds.Y,child.Bounds.Width,child.Bounds.Height},childDpi=child.Dpi,childCloaked=child.Cloaked,childVisible=child.Visible,
+                crop=new{rectangle.X,rectangle.Y,rectangle.Width,rectangle.Height},
+                contentWidth=frame.ContentSize.Width,contentHeight=frame.ContentSize.Height,graph.Truncated,
+                child.IsChild,childParentHwnd=child.ParentHwnd,parentHwnd=parent.Hwnd
+            });
+            observed["parent-crop-measurements"]=measurements;
+            Assert.False(graph.Truncated,measurements);
+            Assert.True(child.IsChild && child.ParentHwnd==parent.Hwnd,measurements);
+            if(parent.Bounds.Size!=frame.ContentSize)
+            {
+                observed["parent-crop"]="parent-frame-size-mismatch";
+                Assert.Fail(measurements);
+            }
+            if(rectangle.Width<=0||rectangle.Height<=0||!new Rectangle(Point.Empty,frame.ContentSize).Contains(rectangle))
+            {
+                observed["parent-crop"]="child-region-clipped";
+                Assert.Fail(measurements);
+            }
+            using var crop=frame.Bitmap.Clone(rectangle,System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            Assert.Equal(Color.Lime.ToArgb(),crop.GetPixel(crop.Width/2,crop.Height/2).ToArgb());
+            Assert.Contains(Color.Lime.ToArgb(),PixelColors(crop));
+            observed["parent-crop"]="captured-known-child-color";
+        }
+        catch(EvidenceUnavailableException error){observed["parent-crop"]=error.Code;throw;}
+        finally{WriteObservations(observed);}
+    }
+
     // Uses only forms created here. No keyboard/mouse injection, foreground changes, or screen capture.
     [Fact,Trait("Category","Desktop")]
     public async Task 専用窓の非アクティブ遮蔽非表示と子HWNDをWGCで実測する()
@@ -61,12 +112,19 @@ public sealed class WgcBackendTests
         await fixture.NativeState(6); await Observe("minimized",fixture.Handle);
         await fixture.NativeState(0); await Observe("hidden",fixture.Handle);
         await fixture.NativeState(4); await fixture.MoveOutside(); await Observe("offscreen",fixture.Handle);
-        Assert.All(observed.Values,value=>Assert.Contains(value,new[]{"captured","capture-unavailable","capture-denied","capture-unsupported","target-mismatch","deadline-exceeded","capture-size-changed"}));
+        Assert.All(new[]{"inactive","occluded-updated","child-direct","minimized","hidden","offscreen"},
+            state=>Assert.Contains(observed[state],new[]{"captured","capture-unavailable","capture-denied","capture-unsupported","target-mismatch","deadline-exceeded","capture-size-changed"}));
         // Preserve only public status codes; raw frames and titles are never persisted by these tests.
         WriteObservations(observed);
     }
     static void WriteObservations(System.Collections.Generic.IDictionary<string,string> values)
-    { string path=Environment.GetEnvironmentVariable("OPREC_WGC_OBSERVATIONS");if(!string.IsNullOrEmpty(path))System.IO.File.WriteAllText(path,System.Text.Json.JsonSerializer.Serialize(values)); }
+    {
+        string path=Environment.GetEnvironmentVariable("OPREC_WGC_OBSERVATIONS");
+        if(string.IsNullOrEmpty(path))return;
+        var merged=System.IO.File.Exists(path)?System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string,string>>(System.IO.File.ReadAllText(path)):new();
+        foreach(var pair in values)merged[pair.Key]=pair.Value;
+        System.IO.File.WriteAllText(path,System.Text.Json.JsonSerializer.Serialize(merged));
+    }
     static int[] PixelColors(Bitmap bitmap)
     {
         var colors=new System.Collections.Generic.HashSet<int>();
@@ -80,6 +138,7 @@ public sealed class WgcBackendTests
         public long Handle{get;private set;}
         public long ChildHandle{get;private set;}
         [DllImport("user32.dll")]static extern bool ShowWindow(IntPtr hwnd,int command);
+        [DllImport("dwmapi.dll")]static extern int DwmFlush();
         public WgcFixture()
         {
             thread=new Thread(()=>
@@ -87,7 +146,19 @@ public sealed class WgcBackendTests
                 Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
                 window=new InactiveForm { Text="WGC 専用fixture",StartPosition=FormStartPosition.Manual,Location=new Point(80,80),ClientSize=new Size(300,220),BackColor=Color.Red,ShowInTaskbar=false };
                 child=new Panel{Bounds=new Rectangle(15,15,100,80),BackColor=Color.Lime};window.Controls.Add(child);
-                window.Shown+=(_,_)=>{Handle=window.Handle.ToInt64();ChildHandle=child.Handle.ToInt64();ready.SetResult(true);};
+                window.Shown+=(_,_)=>
+                {
+                    try
+                    {
+                        Handle=window.Handle.ToInt64();ChildHandle=child.Handle.ToInt64();
+                        // Shown is earlier than the first WM_PAINT. Publish readiness only after
+                        // the fixture's known colors have been painted and submitted to DWM.
+                        window.Refresh();child.Refresh();window.Update();child.Update();
+                        if(DwmFlush()<0)throw new InvalidOperationException("WGC fixture composition unavailable");
+                        ready.SetResult(true);
+                    }
+                    catch(Exception error){ready.TrySetException(error);}
+                };
                 Application.Run(window);
             }){IsBackground=true};thread.SetApartmentState(ApartmentState.STA);thread.Start();ready.Task.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
         }
@@ -97,6 +168,19 @@ public sealed class WgcBackendTests
         public Task NativeState(int state)=>Invoke(()=>{cover?.Hide();ShowWindow(window.Handle,state);});
         public Task MoveOutside()=>Invoke(()=>window.Location=new Point(-20000,-20000));
         public void Dispose(){if(window!=null&&!window.IsDisposed){try{Invoke(()=>{cover?.Close();window.Close();}).Wait(TimeSpan.FromSeconds(3));}catch{}}thread.Join(3000);}
-        sealed class InactiveForm:Form{protected override bool ShowWithoutActivation=>true;}
+        sealed class InactiveForm:Form
+        {
+            [DllImport("dwmapi.dll")]static extern int DwmSetWindowAttribute(IntPtr hwnd,int attribute,ref int value,int size);
+            protected override bool ShowWithoutActivation=>true;
+            protected override void OnHandleCreated(EventArgs e)
+            {
+                base.OnHandleCreated(e);
+                int disabled=1;
+                // Disable transitions on this synthetic fixture only. A screenshot of a
+                // fade-in intermediate cannot establish its intended settled public colors.
+                if(DwmSetWindowAttribute(Handle,3 /* DWMWA_TRANSITIONS_FORCEDISABLED */,ref disabled,sizeof(int))<0)
+                    throw new InvalidOperationException("WGC fixture transitions unavailable");
+            }
+        }
     }
 }

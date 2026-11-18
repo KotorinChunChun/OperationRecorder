@@ -41,6 +41,8 @@ public sealed record EvidenceRequest
     public EvidenceState ActualStateMetadata { get; init; }
     public string Outcome { get; init; }
     public string ErrorCode { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public GroupEvidencePolicy GroupPolicy { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public WindowApproval[] WindowApprovals { get; init; }
 }
 public sealed record EvidenceReply
 {
@@ -58,15 +60,19 @@ public sealed record EvidenceReply
     public string[] Capabilities { get; init; } = Array.Empty<string>();
     public EvidenceStepSummary[] StepStates { get; init; } = Array.Empty<EvidenceStepSummary>();
     public bool HasMoreSteps { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public GroupQuality Quality { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public WindowGraphSnapshot WindowGraph { get; init; }
 }
 public sealed record EvidenceStepSummary(Guid StepId, Guid StepToken, string Status, bool BeforeSaved, bool AfterSaved, bool FailureSaved, string Outcome);
 public sealed record EvidenceNode(int ControlTypeId, int X, int Y, int Width, int Height, bool IsPassword, bool Enabled);
 public sealed record EvidenceUi(IReadOnlyList<EvidenceNode> Elements, bool Truncated, string VisualProtection = "opaque-all", bool TextRead = false);
 public sealed record CaptureWork(Guid SessionId, Guid StepId, Guid StepToken, string Phase, EvidenceTarget Target,
-    EvidencePolicy Policy, string Directory, DateTimeOffset SessionStartedUtc, DateTimeOffset DeadlineUtc, long SessionClockStartTicks = 0);
+    EvidencePolicy Policy, string Directory, DateTimeOffset SessionStartedUtc, DateTimeOffset DeadlineUtc, long SessionClockStartTicks = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] GroupCapturePlan GroupPlan = null);
 public sealed record EvidenceCommit(int SchemaVersion, Guid SessionId, Guid StepId, Guid StepToken, string Phase,
     DateTimeOffset CapturedAt, DateTimeOffset SavedAt, long TimelineOffsetMs, string ProductVersion, string ImplementationSha256,
-    string ImageSha256, string UiSha256, string VideoSha256 = null);
+    string ImageSha256, string UiSha256, string VideoSha256 = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string GroupSha256 = null);
 public interface IEvidenceBackend
 {
     Task<string> CaptureAndSaveAsync(CaptureWork work, CancellationToken cancellationToken);

@@ -125,6 +125,7 @@ public static class EvidenceWorker
         {
             using var limit = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             var work = await EvidenceWire.ReadAsync<CaptureWork>(Console.OpenStandardInput(), limit.Token);
+            if(work.GroupPlan!=null)return await GroupEvidenceWorker.RunAsync(work,Console.OpenStandardOutput(),limit.Token);
             if (work.DeadlineUtc <= DateTimeOffset.UtcNow || work.DeadlineUtc > DateTimeOffset.UtcNow.AddSeconds(30)) throw new EvidenceUnavailableException("deadline-exceeded");
             limit.CancelAfter(work.DeadlineUtc - DateTimeOffset.UtcNow);
             using var validator = new WindowsEvidenceValidator();

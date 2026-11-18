@@ -11,8 +11,8 @@ param(
 $ErrorActionPreference = 'Stop'
 # nativeの非0はTRXと合わせて分類する。呼出元の設定で先に例外へ変換しない。
 $PSNativeCommandUseErrorActionPreference = $false
-if ($Suite -notin @('Core', 'Desktop', 'WindowEvents', 'All') -or $Configuration -notin @('Debug', 'Release')) {
-    [Console]::Error.WriteLine('SuiteはCore/Desktop/WindowEvents/All、ConfigurationはDebug/Releaseを指定してください。')
+if ($Suite -notin @('Core', 'Desktop', 'WindowEvents', 'Wgc', 'WindowGraph', 'All') -or $Configuration -notin @('Debug', 'Release')) {
+    [Console]::Error.WriteLine('SuiteはCore/Desktop/WindowEvents/Wgc/WindowGraph/All、ConfigurationはDebug/Releaseを指定してください。')
     exit 2
 }
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -56,6 +56,8 @@ function Invoke-Suite([string]$Name) {
     [void][IO.Directory]::CreateDirectory($resultDir)
     $entry.trx = Join-Path $resultDir 'tests.trx'
     $filter = if ($Name -eq 'Desktop') { 'Category=Desktop' }
+        elseif ($Name -eq 'Wgc') { 'FullyQualifiedName~WgcBackendTests|FullyQualifiedName~WgcGroupNativeTests' }
+        elseif ($Name -eq 'WindowGraph') { 'FullyQualifiedName~WindowGraphTests|FullyQualifiedName~WindowGraphNativeTests' }
         elseif ($Name -eq 'WindowEvents') { 'FullyQualifiedName~WindowChangeTests|FullyQualifiedName~WindowObservationTests' }
         else { 'Category!=Desktop' }
     $testExit = Invoke-Dotnet @('test', $testProject, '-c', $Configuration, '--artifacts-path', $artifacts,
@@ -66,8 +68,9 @@ function Invoke-Suite([string]$Name) {
     $entry.total = [int]$counters.total; $entry.passed = [int]$counters.passed; $entry.failed = [int]$counters.failed; $entry.skipped = [int]$counters.notExecuted
     $failedResults = @($trx.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' })
     $blockedResults = @($failedResults | Where-Object { $_.Output.ErrorInfo.Message -like '*DESKTOP_BLOCKED:*' })
-    if ($Name -eq 'Desktop' -and $blockedResults.Count -gt 0 -and $failedResults.Count -eq $blockedResults.Count -and $entry.skipped -eq 0) {
-        $entry.status = 'blocked'; $entry.reason = 'DESKTOP_BLOCKED: デスクトップ条件を満たさない試験があります。詳細はTRXを参照してください。'
+    if ($Name -eq 'Wgc') { $blockedResults = @($failedResults | Where-Object { $_.Output.ErrorInfo.Message -like '*WGC_BLOCKED:*' }) }
+    if ($Name -in @('Desktop','Wgc') -and $blockedResults.Count -gt 0 -and $failedResults.Count -eq $blockedResults.Count -and $entry.skipped -eq 0) {
+        $entry.status = 'blocked'; $entry.reason = $(if($Name -eq 'Wgc'){'WGC_BLOCKED: 入力デスクトップ/取得条件を満たさず実フレームの受入は未完了。'}else{'DESKTOP_BLOCKED: デスクトップ条件を満たさない試験があります。詳細はTRXを参照してください。'})
     }
     elseif ($testExit -eq 0 -and $entry.total -gt 0 -and $entry.total -eq $entry.passed -and $entry.skipped -eq 0) { $entry.status = 'passed' }
     else { $entry.reason = "失敗・未実行またはテスト未検出があります（終了コード $testExit）。" }

@@ -1,5 +1,9 @@
 # 第三者ソフトウェアの配布通知
 
+## Windows SDK for .NET / C#/WinRT runtime
+
+WGCのWinRT投影に.NET SDKが解決するMicrosoft.Windows.SDK.NET.Refを使用します。今回の検証で解決された版は10.0.19041.57です。出力にはMicrosoft.Windows.SDK.NET.dllとWinRT.Runtime.dllが含まれます。パッケージnuspecの著作権表示は© Microsoft Corporation. All rights reserved.、ライセンス参照は https://aka.ms/WinSDKLicenseURL です。SDK由来の依存を独自コードのMITライセンスと混同しません。
+
 ## Markdig 0.38.0
 
 MarkdownからHTMLへの変換にMarkdigを使用しています。NuGetパッケージの`markdig.nuspec`に記載されたライセンスはBSD-2-Clauseです。

@@ -14,7 +14,9 @@ function New-OperationEvidenceSession {
         [Parameter(Mandatory)][hashtable]$Target,
         [Parameter(Mandatory)][string]$OutputDirectory,
         [hashtable]$Policy = @{},
-        [Guid]$SessionId = [Guid]::NewGuid()
+        [Guid]$SessionId = [Guid]::NewGuid(),
+        [ValidateSet(1,2)][int]$SchemaVersion = 1,
+        [hashtable]$GroupPolicy
     )
     $exe = (Resolve-Path -LiteralPath $Executable).Path
     $dll = Join-Path (Split-Path -Parent $exe) 'OperationRecorder.dll'
@@ -23,13 +25,17 @@ function New-OperationEvidenceSession {
     if ($loaded -and $loaded.Location -ine $dll) { throw '別のOperationRecorder DLLが読み込まれています。新しいpwshセッションで実行してください。' }
     if (-not $loaded) { Add-Type -Path $dll }
     $connection = [OperationRecorderApp.ExternalEvidence.EvidenceConnection]::StartAsync($exe).GetAwaiter().GetResult()
-    $session = [pscustomobject]@{ Connection = $connection; SessionId = $SessionId; Closed = $false }
+    if ($SchemaVersion -eq 1 -and $GroupPolicy) { $connection.Dispose(); throw 'GroupPolicyにはSchemaVersion 2が必要です。' }
+    $session = [pscustomobject]@{ Connection = $connection; SessionId = $SessionId; Closed = $false; SchemaVersion = $SchemaVersion; WindowGraph = $null }
     try {
-        $reply = Send-OperationEvidenceRequest -Session $session -Request @{
+        $request = @{
             method = 'StartSession'; target = $Target; policy = $Policy
             outputDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
         }
+        if ($SchemaVersion -eq 2) { $request.groupPolicy = $(if ($GroupPolicy) { $GroupPolicy } else { @{} }) }
+        $reply = Send-OperationEvidenceRequest -Session $session -Request $request
         if ($reply.status -ne 'started') { throw "記録を開始できません: $($reply.status)" }
+        if ($SchemaVersion -eq 2) { $session.WindowGraph = $reply.windowGraph }
         return $session
     } catch { $connection.Dispose(); throw }
 }
@@ -42,7 +48,7 @@ function Send-OperationEvidenceRequest {
     )
     if ($Session.Closed) { throw '記録セッションは終了しています。' }
     $body = @{} + $Request
-    $body.schemaVersion = 1; $body.sessionId = $Session.SessionId.ToString()
+    $body.schemaVersion = $(if ($Session.PSObject.Properties['SchemaVersion']) { $Session.SchemaVersion } else { 1 }); $body.sessionId = $Session.SessionId.ToString()
     if (-not $body.ContainsKey('requestId')) { $body.requestId = [Guid]::NewGuid().ToString() }
     if (-not $body.ContainsKey('deadlineUtc')) { $body.deadlineUtc = [DateTimeOffset]::UtcNow.AddMilliseconds($TimeoutMilliseconds - 50).ToString('o') }
     $json = $body | ConvertTo-Json -Depth 12 -Compress

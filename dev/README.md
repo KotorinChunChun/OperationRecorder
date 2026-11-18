@@ -4,6 +4,8 @@
 
 ## 版別資料
 
+- [0.1.9 要求](history/v0.1.9/v0.1.9-req.md)・[計画と報告](history/v0.1.9/v0.1.9-imp.md)・[進捗](history/v0.1.9/v0.1.9-task.md)・[ケース一覧](history/v0.1.9/test-cases.json)：WGCとウィンドウ群/公開判定。
+
 - [0.1.8 要求](history/v0.1.8/v0.1.8-req.md)・[計画と報告](history/v0.1.8/v0.1.8-imp.md)・[ケース一覧](history/v0.1.8/test-cases.json)：録画エンジンのリファクタリング
 - [0.1.7 要求](history/v0.1.7/v0.1.7-req.md)・[計画と報告](history/v0.1.7/v0.1.7-imp.md)・[進捗](history/v0.1.7/v0.1.7-task.md)：外部証拠API
 

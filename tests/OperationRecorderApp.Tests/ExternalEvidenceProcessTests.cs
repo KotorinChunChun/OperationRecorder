@@ -95,7 +95,13 @@ public sealed class ExternalEvidenceProcessTests
             Assert.Equal(request.RequestId,response.RequestId); Assert.Equal("response-unconfirmed", response.Status); Assert.False(response.OperationAllowed);
             Assert.True(watch.Elapsed<TimeSpan.FromSeconds(2));
         }
-        finally { client.Dispose(); if (!broker.HasExited) broker.Kill(true); await broker.WaitForExitAsync(); if(Directory.Exists(root)) Directory.Delete(root,true); }
+        finally
+        {
+            client.Dispose(); if (!broker.HasExited) broker.Kill(true); await broker.WaitForExitAsync();
+            // Process termination can precede final filesystem handle cleanup on Windows.
+            for(int attempt=0;Directory.Exists(root);attempt++)
+            {try{Directory.Delete(root,true);}catch(IOException)when(attempt<40){await Task.Delay(25);}}
+        }
     }
     [Fact]
     public async Task 呼出し元の死亡後に専用brokerが残留しない()
