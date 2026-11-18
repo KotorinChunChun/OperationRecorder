@@ -58,6 +58,9 @@ internal static class Program
         readonly Label state = new() { Location = new Point(30, 310), AutoSize = true, Text = "操作前" };
         readonly List<Form> covers = new();
         Form? secondary;
+        Panel? snapshotChild;
+        bool snapshotDialogOpen;
+        DialogResult snapshotDialogResult;
         int actions;
         int lastKey;
         public FixtureForm(string token)
@@ -122,6 +125,36 @@ internal static class Program
             if (command == "window-main") Activate();
             if (command == "window-secondary") secondary?.Activate();
             if (command == "window-close") { secondary?.Dispose(); secondary = null; }
+            if (command == "snapshot-child-open" && snapshotChild == null)
+            {
+                snapshotChild = new Panel { Name = "fixtureSnapshotChild", BackColor = Color.LimeGreen,
+                    Bounds = new Rectangle(326, 105, 148, 46) };
+                Controls.Add(snapshotChild);
+                snapshotChild.BringToFront();
+                snapshotChild.Refresh();
+            }
+            if (command == "snapshot-password-fill") password.Text = "OPREC_TEST_PASSWORD_0a17f68e";
+            if (command == "snapshot-password-clear") password.Clear();
+            if (command == "snapshot-dialog-open" && !snapshotDialogOpen)
+            {
+                snapshotDialogOpen = true;
+                snapshotDialogResult = DialogResult.None;
+                BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        snapshotDialogResult = MessageBox.Show(this, "これは検証専用の確認です。", "専用システムダイアログ",
+                            MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                    }
+                    finally { snapshotDialogOpen = false; }
+                }));
+            }
+            if (command == "snapshot-paint")
+            {
+                Refresh();
+                secondary?.Refresh();
+                DwmFlush();
+            }
             if (command == "shift-layout")
             {
                 Bounds = new Rectangle(Screen.PrimaryScreen!.WorkingArea.Location + new Size(40, 40), new Size(1000, 720));
@@ -130,6 +163,8 @@ internal static class Program
             if (command == "close") return new { ok = true };
             return new { ok = true, pid = Environment.ProcessId, hwnd = Handle.ToInt64(), title = Text,
                 secondaryHwnd = secondary?.Handle.ToInt64() ?? 0,
+                snapshotChildHwnd = snapshotChild?.Handle.ToInt64() ?? 0, snapshotDialogOpen,
+                snapshotDialogResult = snapshotDialogResult.ToString(),
                 action = RectangleOf(action), input = RectangleOf(input), password = RectangleOf(password),
                 drag = RectangleOf(drag), wheel = RectangleOf(wheel), actions, lastKey, value = input.Text, passwordLength = password.Text.Length };
         }
@@ -140,5 +175,6 @@ internal static class Program
         [DllImport("user32.dll")] static extern bool AttachThreadInput(uint from, uint to, bool attach);
         [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr window);
         [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
+        [DllImport("dwmapi.dll")] static extern int DwmFlush();
     }
 }

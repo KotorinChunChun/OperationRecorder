@@ -47,7 +47,7 @@ $features = @(
 $classFeature = @{
     DisclosureGateTests='F-EVIDENCE'; WindowGraphTests='F-EVIDENCE'; WindowGraphNativeTests='F-EVIDENCE'; WgcBackendTests='F-EVIDENCE'
     GroupEvidenceSessionTests='F-EVIDENCE'; GroupEvidenceValidationTests='F-EVIDENCE'
-    WgcGroupNativeTests='F-EVIDENCE'
+    WgcGroupNativeTests='F-EVIDENCE'; SnapshotSessionTests='F-EVIDENCE'; SnapshotDesktopTests='F-EVIDENCE'
     ExternalEvidenceSessionTests = 'F-EVIDENCE'; ExternalEvidenceProcessTests = 'F-EVIDENCE'
     ExternalEvidencePowerShellTests = 'F-EVIDENCE'; ExternalEvidenceCompatibilityTests = 'F-EVIDENCE'; ExternalEvidenceNativeTests = 'F-EVIDENCE'
     WindowChangeTests = 'F-WINDOW'; WindowObservationTests = 'F-WINDOW'
@@ -90,7 +90,7 @@ function Get-FeatureId([string]$ClassName, [string]$MethodName) {
 }
 
 function Get-Layer([string]$ClassName, [string]$MethodName) {
-    if($ClassName -in @('WindowGraphNativeTests','WgcGroupNativeTests') -or ($ClassName -eq 'WgcBackendTests' -and $MethodName -match '^(専用窓|親WGC)')){return 'desktop'}
+    if($ClassName -in @('WindowGraphNativeTests','WgcGroupNativeTests','SnapshotDesktopTests') -or ($ClassName -eq 'WgcBackendTests' -and $MethodName -match '^(専用窓|親WGC)')){return 'desktop'}
     if ($ClassName -eq 'ExternalEvidenceNativeTests') { return 'desktop' }
     if ($ClassName -in @('ExternalEvidenceProcessTests','ExternalEvidencePowerShellTests')) { return 'cli' }
     if ($ClassName -in @('ExternalEvidenceSessionTests','ExternalEvidenceCompatibilityTests')) { return 'api' }
@@ -127,6 +127,7 @@ $cases = foreach ($group in $groups | Sort-Object Name) {
     $feature = $features | Where-Object id -eq $featureId
     $layer = Get-Layer $className $methodName
     $environment = if ($className -eq 'WindowGraphNativeTests') { 'Windows、専用fixtureのNative構造読取り。OS入力・撮影・前面化なし' }
+        elseif ($className -eq 'SnapshotDesktopTests') { 'Windows、WGC取得可能なdesktop/GPU、専用WinForms fixtureとその所有ダイアログ' }
         elseif ($layer -eq 'desktop' -and $className -in @('WgcBackendTests','WgcGroupNativeTests')) { 'Windows、WGC取得可能なdesktop/GPU、専用fixtureのみ。OS入力・前面化なし' }
         elseif ($layer -eq 'desktop') { 'Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture' }
         else { 'Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離' }
