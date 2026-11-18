@@ -8,6 +8,8 @@ internal static class Program
     [STAThread]
     static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--approved-roi-window" && Guid.TryParseExact(args[1], "N", out var fixtureId))
+            return ApprovedRoiFixtureWindow.Run(fixtureId);
         if (args.Length == 1 && args[0] == "--window")
         {
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
