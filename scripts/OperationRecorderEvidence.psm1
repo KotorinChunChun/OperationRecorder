@@ -7,6 +7,16 @@ framework-dependentビルドのOperationRecorder.exeと同じ場所のDLLを読�
 資格情報や入力値を記録要求へ渡さない。対象アプリの終了監視は呼出し側が行う。
 #>
 $ErrorActionPreference = 'Stop'
+function Import-OperationEvidenceAssembly {
+    param([Parameter(Mandatory)][string]$Executable)
+    $exe = (Resolve-Path -LiteralPath $Executable).Path
+    $dll = Join-Path (Split-Path -Parent $exe) 'OperationRecorder.dll'
+    if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) { throw 'このPSクライアントにはDLL付きのframework-dependentビルドが必要です。docs/external-evidence.mdを参照してください。' }
+    $loaded = [AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GetName().Name -eq 'OperationRecorder' } | Select-Object -First 1
+    if ($loaded -and $loaded.Location -ine $dll) { throw '別のOperationRecorder DLLが読み込まれています。新しいpwshセッションで実行してください。' }
+    if (-not $loaded) { Add-Type -Path $dll }
+    return $exe
+}
 function New-OperationEvidenceSession {
     [CmdletBinding()]
     param(
@@ -18,15 +28,10 @@ function New-OperationEvidenceSession {
         [ValidateSet(1,2)][int]$SchemaVersion = 1,
         [hashtable]$GroupPolicy
     )
-    $exe = (Resolve-Path -LiteralPath $Executable).Path
-    $dll = Join-Path (Split-Path -Parent $exe) 'OperationRecorder.dll'
-    if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) { throw 'このPSクライアントにはDLL付きのframework-dependentビルドが必要です。docs/external-evidence.mdを参照してください。' }
-    $loaded = [AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GetName().Name -eq 'OperationRecorder' } | Select-Object -First 1
-    if ($loaded -and $loaded.Location -ine $dll) { throw '別のOperationRecorder DLLが読み込まれています。新しいpwshセッションで実行してください。' }
-    if (-not $loaded) { Add-Type -Path $dll }
+    $exe = Import-OperationEvidenceAssembly -Executable $Executable
     $connection = [OperationRecorderApp.ExternalEvidence.EvidenceConnection]::StartAsync($exe).GetAwaiter().GetResult()
     if ($SchemaVersion -eq 1 -and $GroupPolicy) { $connection.Dispose(); throw 'GroupPolicyにはSchemaVersion 2が必要です。' }
-    $session = [pscustomobject]@{ Connection = $connection; SessionId = $SessionId; Closed = $false; SchemaVersion = $SchemaVersion; WindowGraph = $null }
+    $session = [pscustomobject]@{ Connection = $connection; SessionId = $SessionId; Closed = $false; SchemaVersion = $SchemaVersion; WindowGraph = $null; Capabilities = @() }
     try {
         $request = @{
             method = 'StartSession'; target = $Target; policy = $Policy
@@ -36,8 +41,30 @@ function New-OperationEvidenceSession {
         $reply = Send-OperationEvidenceRequest -Session $session -Request $request
         if ($reply.status -ne 'started') { throw "記録を開始できません: $($reply.status)" }
         if ($SchemaVersion -eq 2) { $session.WindowGraph = $reply.windowGraph }
+        $session.Capabilities = @($reply.capabilities)
         return $session
     } catch { $connection.Dispose(); throw }
+}
+function Test-OperationEvidenceRoiProfile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Executable,
+        [Parameter(Mandatory)][string]$ProfileId,
+        [Parameter(Mandatory)][int]$Revision,
+        [Parameter(Mandatory)][string]$ProfileSha256,
+        [string]$TargetExecutable
+    )
+    $exe = Import-OperationEvidenceAssembly -Executable $Executable
+    $selection = [OperationRecorderApp.ExternalEvidence.RoiProfileSelection]::new($ProfileId, $Revision, $ProfileSha256)
+    $profile = [OperationRecorderApp.ExternalEvidence.ApprovedRoiCatalog]::Load($selection, (Split-Path -Parent $exe))
+    if ($TargetExecutable) {
+        $targetHash = (Get-FileHash -LiteralPath $TargetExecutable -Algorithm SHA256).Hash
+        if ($targetHash -ine $profile.AppSha256) { throw 'profile-app-mismatch' }
+    }
+    [pscustomobject]@{
+        ProfileId = $profile.ProfileId; Revision = $profile.Revision; ProfileSha256 = $ProfileSha256.ToLowerInvariant()
+        AppSha256 = $profile.AppSha256; SceneCount = $profile.Scenes.Count
+    }
 }
 function Send-OperationEvidenceRequest {
     [CmdletBinding()]
@@ -103,4 +130,4 @@ function Close-OperationEvidenceSession {
     try { Send-OperationEvidenceRequest -Session $Session -Request @{method='StopSession'} -TimeoutMilliseconds $TimeoutMilliseconds }
     finally { $Session.Closed = $true; $Session.Connection.Dispose() }
 }
-Export-ModuleMember -Function New-OperationEvidenceSession,Send-OperationEvidenceRequest,Get-OperationEvidenceSnapshot,Invoke-OperationEvidenceStep,Close-OperationEvidenceSession
+Export-ModuleMember -Function New-OperationEvidenceSession,Send-OperationEvidenceRequest,Test-OperationEvidenceRoiProfile,Get-OperationEvidenceSnapshot,Invoke-OperationEvidenceStep,Close-OperationEvidenceSession

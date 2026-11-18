@@ -2,18 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace OperationRecorderApp.ExternalEvidence;
 
 public sealed record WindowApproval(long Hwnd, string Role, bool Required = true, Guid WindowId = default, int Generation = 0, bool AllowParentCrop = true);
 public sealed record GroupEvidencePolicy(WindowApproval[] Approvals = null, DisclosureProfile Disclosure = null,
-    bool RequirePublicDiagnostic = true, int MaxWindows = 16, int MaxFrameAgeMs = 3000, int MaxGroupSkewMs = 2000, int MaxTotalPixels = 8388608);
+    bool RequirePublicDiagnostic = true, int MaxWindows = 16, int MaxFrameAgeMs = 3000, int MaxGroupSkewMs = 2000, int MaxTotalPixels = 8388608,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RoiProfileSelection RoiProfile = null);
 public sealed record GroupCapturePlan(WindowGraphSnapshot Snapshot, GroupEvidencePolicy Policy, string AppSha256);
 public sealed record GroupQuality(string CaptureStatus, string DisclosureStatus, string DiagnosticStatus, bool RequirementsMet,
     string[] Reasons, Guid[] MissingWindows);
 public sealed record WindowEvidence(WindowObservation Window, string Role, string CaptureMethod, long? SourceHwnd,
     long? FrameTime100ns, int Width, int Height, string ImageFile, string ImageSha256, string UiFile, string UiSha256,
-    string CaptureStatus, string DisclosureStatus, bool RequirementsMet, string ReasonCode, string VerifiedFrameSha256 = null);
+    string CaptureStatus, string DisclosureStatus, bool RequirementsMet, string ReasonCode, string VerifiedFrameSha256 = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string ApprovedSceneId = null);
 public sealed record GroupEvidenceManifest(int SchemaVersion, Guid SessionId, Guid StepId, Guid StepToken, string Phase,
     long RegistryRevision, string PolicySha256, DateTimeOffset CollectionStarted, DateTimeOffset CollectionEnded,
     WindowEvidence[] Windows, GroupQuality Quality);

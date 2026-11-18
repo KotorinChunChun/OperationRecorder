@@ -19,7 +19,8 @@ public static class GroupEvidenceValidation
         "profile-required", "context-unproven", "invalid-profile", "application-mismatch", "protection-unproven",
         "invalid-denied-regions", "role-not-approved", "dpi-mismatch", "size-mismatch", "state-mismatch",
         "denied-overlap", "pixel-mismatch", "no-diagnostic-pixels", "requirements-unmet", "disclosure-unavailable",
-        "invalid-frame", "approved", "public-approved", "none", "child-region-clipped", "window-set-changed"
+        "invalid-frame", "approved", "public-approved", "none", "child-region-clipped", "window-set-changed",
+        "roi-approved", "roi-scene-unproven", "roi-authentication-present", "roi-denied-overlap"
     };
     static readonly HashSet<string> QualityReasons = new(StringComparer.Ordinal)
     { "window-set-changed", "foreign-window", "unapproved-window", "required-evidence-missing", "frame-skew-or-missing", "public-diagnostic-insufficient" };
@@ -64,16 +65,24 @@ public static class GroupEvidenceValidation
             (approvals.FirstOrDefault(g=>Bound(g,row.Window))?.Role == "contained" && !Covered(plan,row.Window)));
         if (unapproved) reasons.Add("unapproved-window");
         var required = approvals.Where(g=>g.Required).ToArray();
+        bool roi = plan?.Policy?.RoiProfile != null;
+        bool DiagnosticRow(WindowEvidence row) => Public(row) &&
+            (!roi || row.ApprovedSceneId != null && row.VerifiedFrameSha256 == null);
         bool Fresh(WindowApproval grant) => rows.Any(row=>row?.Window!=null && Bound(grant,row.Window) && row.Role==grant.Role &&
-            row.CaptureStatus=="fresh" && row.FrameTime100ns>0 && (plan.Policy.RequirePublicDiagnostic ? Public(row) : true));
+            row.CaptureStatus=="fresh" && row.FrameTime100ns>0 &&
+            (!(roi || plan.Policy.RequirePublicDiagnostic) || DiagnosticRow(row)));
         var missing = required.Where(g=>!Fresh(g)).Select(g=>g.WindowId).Distinct().ToArray();
         if (missing.Length>0 || required.Length==0) reasons.Add("required-evidence-missing");
         var frames = rows.Where(w=>w?.CaptureStatus=="fresh").ToArray();
         bool timed = frames.Length>0 && frames.All(w=>w.FrameTime100ns>0) && plan?.Policy!=null && plan.Policy.MaxGroupSkewMs>=0 &&
             frames.Max(w=>w.FrameTime100ns.Value)-frames.Min(w=>w.FrameTime100ns.Value)<=plan.Policy.MaxGroupSkewMs*10000L;
         if (!timed) reasons.Add("frame-skew-or-missing");
-        bool met = validSet && coherent && plan?.Snapshot?.Truncated==false && !foreign && !unapproved && timed && required.Length>0 && missing.Length==0;
-        bool diagnostic = met && required.All(g=>rows.Any(row=>row?.Window!=null && Bound(g,row.Window) && row.Role==g.Role && Public(row)));
+        bool visibleRoiWindowsProven = !roi || rows.All(row=>row?.Window!=null &&
+            (!row.Window.Visible || row.Role=="contained" && Covered(plan,row.Window) || DiagnosticRow(row)));
+        bool met = validSet && coherent && plan?.Snapshot?.Truncated==false && !foreign && !unapproved && timed &&
+            required.Length>0 && missing.Length==0 && visibleRoiWindowsProven;
+        bool diagnostic = met && required.All(g=>rows.Any(row=>row?.Window!=null && Bound(g,row.Window) &&
+            row.Role==g.Role && DiagnosticRow(row)));
         if (!diagnostic) reasons.Add("public-diagnostic-insufficient");
         string disclosure = rows.Any(w=>w?.DisclosureStatus=="public-regions") ? "public-regions" :
             rows.Any(w=>w?.DisclosureStatus=="partial-public") ? "partial-public" : "opaque-only";
@@ -90,6 +99,13 @@ public static class GroupEvidenceValidation
     {
         var plan = work?.GroupPlan;
         Require(plan?.Snapshot?.Windows!=null && plan.Policy!=null && manifest?.Windows!=null && manifest.Quality!=null);
+        ApprovedRoiProfile roiProfile = null;
+        if (plan.Policy.RoiProfile != null)
+        {
+            Require(plan.Policy.Disclosure == null && plan.Policy.RequirePublicDiagnostic);
+            roiProfile = ApprovedRoiCatalog.Load(plan.Policy.RoiProfile);
+            Require(string.Equals(roiProfile.AppSha256, plan.AppSha256, StringComparison.OrdinalIgnoreCase));
+        }
         Require(manifest.SchemaVersion==2 && manifest.SessionId==work.SessionId && manifest.StepId==work.StepId &&
             manifest.StepToken==work.StepToken && manifest.Phase==work.Phase && manifest.RegistryRevision==plan.Snapshot.Revision);
         Require(manifest.PolicySha256==EvidenceFiles.Hash(JsonSerializer.SerializeToUtf8Bytes(plan.Policy,EvidenceProtocol.Json)));
@@ -104,6 +120,7 @@ public static class GroupEvidenceValidation
         var approvals=plan.Policy.Approvals??Array.Empty<WindowApproval>();
         Require(approvals.Length>0 && approvals.Select(g=>g.Hwnd).Distinct().Count()==approvals.Length &&
             approvals.All(g=>plan.Snapshot.Windows.Any(w=>Bound(g,w))));
+        if (roiProfile != null) Require(approvals.Any(g=>g.Hwnd==work.Target.WindowHandle && g.Required));
         EvidenceFiles.RequireLocalUnlinkedPath(work.Directory);
         foreach(var row in manifest.Windows)
         {
@@ -115,6 +132,16 @@ public static class GroupEvidenceValidation
             Require(row.CaptureStatus is "fresh" or "stale-frame" or "capture-unavailable" or "not-captured");
             Require(row.DisclosureStatus is "public-regions" or "partial-public" or "opaque-only" or "blocked");
             Require(RowReasons.Contains(row.ReasonCode??""));
+            if (roiProfile == null)
+                Require(row.ApprovedSceneId == null);
+            else
+            {
+                bool published = row.DisclosureStatus == "public-regions";
+                Require(row.VerifiedFrameSha256 == null && row.DisclosureStatus != "partial-public" &&
+                    published == row.RequirementsMet && published == (row.ApprovedSceneId != null) &&
+                    published == (row.ReasonCode == "roi-approved"));
+                Require(!published || row.Window.Visible && !row.Window.Minimized && !row.Window.Cloaked);
+            }
             if(unknown || grant?.Role=="contained")
             {
                 Require(row.Role==(contained?"contained":"unknown") && row.CaptureMethod=="structure-only" &&
@@ -154,17 +181,26 @@ public static class GroupEvidenceValidation
             using(var stream=new MemoryStream(png))using(var image=new Bitmap(stream))
             {
                 Require(image.Width==row.Width && image.Height==row.Height);
-                VerifyPixels(plan,row,parsed,image);
+                if (roiProfile != null && row.DisclosureStatus == "public-regions")
+                {
+                    Require(row.Window.Bounds.Size == image.Size &&
+                        ApprovedRoiGate.VerifyProtected(image, roiProfile, row.ApprovedSceneId, row.Role,
+                            work.Phase, row.Window.Dpi, parsed));
+                }
+                else VerifyPixels(plan,row,parsed,image);
             }
         }
         var rootRow=manifest.Windows.Single(row=>row.Window.Hwnd==work.Target.WindowHandle);
         string flatImage=Path.Combine(work.Directory,"frame.png"),flatUi=Path.Combine(work.Directory,"ui.json");
+        if (roiProfile != null && rootRow.DisclosureStatus=="public-regions")
+            Require(File.Exists(flatImage));
         if(File.Exists(flatImage))
         {
             byte[] png=ReadBounded(work.Directory,"frame.png",MaxPngBytes);
             // The compatibility image must be the already verified root image or an opaque placeholder.
             if(rootRow.ImageSha256==null || !string.Equals(EvidenceFiles.Hash(png),rootRow.ImageSha256,StringComparison.OrdinalIgnoreCase))
             {
+                Require(roiProfile == null || rootRow.DisclosureStatus != "public-regions");
                 Require(png.Length>=33 && png.AsSpan(0,8).SequenceEqual(new byte[]{137,80,78,71,13,10,26,10}) &&
                     png.AsSpan(12,4).SequenceEqual(new byte[]{73,72,68,82}));
                 int width=BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16,4)),height=BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20,4));
@@ -184,6 +220,15 @@ public static class GroupEvidenceValidation
             manifest.Quality.DisclosureStatus is "public-regions" or "partial-public" or "opaque-only" or "blocked");
         Require(manifest.Quality.Reasons!=null && manifest.Quality.Reasons.All(reason=>QualityReasons.Contains(reason??"")) && manifest.Quality.MissingWindows!=null &&
             manifest.Quality.MissingWindows.All(id=>approvals.Any(g=>g.Required && g.WindowId==id)));
+        if (roiProfile != null)
+        {
+            bool met = manifest.Quality.RequirementsMet;
+            bool anyPublic = manifest.Windows.Any(row=>row.DisclosureStatus=="public-regions");
+            Require(met == (manifest.Quality.DiagnosticStatus=="sufficient") && met == anyPublic &&
+                manifest.Quality.CaptureStatus == evaluated.CaptureStatus &&
+                manifest.Quality.DisclosureStatus == evaluated.DisclosureStatus &&
+                manifest.Quality.MissingWindows.Order().SequenceEqual(evaluated.MissingWindows.Order()));
+        }
     }
     static byte[] Read(string directory,string relative,string hash,long maximum)
     {

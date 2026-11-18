@@ -48,12 +48,22 @@ public sealed class GroupEvidenceSession : IDisposable
                 if(id!=Guid.Empty)return Reply("already-started");
                 var selected=JsonSerializer.Deserialize<GroupEvidencePolicy>(JsonSerializer.SerializeToUtf8Bytes(request.GroupPolicy??new(),EvidenceProtocol.Json),EvidenceProtocol.Json);
                 if(request.Target==null||request.Policy?.RecordVideo==true||selected.MaxWindows is <1 or >32 || selected.MaxFrameAgeMs is <100 or >10000 || selected.MaxGroupSkewMs is <1 or >10000 || selected.MaxTotalPixels is <1 or >16777216)return Reply("unsupported-policy");
+                if (selected.RoiProfile != null && (selected.Disclosure != null || !selected.RequirePublicDiagnostic))
+                    return Reply("unsupported-policy");
                 if(JsonSerializer.SerializeToUtf8Bytes(selected,EvidenceProtocol.Json).Length>16384 || selected.Disclosure!=null&&!DisclosureGate.IsValidProfile(selected.Disclosure))return Reply("invalid-profile");
                 var windows=snapshot(request.Target,selected.MaxWindows);
                 if(windows.Truncated)return Reply("window-observation-unavailable");
                 target=request.Target;appHash=EvidenceFiles.HashFile(target.ExePath);
                 if(selected.Disclosure!=null && !string.Equals(selected.Disclosure.AppSha256,appHash,StringComparison.OrdinalIgnoreCase))return Reply("profile-app-mismatch");
+                if (selected.RoiProfile != null)
+                {
+                    var approved = ApprovedRoiCatalog.Load(selected.RoiProfile);
+                    if (!string.Equals(approved.AppSha256, appHash, StringComparison.OrdinalIgnoreCase))
+                        return Reply("profile-app-mismatch");
+                }
                 var approvals=Bind(selected.Approvals??new[]{new WindowApproval(target.WindowHandle,"root")},windows,true).ToList();
+                if (selected.RoiProfile != null && !approvals.Any(window => window.Hwnd == target.WindowHandle && window.Required))
+                    return Reply("invalid-window-approval");
                 foreach(var child in windows.Windows.Where(w=>w.IsChild&&w.Relation!="foreign"&&w.Pid==target.Pid))
                     if(!approvals.Any(a=>a.Hwnd==child.Hwnd)&&GroupEvidenceContract.CoveredChild(child,windows,approvals))approvals.Add(new(child.Hwnd,"contained",false,child.WindowId,child.Generation,false));
                 policy=selected with{Approvals=approvals.ToArray()};
@@ -64,7 +74,7 @@ public sealed class GroupEvidenceSession : IDisposable
                 fileLock=new FileStream(Path.Combine(root,"external.lock"),FileMode.CreateNew,FileAccess.Write,FileShare.None);
                 id=request.SessionId;directory=root;started=DateTimeOffset.UtcNow;
                 EvidenceFiles.AtomicJson(Path.Combine(root,"external-session.json"),new{schemaVersion=2,product="operation-recorder-evidence-group",sessionId=id,target,appHash,policy,started});
-                return Reply("started") with{WindowGraph=windows,Capabilities=new[]{"wgc-required","window-groups","explicit-window-approval","approved-pixel-png","opaque-default","geometry-only","quality-gated","snapshot-only","capture-snapshot"}};
+                return Reply("started") with{WindowGraph=windows,Capabilities=new[]{"wgc-required","window-groups","explicit-window-approval","approved-pixel-png","opaque-default","geometry-only","quality-gated","snapshot-only","capture-snapshot","approved-roi-scenes"}};
             }
             if(id==Guid.Empty||id!=request.SessionId)return Reply("session-mismatch");
             if (snapshotRequest)
@@ -210,7 +220,7 @@ public sealed class GroupEvidenceSession : IDisposable
             {
                 if(row.ImageFile==null)return row;
                 var black=EvidenceFiles.OpaquePng(new System.Drawing.Size(row.Width,row.Height));EvidenceFiles.AtomicBytes(Path.Combine(path,row.ImageFile),black);
-                return row with{ImageSha256=EvidenceFiles.Hash(black),DisclosureStatus="blocked",RequirementsMet=false,ReasonCode="window-set-changed"};
+                return row with{ImageSha256=EvidenceFiles.Hash(black),DisclosureStatus="blocked",RequirementsMet=false,ReasonCode="window-set-changed",ApprovedSceneId=null};
             }).ToArray();
             result=result with{Windows=rows,Quality=GroupEvidenceValidation.Evaluate(work.GroupPlan,rows,false)};
             EvidenceFiles.AtomicJson(Path.Combine(path,"group.json"),result);EvidenceFiles.Save(work,EvidenceFiles.OpaquePng(new System.Drawing.Size(16,16)),new EvidenceUi(Array.Empty<EvidenceNode>(),false),DateTimeOffset.UtcNow);
@@ -230,7 +240,8 @@ public sealed class GroupEvidenceSession : IDisposable
         // arrives. Historical InspectSession deliberately does not apply today's QPC age.
         long now=WgcCaptureBackend.Clock100ns();
         var expired=result.Windows.Where(row=>row.CaptureStatus=="fresh" &&
-            policy.Approvals.Any(a=>a.Required && a.Hwnd==row.Window.Hwnd && a.WindowId==row.Window.WindowId && a.Generation==row.Window.Generation) &&
+            policy.Approvals.Any(a=>(a.Required || policy.RoiProfile != null && row.Window.Visible && a.Role != "contained") &&
+                a.Hwnd==row.Window.Hwnd && a.WindowId==row.Window.WindowId && a.Generation==row.Window.Generation) &&
             (row.FrameTime100ns==null || now-row.FrameTime100ns.Value<0 || now-row.FrameTime100ns.Value>policy.MaxFrameAgeMs*10000L))
             .Select(row=>row.Window.WindowId).ToHashSet();
         if(expired.Count==0)return result;
@@ -243,7 +254,7 @@ public sealed class GroupEvidenceSession : IDisposable
             var black=EvidenceFiles.OpaquePng(new System.Drawing.Size(row.Width,row.Height));
             EvidenceFiles.AtomicBytes(Path.Combine(path,row.ImageFile),black);
             return row with{ImageSha256=EvidenceFiles.Hash(black),CaptureStatus=stale?"stale-frame":row.CaptureStatus,
-                DisclosureStatus="blocked",RequirementsMet=false,ReasonCode="state-unproven"};
+                DisclosureStatus="blocked",RequirementsMet=false,ReasonCode="state-unproven",ApprovedSceneId=null};
         }).ToArray();
         var quality=GroupEvidenceValidation.Evaluate(plan,rows,true);
         quality=quality with{RequirementsMet=false,DiagnosticStatus="insufficient",Reasons=quality.Reasons.Concat(result.Quality.Reasons).Distinct(StringComparer.Ordinal).ToArray()};

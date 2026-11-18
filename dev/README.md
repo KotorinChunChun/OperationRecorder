@@ -4,6 +4,8 @@
 
 ## 版別資料
 
+- [0.1.11 要求](history/v0.1.11/v0.1.11-req.md)・[計画と報告](history/v0.1.11/v0.1.11-imp.md)・[ケース一覧](history/v0.1.11/test-cases.json)：承認済み固定領域の厳密照合。
+
 - [0.1.10 要求](history/v0.1.10/v0.1.10-req.md)・[計画と報告](history/v0.1.10/v0.1.10-imp.md)・[ケース一覧](history/v0.1.10/test-cases.json)：通常記録と並行する外部の単発取得。
 - [0.1.9 要求](history/v0.1.9/v0.1.9-req.md)・[計画と報告](history/v0.1.9/v0.1.9-imp.md)・[進捗](history/v0.1.9/v0.1.9-task.md)・[ケース一覧](history/v0.1.9/test-cases.json)：WGCとウィンドウ群/公開判定。
 

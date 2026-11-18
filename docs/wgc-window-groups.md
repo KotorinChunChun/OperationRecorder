@@ -33,6 +33,8 @@ try {
 
 ## プロファイル
 
+0.1.11以降は、固定された領域を公開する[承認済み領域方式](approved-roi-scenes.md)も明示選択できます。以下は従来の全フレーム照合の仕様です。
+
 `DisclosureProfile` はschemaVersion=1、profileId、revision、appSha256、rules、approvedFrameSha256を持ちます。appSha256は対象EXEファイルのSHA256で、全依存モジュールの真正性を保証する署名ではありません。
 
 各ruleはruleId、role、dpi、windowWidth/windowHeight、region（x/y/width/height）、approvedPixelSha256です。全frameの許可リストも必須です。承認資材は事前に安全と判断した画像から作成してください。秘密が入った実画面を収集して登録する運用にはしません。
