@@ -50,6 +50,8 @@ public sealed class GroupEvidenceSession : IDisposable
                 if(request.Target==null||request.Policy?.RecordVideo==true||selected.MaxWindows is <1 or >32 || selected.MaxFrameAgeMs is <100 or >10000 || selected.MaxGroupSkewMs is <1 or >10000 || selected.MaxTotalPixels is <1 or >16777216)return Reply("unsupported-policy");
                 if (selected.RoiProfile != null && (selected.Disclosure != null || !selected.RequirePublicDiagnostic))
                     return Reply("unsupported-policy");
+                if (selected.PasswordProfile != null && (selected.Disclosure != null || selected.RoiProfile != null || !selected.RequirePublicDiagnostic))
+                    return Reply("unsupported-policy");
                 if(JsonSerializer.SerializeToUtf8Bytes(selected,EvidenceProtocol.Json).Length>16384 || selected.Disclosure!=null&&!DisclosureGate.IsValidProfile(selected.Disclosure))return Reply("invalid-profile");
                 var windows=snapshot(request.Target,selected.MaxWindows);
                 if(windows.Truncated)return Reply("window-observation-unavailable");
@@ -61,8 +63,18 @@ public sealed class GroupEvidenceSession : IDisposable
                     if (!string.Equals(approved.AppSha256, appHash, StringComparison.OrdinalIgnoreCase))
                         return Reply("profile-app-mismatch");
                 }
+                if (selected.PasswordProfile != null)
+                {
+                    var approved = PasswordEvidenceCatalog.Load(selected.PasswordProfile);
+                    if (!PasswordEvidenceCatalog.MatchesApplication(approved, target.ExePath, appHash))
+                        return Reply("profile-app-mismatch");
+                }
                 var approvals=Bind(selected.Approvals??new[]{new WindowApproval(target.WindowHandle,"root")},windows,true).ToList();
                 if (selected.RoiProfile != null && !approvals.Any(window => window.Hwnd == target.WindowHandle && window.Required))
+                    return Reply("invalid-window-approval");
+                if (selected.PasswordProfile != null &&
+                    (!approvals.Any(window => window.Hwnd == target.WindowHandle && window.Required) ||
+                      approvals.Any(window => window.Hwnd != target.WindowHandle && window.Required)))
                     return Reply("invalid-window-approval");
                 foreach(var child in windows.Windows.Where(w=>w.IsChild&&w.Relation!="foreign"&&w.Pid==target.Pid))
                     if(!approvals.Any(a=>a.Hwnd==child.Hwnd)&&GroupEvidenceContract.CoveredChild(child,windows,approvals))approvals.Add(new(child.Hwnd,"contained",false,child.WindowId,child.Generation,false));
@@ -74,7 +86,7 @@ public sealed class GroupEvidenceSession : IDisposable
                 fileLock=new FileStream(Path.Combine(root,"external.lock"),FileMode.CreateNew,FileAccess.Write,FileShare.None);
                 id=request.SessionId;directory=root;started=DateTimeOffset.UtcNow;
                 EvidenceFiles.AtomicJson(Path.Combine(root,"external-session.json"),new{schemaVersion=2,product="operation-recorder-evidence-group",sessionId=id,target,appHash,policy,started});
-                return Reply("started") with{WindowGraph=windows,Capabilities=new[]{"wgc-required","window-groups","explicit-window-approval","approved-pixel-png","opaque-default","geometry-only","quality-gated","snapshot-only","capture-snapshot","approved-roi-scenes"}};
+                return Reply("started") with{WindowGraph=windows,Capabilities=new[]{"wgc-required","window-groups","explicit-window-approval","approved-pixel-png","opaque-default","geometry-only","quality-gated","snapshot-only","capture-snapshot","approved-roi-scenes","password-only-local-evidence"}};
             }
             if(id==Guid.Empty||id!=request.SessionId)return Reply("session-mismatch");
             if (snapshotRequest)
@@ -104,6 +116,8 @@ public sealed class GroupEvidenceSession : IDisposable
             if(request.Method=="ApproveWindows")
             {
                 var additions=Bind(request.WindowApprovals??Array.Empty<WindowApproval>(),observed,false);
+                if (policy.PasswordProfile != null && additions.Any(window => window.Hwnd != target.WindowHandle && window.Required))
+                    return Reply("invalid-window-approval");
                 if(additions.Any(a=>policy.Approvals.Any(old=>old.Hwnd==a.Hwnd && old!=a)))return Reply("approval-change-requires-new-session");
                 var combined=policy.Approvals.Where(a=>!additions.Any(b=>b.Hwnd==a.Hwnd)).Concat(additions).ToArray();
                 if(combined.Length>policy.MaxWindows)return Reply("window-limit");
@@ -199,6 +213,36 @@ public sealed class GroupEvidenceSession : IDisposable
 
     async Task<GroupEvidenceManifest> Capture(CaptureWork work, Guid requestId, CancellationToken token, bool waitForWorkerCleanup = false)
     {
+        if (work.GroupPlan.Policy.PasswordProfile == null)
+            return await CaptureCore(work, requestId, token, waitForWorkerCleanup);
+
+        // Only a verified result receives the final phase directory. The worker writes masked pixels even here.
+        string staging = work.Directory + ".pending-" + Guid.NewGuid().ToString("N");
+        EvidenceFiles.RequireLocalUnlinkedPath(work.Directory);
+        EvidenceFiles.RequireLocalUnlinkedPath(staging);
+        try
+        {
+            var candidate = work with { Directory = staging };
+            var result = await CaptureCore(candidate, requestId, token, waitForWorkerCleanup: true);
+            EvidenceFiles.Verify(candidate);
+            GroupEvidenceValidation.Verify(candidate, result);
+            token.ThrowIfCancellationRequested();
+            Directory.Move(staging, work.Directory);
+            return result;
+        }
+        finally
+        {
+            // staging was created only for this request, beside its validated output path.
+            if (Directory.Exists(staging))
+            {
+                EvidenceFiles.RequireLocalUnlinkedPath(staging);
+                Directory.Delete(staging, true);
+            }
+        }
+    }
+
+    async Task<GroupEvidenceManifest> CaptureCore(CaptureWork work, Guid requestId, CancellationToken token, bool waitForWorkerCleanup)
+    {
         var graph = work.GroupPlan.Snapshot;
         string path = work.Directory;
         foreach(var a in policy.Approvals)
@@ -214,13 +258,15 @@ public sealed class GroupEvidenceSession : IDisposable
         var result=JsonSerializer.Deserialize<GroupEvidenceManifest>(File.ReadAllBytes(Path.Combine(path,"group.json")),EvidenceProtocol.Json);
         GroupEvidenceValidation.Verify(work,result);
         var after=snapshot(target,policy.MaxWindows);
-        if(GroupEvidenceContract.Fingerprint(after)!=GroupEvidenceContract.Fingerprint(graph)||after.Truncated||policy.Approvals.Any(a=>!after.Windows.Any(w=>w.Hwnd==a.Hwnd&&w.WindowId==a.WindowId&&w.Generation==a.Generation)))
+        bool changed = GroupEvidenceContract.Fingerprint(after)!=GroupEvidenceContract.Fingerprint(graph)||after.Truncated||
+            policy.Approvals.Any(a=>!after.Windows.Any(w=>w.Hwnd==a.Hwnd&&w.WindowId==a.WindowId&&w.Generation==a.Generation));
+        if (changed || policy.PasswordProfile != null && result.Quality.RequirementsMet && !PasswordProofMatches(work, result, after))
         {
             var rows=result.Windows.Select(row=>
             {
                 if(row.ImageFile==null)return row;
                 var black=EvidenceFiles.OpaquePng(new System.Drawing.Size(row.Width,row.Height));EvidenceFiles.AtomicBytes(Path.Combine(path,row.ImageFile),black);
-                return row with{ImageSha256=EvidenceFiles.Hash(black),DisclosureStatus="blocked",RequirementsMet=false,ReasonCode="window-set-changed",ApprovedSceneId=null};
+                return row with{ImageSha256=EvidenceFiles.Hash(black),DisclosureStatus="blocked",RequirementsMet=false,ReasonCode="window-set-changed",ApprovedSceneId=null,PasswordMask=null};
             }).ToArray();
             result=result with{Windows=rows,Quality=GroupEvidenceValidation.Evaluate(work.GroupPlan,rows,false)};
             EvidenceFiles.AtomicJson(Path.Combine(path,"group.json"),result);EvidenceFiles.Save(work,EvidenceFiles.OpaquePng(new System.Drawing.Size(16,16)),new EvidenceUi(Array.Empty<EvidenceNode>(),false),DateTimeOffset.UtcNow);
@@ -238,15 +284,26 @@ public sealed class GroupEvidenceSession : IDisposable
     {
         // Current acknowledgements are checked after step.json is durable, not just when a frame
         // arrives. Historical InspectSession deliberately does not apply today's QPC age.
+        bool checkPassword = policy.PasswordProfile != null && result.Quality.RequirementsMet;
+        string path = work.Directory;
+        var plan = work.GroupPlan;
+        if (checkPassword)
+        {
+            plan ??= JsonSerializer.Deserialize<GroupCapturePlan>(ReadMetadata(Path.Combine(path, "plan.json")), EvidenceProtocol.Json);
+            work = work with { GroupPlan = plan };
+        }
+        bool passwordChanged = checkPassword && !StillMatchesPasswordProof(work, result);
         long now=WgcCaptureBackend.Clock100ns();
         var expired=result.Windows.Where(row=>row.CaptureStatus=="fresh" &&
             policy.Approvals.Any(a=>(a.Required || policy.RoiProfile != null && row.Window.Visible && a.Role != "contained") &&
                 a.Hwnd==row.Window.Hwnd && a.WindowId==row.Window.WindowId && a.Generation==row.Window.Generation) &&
             (row.FrameTime100ns==null || now-row.FrameTime100ns.Value<0 || now-row.FrameTime100ns.Value>policy.MaxFrameAgeMs*10000L))
             .Select(row=>row.Window.WindowId).ToHashSet();
-        if(expired.Count==0)return result;
-        string path = work.Directory;
-        var plan = work.GroupPlan ?? JsonSerializer.Deserialize<GroupCapturePlan>(ReadMetadata(Path.Combine(path,"plan.json")),EvidenceProtocol.Json);
+        if (expired.Count == 0 && !passwordChanged) return result;
+        plan ??= JsonSerializer.Deserialize<GroupCapturePlan>(ReadMetadata(Path.Combine(path,"plan.json")),EvidenceProtocol.Json);
+        work = work with { GroupPlan = plan };
+        var flat = EvidenceFiles.OpaquePng(new System.Drawing.Size(16,16));
+        if (checkPassword) EvidenceFiles.AtomicBytes(Path.Combine(path, "frame.png"), flat);
         var rows=result.Windows.Select(row=>
         {
             bool stale=expired.Contains(row.Window.WindowId);
@@ -254,16 +311,35 @@ public sealed class GroupEvidenceSession : IDisposable
             var black=EvidenceFiles.OpaquePng(new System.Drawing.Size(row.Width,row.Height));
             EvidenceFiles.AtomicBytes(Path.Combine(path,row.ImageFile),black);
             return row with{ImageSha256=EvidenceFiles.Hash(black),CaptureStatus=stale?"stale-frame":row.CaptureStatus,
-                DisclosureStatus="blocked",RequirementsMet=false,ReasonCode="state-unproven",ApprovedSceneId=null};
+                DisclosureStatus="blocked",RequirementsMet=false,ReasonCode=passwordChanged ? "window-set-changed" : "state-unproven",ApprovedSceneId=null,PasswordMask=null};
         }).ToArray();
-        var quality=GroupEvidenceValidation.Evaluate(plan,rows,true);
+        var quality=GroupEvidenceValidation.Evaluate(plan,rows,!passwordChanged);
         quality=quality with{RequirementsMet=false,DiagnosticStatus="insufficient",Reasons=quality.Reasons.Concat(result.Quality.Reasons).Distinct(StringComparer.Ordinal).ToArray()};
         var updated=result with{Windows=rows,Quality=quality};
         EvidenceFiles.AtomicJson(Path.Combine(path,"group.json"),updated);
-        work = work with { GroupPlan = plan };
-        EvidenceFiles.Save(work,EvidenceFiles.OpaquePng(new System.Drawing.Size(16,16)),new EvidenceUi(Array.Empty<EvidenceNode>(),false),DateTimeOffset.UtcNow);
+        EvidenceFiles.Save(work,flat,new EvidenceUi(Array.Empty<EvidenceNode>(),false),DateTimeOffset.UtcNow);
         EvidenceFiles.Verify(work);GroupEvidenceValidation.Verify(work,updated);
         return updated;
+    }
+
+    bool StillMatchesPasswordProof(CaptureWork work, GroupEvidenceManifest manifest)
+    {
+        try { return PasswordProofMatches(work, manifest, snapshot(target, policy.MaxWindows)); }
+        catch { return false; }
+    }
+
+    static bool PasswordProofMatches(CaptureWork work, GroupEvidenceManifest manifest, WindowGraphSnapshot observed)
+    {
+        var plan = work.GroupPlan;
+        if (!PasswordGroupEvidenceWorker.SameGroup(plan.Snapshot, observed) ||
+            !PasswordGroupEvidenceWorker.IsKnownGroup(observed, work.Target, plan.Policy.Approvals)) return false;
+        var root = manifest.Windows.Single(row => row.Window.Hwnd == work.Target.WindowHandle);
+        var proof = root.PasswordMask;
+        if (proof == null) return false;
+        var profile = PasswordEvidenceCatalog.Load(plan.Policy.PasswordProfile);
+        if (!PasswordEvidenceCatalog.MatchesApplication(profile, work.Target.ExePath, EvidenceFiles.HashFile(work.Target.ExePath))) return false;
+        var scene = profile.Scenes.SingleOrDefault(candidate => candidate.SceneId == proof.SceneId);
+        return scene != null && PasswordWindowObserver.VerifyNative(scene, work.Target, root.Window, observed, proof.Fields);
     }
     EvidenceReply Inspect(EvidenceRequest request)
     {

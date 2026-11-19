@@ -18,7 +18,8 @@ public static class GroupEvidenceWorker
         try { await CaptureAsync(work,outer); reply=new("saved"); }
         catch(OperationCanceledException){reply=new("deadline-exceeded");}
         catch(EvidenceUnavailableException e){reply=new(e.Code is "target-mismatch" or "save-unavailable" or "deadline-exceeded" or
-            "roi-profile-invalid" or "roi-profile-mismatch" or "roi-profile-unavailable" ? e.Code : "capture-unavailable");}
+            "roi-profile-invalid" or "roi-profile-mismatch" or "roi-profile-unavailable" or
+            "password-profile-invalid" or "password-profile-mismatch" or "password-profile-unavailable" ? e.Code : "capture-unavailable");}
         catch{reply=new("capture-unavailable");}
         await EvidenceWire.WriteAsync(output,reply,CancellationToken.None); return reply.Status=="saved"?0:1;
     }
@@ -29,6 +30,11 @@ public static class GroupEvidenceWorker
         if(remaining<=TimeSpan.Zero || remaining>TimeSpan.FromSeconds(30))throw new EvidenceUnavailableException("deadline-exceeded");
         deadline.CancelAfter(remaining);var token=deadline.Token;
         var plan=work.GroupPlan??throw new EvidenceUnavailableException("invalid-request");
+        if (plan.Policy.PasswordProfile != null)
+        {
+            await PasswordGroupEvidenceWorker.CaptureAsync(work, token);
+            return;
+        }
         var roiProfile = plan.Policy.RoiProfile == null ? null : ApprovedRoiCatalog.Load(plan.Policy.RoiProfile);
         if (roiProfile != null && (!plan.Policy.RequirePublicDiagnostic || plan.Policy.Disclosure != null ||
             !string.Equals(roiProfile.AppSha256, plan.AppSha256, StringComparison.OrdinalIgnoreCase)))
@@ -87,7 +93,7 @@ public static class GroupEvidenceWorker
                     }
                     long age = roiProfile == null
                         ? WgcCaptureBackend.Clock100ns() - frame.FrameTime100ns
-                        : await MeasureRoiFrameAgeAsync(frame.FrameTime100ns, token);
+                        : await MeasureConfirmedFrameAgeAsync(frame.FrameTime100ns, token);
                     bool fresh=age>=0 && age<=plan.Policy.MaxFrameAgeMs*10000L;
                     var ui = ReadUi();
                     var observed = registry.Snapshot(work.Target, plan.Policy.MaxWindows);
@@ -175,7 +181,7 @@ public static class GroupEvidenceWorker
         finally{foreach(var f in rawFrames.Values.Distinct())f.Dispose();}
     }
 
-    static async Task<long> MeasureRoiFrameAgeAsync(long frameTime100ns, CancellationToken token)
+    internal static async Task<long> MeasureConfirmedFrameAgeAsync(long frameTime100ns, CancellationToken token)
     {
         long age = WgcCaptureBackend.Clock100ns() - frameTime100ns;
         const long maxClockWait = 32 * TimeSpan.TicksPerMillisecond;

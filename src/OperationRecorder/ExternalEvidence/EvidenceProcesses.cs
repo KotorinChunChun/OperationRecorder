@@ -52,7 +52,8 @@ public sealed class EvidenceWorkerBackend : IEvidenceBackend
             await process.WaitForExitAsync(cancellation);
             if (process.ExitCode != 0 || result.Status != "saved")
                 throw new EvidenceUnavailableException(result.Status is "target-mismatch" or "deadline-exceeded" or "save-unavailable" or "video-unavailable" or
-                    "roi-profile-invalid" or "roi-profile-mismatch" or "roi-profile-unavailable" ? result.Status : "capture-unavailable");
+                    "roi-profile-invalid" or "roi-profile-mismatch" or "roi-profile-unavailable" or
+                    "password-profile-invalid" or "password-profile-mismatch" or "password-profile-unavailable" ? result.Status : "capture-unavailable");
             return Path.Combine(work.Directory, "commit.json");
         }
         catch (OperationCanceledException)

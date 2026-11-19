@@ -66,6 +66,30 @@ function Test-OperationEvidenceRoiProfile {
         AppSha256 = $profile.AppSha256; SceneCount = $profile.Scenes.Count
     }
 }
+function Test-OperationEvidencePasswordProfile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Executable,
+        [Parameter(Mandatory)][string]$ProfileId,
+        [Parameter(Mandatory)][int]$Revision,
+        [Parameter(Mandatory)][string]$ProfileSha256,
+        [string]$TargetExecutable
+    )
+    $exe = Import-OperationEvidenceAssembly -Executable $Executable
+    $selection = [OperationRecorderApp.ExternalEvidence.PasswordProfileSelection]::new($ProfileId, $Revision, $ProfileSha256)
+    $profile = [OperationRecorderApp.ExternalEvidence.PasswordEvidenceCatalog]::Load($selection, (Split-Path -Parent $exe))
+    if ($TargetExecutable) {
+        $target = (Resolve-Path -LiteralPath $TargetExecutable).Path
+        $hash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
+        if (-not [OperationRecorderApp.ExternalEvidence.PasswordEvidenceCatalog]::MatchesApplication($profile, $target, $hash)) {
+            throw 'profile-app-mismatch'
+        }
+    }
+    [pscustomobject]@{
+        ProfileId = $profile.ProfileId; Revision = $profile.Revision; ProfileSha256 = $ProfileSha256.ToLowerInvariant()
+        AppScope = $profile.AppScope; AppSha256 = $profile.AppSha256; AppFileVersion = $profile.AppFileVersion; SceneCount = $profile.Scenes.Count
+    }
+}
 function Send-OperationEvidenceRequest {
     [CmdletBinding()]
     param(
@@ -130,4 +154,4 @@ function Close-OperationEvidenceSession {
     try { Send-OperationEvidenceRequest -Session $Session -Request @{method='StopSession'} -TimeoutMilliseconds $TimeoutMilliseconds }
     finally { $Session.Closed = $true; $Session.Connection.Dispose() }
 }
-Export-ModuleMember -Function New-OperationEvidenceSession,Send-OperationEvidenceRequest,Test-OperationEvidenceRoiProfile,Get-OperationEvidenceSnapshot,Invoke-OperationEvidenceStep,Close-OperationEvidenceSession
+Export-ModuleMember -Function New-OperationEvidenceSession,Send-OperationEvidenceRequest,Test-OperationEvidenceRoiProfile,Test-OperationEvidencePasswordProfile,Get-OperationEvidenceSnapshot,Invoke-OperationEvidenceStep,Close-OperationEvidenceSession

@@ -46,7 +46,7 @@ public static class ApprovedRoiCatalog
     const int FrameDimensionLimit = 4096;
     const int FramePixelsLimit = 4_194_304;
 
-    static readonly JsonSerializerOptions StrictJson = new(EvidenceProtocol.Json)
+    internal static readonly JsonSerializerOptions StrictJson = new(EvidenceProtocol.Json)
     {
         AllowDuplicateProperties = false,
         RespectRequiredConstructorParameters = true
@@ -98,15 +98,15 @@ public static class ApprovedRoiCatalog
         }
     }
 
-    static byte[] ReadBounded(string path, int limit)
+    internal static byte[] ReadBounded(string path, int limit, string invalidCode = "roi-profile-invalid")
     {
         EvidenceFiles.RequireLocalUnlinkedPath(path);
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         long length = stream.Length;
-        if (length <= 0 || length > limit) throw new EvidenceUnavailableException("roi-profile-invalid");
+        if (length <= 0 || length > limit) throw new EvidenceUnavailableException(invalidCode);
         var bytes = new byte[(int)length];
         stream.ReadExactly(bytes);
-        if (stream.ReadByte() != -1) throw new EvidenceUnavailableException("roi-profile-invalid");
+        if (stream.ReadByte() != -1) throw new EvidenceUnavailableException(invalidCode);
         EvidenceFiles.RequireLocalUnlinkedPath(path);
         return bytes;
     }
@@ -121,7 +121,7 @@ public static class ApprovedRoiCatalog
     static bool ValidSelection(RoiProfileSelection selection) => selection != null && ValidId(selection.ProfileId) &&
         selection.Revision > 0 && EvidenceProtocol.IsHash(selection.ProfileSha256);
 
-    static bool ValidId(string value) => value != null && Regex.IsMatch(value, "\\A[a-z][a-z0-9-]{0,31}\\z");
+    internal static bool ValidId(string value) => value != null && Regex.IsMatch(value, "\\A[a-z][a-z0-9-]{0,31}\\z");
 
     static bool SameHash(string left, string right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
 
