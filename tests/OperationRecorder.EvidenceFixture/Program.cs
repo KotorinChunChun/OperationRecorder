@@ -10,6 +10,8 @@ internal static class Program
     {
         if (args.Length == 2 && args[0] == "--approved-roi-window" && Guid.TryParseExact(args[1], "N", out var fixtureId))
             return ApprovedRoiFixtureWindow.Run(fixtureId);
+        if (args.Length == 2 && args[0] == "--password-evidence-window" && Guid.TryParseExact(args[1], "N", out var passwordFixtureId))
+            return PasswordEvidenceFixtureWindow.Run(passwordFixtureId);
         if (args.Length == 1 && args[0] == "--window")
         {
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);

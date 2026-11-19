@@ -27,12 +27,13 @@ pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite Core
 | `-Suite WindowGraph` | 親子/所有/世代の純粋試験と、専用窓のNative構造確認。撮影・入力なし |
 | `-Suite Snapshot` | 専用WinFormsの通常記録と単発取得を並行し、親子・所有窓、OS標準ダイアログ、ダミーパスワード欄を検証 |
 | `-Suite ApprovedRoi` | 専用WinFormsで固定領域の公開、動的領域の黒化、未知画面と認証の拒否を、外部PowerShellと実WGCで検証 |
+| `-Suite PasswordEvidence` | 専用WinFormsで標準・カスタム欄の黒化、欄外の保存、前後ACK、移動と登録不一致の拒否を検証 |
 | `-Suite Wgc` | WGC境界と専用窓、schema2負の受入。WGC_BLOCKEDは終了コード3で未受入として記録 |
 | `-Suite All` | Coreに続けてDesktopを実行する |
 | `-Configuration Debug\|Release` | 既定はRelease |
 | `-OutputDirectory <フォルダー>` | 対象版の`dev/history/vX.Y.Z/logs/`以下へ結果を保存する。省略時はその下の`automated-<GUID>` |
 | `-NoBuild` | 既にビルドした同じ構成を使う |
-| `-List` | [ケース対応表](https://github.com/KotorinChunChun/OperationRecorder/blob/main/dev/history/v0.1.11/test-cases.json)をJSONで表示する。ビルド・試験は実行しない |
+| `-List` | [ケース対応表](https://github.com/KotorinChunChun/OperationRecorder/blob/main/dev/history/v0.1.12/test-cases.json)をJSONで表示する。ビルド・試験は実行しない |
 
 ```powershell
 # ケース一覧だけ表示
@@ -40,7 +41,7 @@ pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -List
 
 # 保存場所を指定して全層を実行
 pwsh -NoProfile -File .\dev\scripts\Test-OperationRecorder.ps1 -Suite All `
-  -OutputDirectory .\dev\history\v0.1.11\logs\automated-local
+  -OutputDirectory .\dev\history\v0.1.12\logs\automated-local
 ```
 
 DesktopはWindowsの対話デスクトップと前面ウィンドウの一致を必要とする。通常のOperationRecorderが起動中の場合は、既存の記録やフックへ干渉するため実行を拒否し、既存プロセスを終了しない。専用fixtureだけへ入力を送り、撮影するディスプレイはfixtureが覆う。条件を満たせない場合は`blocked`となる。Coreの合格だけでDesktopの実施済みを意味しない。
@@ -58,7 +59,7 @@ DesktopはWindowsの対話デスクトップと前面ウィンドウの一致を
 ```json
 {
   "schemaVersion": 1,
-  "version": "0.1.11",
+  "version": "0.1.12",
   "status": "passed",
   "exitCode": 0,
   "startedUtc": "...",
@@ -87,7 +88,7 @@ runnerが引数の値に誤りを見つけると、終了コード2を返す。�
 
 ```powershell
 $env:OPREC_EVIDENCE_TEST_FFMPEG = 'C:/tools/ffmpeg/bin/ffmpeg.exe'
-dotnet test ./tests/OperationRecorderApp.Tests/OperationRecorderApp.Tests.csproj -c Release --artifacts-path ./artifacts/automation-runner --filter 'FullyQualifiedName~ExternalEvidenceNativeTests' --logger 'trx;LogFileName=evidence-native.trx' --results-directory ./dev/history/v0.1.11/logs/evidence-native
+dotnet test ./tests/OperationRecorderApp.Tests/OperationRecorderApp.Tests.csproj -c Release --artifacts-path ./artifacts/automation-runner --filter 'FullyQualifiedName~ExternalEvidenceNativeTests' --logger 'trx;LogFileName=evidence-native.trx' --results-directory ./dev/history/v0.1.12/logs/evidence-native
 ```
 
 UIA停止の期限は、同じタスクの待機中止だけでなく、実際に別workerを無限待機/保存直後停止させて確認する。秘密は合成ダミー文字列だけを使う。[API契約](external-evidence.md)の全体マスク/geometry-onlyという検証範囲を維持し、従来の人向け記録や実業務アプリの機密保護を検証したとは扱わない。
@@ -98,7 +99,7 @@ dotnet test .\tests\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj
   --artifacts-path .\artifacts\automation-ui `
   --filter 'FullyQualifiedName~UiWiringTests|FullyQualifiedName~AppInteractionTests' `
   --logger 'trx;LogFileName=ui-wiring.trx' `
-  --results-directory .\dev\history\v0.1.11\logs\ui
+  --results-directory .\dev\history\v0.1.12\logs\ui
 
 # 1ケースだけ指定（Theoryはすべての引数行を実行）
 dotnet test .\tests\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj `
@@ -180,7 +181,7 @@ Desktopテストを直接起動する場合はrunnerと同じfixture/環境条�
 ```powershell
 cd C:\develop\KotorinToys\tools\OperationRecorder
 $ErrorActionPreference = 'Stop'
-$run = Join-Path $PWD ('dev/history/v0.1.11/logs/sample-cli-' + [guid]::NewGuid().ToString('N'))
+$run = Join-Path $PWD ('dev/history/v0.1.12/logs/sample-cli-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $run | Out-Null
 $build = Join-Path $run 'build'
 dotnet build src/OperationRecorder/OperationRecorderApp.csproj -c Release --artifacts-path $build -m:1 -nr:false
@@ -267,11 +268,11 @@ Node.js、Playwright、Edgeを用意する。既存の利用者ブラウザー�
 
 ```powershell
 cd C:\develop\KotorinToys\tools\OperationRecorder
-$env:OPREC_HTML_TEST_ARTIFACTS = Join-Path (Get-Location) 'dev/history/v0.1.11/logs/html-local/fixtures'
+$env:OPREC_HTML_TEST_ARTIFACTS = Join-Path (Get-Location) 'dev/history/v0.1.12/logs/html-local/fixtures'
 dotnet test .\tests\OperationRecorderApp.Tests\OperationRecorderApp.Tests.csproj -c Release `
   --artifacts-path .\artifacts\html-tests --filter 'FullyQualifiedName~HtmlViewTests'
 node .\dev\scripts\Test-ReportHtml.cjs `
-  .\dev\history\v0.1.11\logs\html-local\fixtures .\dev\history\v0.1.11\logs\html-local\browser
+  .\dev\history\v0.1.12\logs\html-local\fixtures .\dev\history\v0.1.12\logs\html-local\browser
 Remove-Item Env:OPREC_HTML_TEST_ARTIFACTS
 ```
 
@@ -282,7 +283,7 @@ Remove-Item Env:OPREC_HTML_TEST_ARTIFACTS
 1. GUI固有の確認・ファイル選択・OS副作用は`AppInteraction`へ、記録OS境界は`RecordingRuntime`へ集約する。
 2. GUIとCLIは共通の処理を呼ぶ。新しいフォーム操作は安定した`Control.Name`を付け、STAで実コントロールのイベントを検証する。
 3. 入力・保存結果・原本不変・失敗/取消・後始末を検証する。対話デスクトップを使うテストには`Category=Desktop`を付ける。
-4. [ケース対応表](https://github.com/KotorinChunChun/OperationRecorder/blob/main/dev/history/v0.1.11/test-cases.json)を更新してからCore、必要に応じDesktopを実行する。未分類機能や未実施の層を合格として扱わない。
+4. [ケース対応表](https://github.com/KotorinChunChun/OperationRecorder/blob/main/dev/history/v0.1.12/test-cases.json)を更新してからCore、必要に応じDesktopを実行する。未分類機能や未実施の層を合格として扱わない。
 
 ケース表はビルド済みテストDLLから再生成する。全テストメソッドとTheoryの引数行を取得し、既知の機能へ対応付ける。新しい試験クラスを分類し忘れると生成を失敗させる。`automated`は実行入口があるという意味であり、今回実行済みの意味ではない。
 
