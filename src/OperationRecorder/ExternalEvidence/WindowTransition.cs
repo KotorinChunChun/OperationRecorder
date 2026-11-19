@@ -29,9 +29,13 @@ internal static class WindowTransition
         JsonSerializer.SerializeToUtf8Bytes(expected, EvidenceProtocol.Json).AsSpan()
             .SequenceEqual(JsonSerializer.SerializeToUtf8Bytes(actual, EvidenceProtocol.Json));
 
-    static bool SameStructure(WindowObservation left, WindowObservation right) =>
-        left.Hwnd == right.Hwnd && left.Pid == right.Pid && left.IsChild == right.IsChild &&
-        left.ParentHwnd == right.ParentHwnd && left.OwnerHwnd == right.OwnerHwnd;
+    static bool SameHiddenStructure(WindowObservation current, WindowObservation previous, long source, long destination) =>
+        current.Hwnd == previous.Hwnd && current.Pid == previous.Pid && current.IsChild == previous.IsChild &&
+        current.ParentHwnd == previous.ParentHwnd &&
+        (current.OwnerHwnd == previous.OwnerHwnd ||
+            // Known hidden support windows, such as the default IME window, can follow the active root.
+            !current.IsChild && current.Hwnd != source && !current.Visible && !previous.Visible &&
+            previous.OwnerHwnd == source && current.OwnerHwnd == destination);
 
     internal static GroupEvidencePolicy DerivePolicy(EvidenceTarget source, CaptureWork before, EvidenceTarget destination,
         WindowGraphSnapshot after, IReadOnlyList<WindowObservation> initialHelpers, Func<WindowObservation, bool> stillTracked)
@@ -77,7 +81,7 @@ internal static class WindowTransition
             if (window.Visible || !oldWindows.TryGetValue(window.Hwnd, out var previous) ||
                 !oldGrants.TryGetValue(window.Hwnd, out var grant) ||
                 grant.WindowId != previous.WindowId || grant.Generation != previous.Generation ||
-                !SameStructure(window, previous) || !stillTracked(previous))
+                !SameHiddenStructure(window, previous, source.WindowHandle, destination.WindowHandle) || !stillTracked(previous))
                 return false;
             if (window.Hwnd == source.WindowHandle) return grant.Required;
             if (window.IsChild) return !grant.Required;

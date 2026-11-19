@@ -73,7 +73,7 @@ public sealed class SnapshotDesktopTests
             var dialogCapture = ValidateSnapshot(second, target, child, dialog);
             Assert.Equal(duringDialogCount, recorder.SavedCount);
 
-            await DismissDialogAsync(fixture, target, dialog);
+            string dialogDismissal = await DismissDialogAsync(fixture, target, dialog);
             await WaitAsync(() => fixture.Command("status").GetProperty("snapshotDialogResult").GetString() == "OK", "ダイアログの確定");
             Assert.Equal(0, fixture.Command("snapshot-password-clear").GetProperty("passwordLength").GetInt32());
             fixture.Command("window-close");
@@ -91,7 +91,7 @@ public sealed class SnapshotDesktopTests
                 result = "passed", beforeSnapshotCount, duringDialogCount, finalRecordingCount = rows.Length,
                 firstRootCaptureStatus = beforeCapture.Windows.First(window => window.Window.Hwnd == target.WindowHandle).CaptureStatus,
                 secondRootCaptureStatus = dialogCapture.Windows.First(window => window.Window.Hwnd == target.WindowHandle).CaptureStatus,
-                ownedCaptureStatus = beforeCapture.Windows.First(window => window.Window.Hwnd == owned).CaptureStatus,
+                ownedCaptureStatus = beforeCapture.Windows.First(window => window.Window.Hwnd == owned).CaptureStatus, dialogDismissal,
                 dialogCaptureStatus = dialogCapture.Windows.First(window => window.Window.Hwnd == dialog).CaptureStatus,
                 verified = new[] { "child", "owned", "system-dialog", "password-protected", "separate-pwsh", "expired-request" }
             }, EvidenceProtocol.Json));
@@ -232,25 +232,47 @@ public sealed class SnapshotDesktopTests
         return manifest;
     }
 
-    static Task DismissDialogAsync(RecordingDesktopTests.FixtureProcess fixture, EvidenceTarget target, long dialog)
+    static Task<string> DismissDialogAsync(RecordingDesktopTests.FixtureProcess fixture, EvidenceTarget target, long dialog)
     {
-        fixture.VerifyIdentity();
+        const uint GwOwner = 4, WmCommand = 0x0111, SmtoAbortIfHung = 0x0002;
+        const int IdOk = 1;
         var hwnd = new IntPtr(dialog);
-        GetWindowThreadProcessId(hwnd, out uint pid);
-        Assert.Equal((uint)fixture.Pid, pid);
-        Assert.Equal(target.WindowHandle, GetWindow(hwnd, 4).ToInt64()); // GW_OWNER
-        Assert.Equal("#32770", WindowClass(hwnd));
-        var ok = GetDlgItem(hwnd, 1); // IDOK
-        Assert.NotEqual(IntPtr.Zero, ok);
-        GetWindowThreadProcessId(ok, out pid);
-        Assert.Equal((uint)fixture.Pid, pid);
-        Assert.Equal("Button", WindowClass(ok));
+        IntPtr ConfirmOkButton()
+        {
+            fixture.VerifyIdentity();
+            GetWindowThreadProcessId(hwnd, out uint pid);
+            Assert.Equal((uint)fixture.Pid, pid);
+            Assert.Equal(target.WindowHandle, GetWindow(hwnd, GwOwner).ToInt64());
+            Assert.Equal("#32770", WindowClass(hwnd));
+            var button = GetDlgItem(hwnd, IdOk);
+            Assert.NotEqual(IntPtr.Zero, button);
+            GetWindowThreadProcessId(button, out pid);
+            Assert.Equal((uint)fixture.Pid, pid);
+            Assert.Equal("Button", WindowClass(button));
+            return button;
+        }
+
         return Task.Run(() =>
         {
-            var button = AutomationElement.FromHandle(ok);
-            Assert.Equal(fixture.Pid, button.Current.ProcessId);
-            var invoke = Assert.IsType<InvokePattern>(button.GetCurrentPattern(InvokePattern.Pattern));
-            invoke.Invoke();
+            var ok = ConfirmOkButton();
+            try
+            {
+                var button = AutomationElement.FromHandle(ok);
+                Assert.Equal(fixture.Pid, button.Current.ProcessId);
+                var invoke = Assert.IsType<InvokePattern>(button.GetCurrentPattern(InvokePattern.Pattern));
+                invoke.Invoke();
+                return "uia-invoke";
+            }
+            catch (InvalidOperationException)
+            {
+                // The system dialog provider can reject Invoke. Confirm the fixture before the
+                // native notification. The caller checks DialogResult.OK.
+                if (!IsWindow(hwnd)) return "uia-window-closed";
+                Assert.Equal(ok, ConfirmOkButton());
+                var delivered = SendMessageTimeout(hwnd, WmCommand, new IntPtr(IdOk), ok, SmtoAbortIfHung, 1000, out _);
+                Assert.True(delivered != IntPtr.Zero || !IsWindow(hwnd), "専用確認ダイアログにIDOKを送れませんでした。");
+                return "fixture-wm-command";
+            }
         }).WaitAsync(TimeSpan.FromSeconds(5));
     }
 
@@ -311,5 +333,8 @@ public sealed class SnapshotDesktopTests
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr window, StringBuilder name, int count);
     [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr window, uint command);
     [DllImport("user32.dll")] static extern IntPtr GetDlgItem(IntPtr dialog, int itemId);
+    [DllImport("user32.dll")] static extern bool IsWindow(IntPtr window);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr SendMessageTimeout(IntPtr window, uint message,
+        IntPtr wParam, IntPtr lParam, uint flags, uint timeout, out IntPtr result);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint pid);
 }

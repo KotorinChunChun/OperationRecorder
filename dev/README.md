@@ -4,6 +4,8 @@
 
 ## 版別資料
 
+- [0.1.13 要求](history/v0.1.13/v0.1.13-req.md)・[計画と報告](history/v0.1.13/v0.1.13-imp.md)・[ケース一覧](history/v0.1.13/test-cases.json)：別ウィンドウへの工程引継ぎとパスワード欄の設定候補。
+
 - [0.1.12 要求](history/v0.1.12/v0.1.12-req.md)・[計画と報告](history/v0.1.12/v0.1.12-imp.md)・[ケース一覧](history/v0.1.12/test-cases.json)：パスワード欄だけを保護するローカル証拠。
 
 - [0.1.11 要求](history/v0.1.11/v0.1.11-req.md)・[計画と報告](history/v0.1.11/v0.1.11-imp.md)・[ケース一覧](history/v0.1.11/test-cases.json)：承認済み固定領域の厳密照合。

@@ -13,11 +13,15 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
     readonly Label standardLabel;
     readonly Label customLabel;
     readonly CustomPasswordControl custom;
+    readonly bool allowTransition;
+    readonly List<TransitionWindow> destinations = new();
+    TransitionWindow? notice;
     Control? unknown;
     int actionCount;
 
-    PasswordEvidenceFixtureWindow(Guid id)
+    PasswordEvidenceFixtureWindow(Guid id, bool allowTransition)
     {
+        this.allowTransition = allowTransition;
         pipeName = "oprec-password-fixture-" + id.ToString("N");
         Text = "パスワード証拠の専用試験";
         AutoScaleMode = AutoScaleMode.None;
@@ -54,21 +58,31 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
 
     protected override bool ShowWithoutActivation => true;
 
-    internal static int Run(Guid id)
+    internal static int Run(Guid id, bool allowTransition = false)
     {
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
-        using var fixture = new PasswordEvidenceFixtureWindow(id);
-        Application.Run(fixture);
+        using var fixture = new PasswordEvidenceFixtureWindow(id, allowTransition);
+        if (allowTransition)
+        {
+            // Keep the fixture message pump and its pipe alive if the original login HWND is destroyed.
+            using var lifetime = new ApplicationContext();
+            void ShowFixture(object? sender, EventArgs args)
+            {
+                Application.Idle -= ShowFixture;
+                fixture.Show();
+            }
+            fixture.FormClosed += (_, _) => lifetime.ExitThread();
+            Application.Idle += ShowFixture;
+            Application.Run(lifetime);
+        }
+        else Application.Run(fixture);
         return 0;
     }
 
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
-        int disabled = 1;
-        int doNotRound = 1;
-        DwmSetWindowAttribute(Handle, 3, ref disabled, sizeof(int)); // DWMWA_TRANSITIONS_FORCEDISABLED
-        DwmSetWindowAttribute(Handle, 33, ref doNotRound, sizeof(int)); // DWMWA_WINDOW_CORNER_PREFERENCE
+        SetCaptureAppearance(Handle);
         Repaint();
         _ = ServeAsync(stop.Token);
         Console.WriteLine(JsonSerializer.Serialize(new { hwnd = Handle.ToInt64(), pid = Environment.ProcessId }));
@@ -125,6 +139,32 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
                 if (!Controls.Contains(unknown)) Controls.Add(unknown);
                 Repaint();
                 break;
+            case "transition-known" or "transition-known-destroyed" or "transition-unrecognized" or "transition-ambiguous" or
+                 "transition-known-owned" or "transition-unrecognized-owned" when allowTransition && actionCount == 0:
+                actionCount++;
+                var destination = ShowDestination(new Point(Left + 24, Top + 32), known: command != "transition-unrecognized");
+                if (command == "transition-ambiguous") ShowDestination(new Point(Left + 72, Top + 80), known: true);
+                if (command is "transition-known-owned" or "transition-unrecognized-owned")
+                {
+                    notice = new TransitionWindow(new Point(destination.Left + 88, destination.Top + 105),
+                        known: command == "transition-known-owned", owned: true);
+                    notice.Show(destination);
+                    notice.Refresh();
+                }
+                Hide();
+                if (command == "transition-known-destroyed")
+                {
+                    // Release the old controls before the parent handle so WinForms cannot reparent them.
+                    standard.Dispose();
+                    standardLabel.Dispose();
+                    custom.Dispose();
+                    customLabel.Dispose();
+                    DestroyHandle();
+                }
+                DwmFlush();
+                return TransitionStatus();
+            case "transition-status" when allowTransition:
+                return TransitionStatus();
             default:
                 return "unsupported";
         }
@@ -134,6 +174,30 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
             standardLabel = standardLabel.Handle.ToInt64(), customLabel = customLabel.Handle.ToInt64(),
             customWidth = custom.Width, unknown = unknown != null
         });
+    }
+
+    string TransitionStatus() => JsonSerializer.Serialize(new
+    {
+        actionCount, originVisible = Visible, originDestroyed = !IsHandleCreated,
+        destinations = destinations.Select(window => window.Handle.ToInt64()).ToArray(),
+        notice = notice?.Handle.ToInt64()
+    });
+
+    TransitionWindow ShowDestination(Point location, bool known)
+    {
+        var destination = new TransitionWindow(location, known);
+        destinations.Add(destination);
+        destination.Show();
+        destination.Refresh();
+        return destination;
+    }
+
+    static void SetCaptureAppearance(IntPtr window)
+    {
+        int disabled = 1;
+        int doNotRound = 1;
+        DwmSetWindowAttribute(window, 3, ref disabled, sizeof(int)); // DWMWA_TRANSITIONS_FORCEDISABLED
+        DwmSetWindowAttribute(window, 33, ref doNotRound, sizeof(int)); // DWMWA_WINDOW_CORNER_PREFERENCE
     }
 
     void Repaint()
@@ -152,7 +216,12 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) stop.Dispose();
+        if (disposing)
+        {
+            notice?.Dispose();
+            foreach (var destination in destinations) destination.Dispose();
+            stop.Dispose();
+        }
         base.Dispose(disposing);
     }
 
@@ -161,6 +230,43 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
 
     [DllImport("dwmapi.dll")]
     static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+
+    sealed class TransitionWindow : Form
+    {
+        readonly bool known;
+        readonly bool owned;
+        protected override bool ShowWithoutActivation => true;
+
+        public TransitionWindow(Point location, bool known, bool owned = false)
+        {
+            this.known = known;
+            this.owned = owned;
+            Text = owned ? "遷移後の専用通知" : "遷移後の専用試験";
+            AutoScaleMode = AutoScaleMode.None;
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.Manual;
+            Location = location;
+            ClientSize = new Size(360, 230);
+            BackColor = Color.White;
+            DoubleBuffered = true;
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            SetCaptureAppearance(Handle);
+            base.OnLoad(e);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            e.Graphics.FillRectangle(owned ? Brushes.Cyan : Brushes.Blue, 16, 20, 64, 22);
+            e.Graphics.FillRectangle(owned ? Brushes.Yellow : Brushes.Lime, 24, 86, 48, 23);
+            e.Graphics.FillRectangle(!known ? Brushes.Purple : owned ? Brushes.Orange : Brushes.Red, 270, 16, 14, 14);
+            e.Graphics.DrawString(owned ? "承認された通知" : "承認された画面", Font, Brushes.Black, 94, 24);
+            e.Graphics.DrawString("非公開の架空データ 2031-02-03", Font, Brushes.Black, 16, 151);
+        }
+    }
 
     sealed class CustomPasswordControl : Control
     {

@@ -12,6 +12,8 @@ internal static class Program
             return ApprovedRoiFixtureWindow.Run(fixtureId);
         if (args.Length == 2 && args[0] == "--password-evidence-window" && Guid.TryParseExact(args[1], "N", out var passwordFixtureId))
             return PasswordEvidenceFixtureWindow.Run(passwordFixtureId);
+        if (args.Length == 2 && args[0] == "--window-transition" && Guid.TryParseExact(args[1], "N", out var transitionFixtureId))
+            return PasswordEvidenceFixtureWindow.Run(transitionFixtureId, allowTransition: true);
         if (args.Length == 1 && args[0] == "--window")
         {
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);

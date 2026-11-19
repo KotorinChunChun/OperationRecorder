@@ -37,6 +37,8 @@ try {
 
 0.1.12以降の[パスワード欄だけを保護する方式](password-only-local-evidence.md)は、登録したログイン画面に限定した別の選択です。
 
+0.1.13では、ログイン窓から登録した別のrootへ移る操作に[ウィンドウ切替専用の工程](approved-window-transition.md)を明示できます。
+
 `DisclosureProfile` はschemaVersion=1、profileId、revision、appSha256、rules、approvedFrameSha256を持ちます。appSha256は対象EXEファイルのSHA256で、全依存モジュールの真正性を保証する署名ではありません。
 
 各ruleはruleId、role、dpi、windowWidth/windowHeight、region（x/y/width/height）、approvedPixelSha256です。全frameの許可リストも必須です。承認資材は事前に安全と判断した画像から作成してください。秘密が入った実画面を収集して登録する運用にはしません。
