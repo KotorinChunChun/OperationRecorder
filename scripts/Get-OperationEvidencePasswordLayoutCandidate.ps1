@@ -4,7 +4,9 @@
 OperationRecorderのパスワード欄について、撮影設定候補に必要な構造と座標を読み取る。
 .DESCRIPTION
 稼働中のウィンドウを対象に、期限付きの独立プロセスで構造だけを確認する。
-公開ラベルは既知の文字列と内部で照合する。結果はcandidate-onlyで、設定への登録は行わない。
+公開ラベルは既知の文字列と内部で照合する。-DiagnoseWindowLayout ではウィンドウの関係と構造のみを返す。
+可視の背後窓を伴う候補は、確認済みの構成を -ReviewedWindowLayoutSha256 で指定する。
+このコマンドによる候補の登録は行わない。
 DLL付きのframework-dependentビルドが必要。
 #>
 [CmdletBinding()]
@@ -13,10 +15,17 @@ param(
     [Parameter(Mandatory)]$Target,
     [Parameter(Mandatory)][string]$PublicLabel,
     [Parameter(Mandatory)][string]$FieldClassPrefix,
-    [ValidateRange(200,30000)][int]$TimeoutMilliseconds = 5000
+    [ValidateRange(200,30000)][int]$TimeoutMilliseconds = 5000,
+    [switch]$DiagnoseWindowLayout,
+    [string]$ReviewedWindowLayoutSha256
 )
 
 $ErrorActionPreference = 'Stop'
+$hasReviewedLayout = $PSBoundParameters.ContainsKey('ReviewedWindowLayoutSha256')
+if ($hasReviewedLayout -and ($DiagnoseWindowLayout -or $ReviewedWindowLayoutSha256 -cnotmatch '\A[0-9a-fA-F]{64}\z')) {
+    return [pscustomobject]@{ status = 'invalid-request' }
+}
+
 try {
     $exe = (Resolve-Path -LiteralPath $Executable).Path
     $dll = Join-Path (Split-Path -Parent $exe) 'OperationRecorder.dll'
@@ -31,7 +40,7 @@ try {
 try {
     $startTime = $Target.processStartTimeUtc
     if ($startTime -is [DateTimeOffset] -or $startTime -is [DateTime]) { $startTime = $startTime.ToString('o') }
-    $request = @{
+    $body = @{
         target = @{
             pid = $Target.pid
             processStartTimeUtc = $startTime
@@ -41,7 +50,10 @@ try {
         }
         publicLabel = $PublicLabel
         fieldClassPrefix = $FieldClassPrefix
-    } | ConvertTo-Json -Depth 4 -Compress -WarningAction Stop
+    }
+    if ($DiagnoseWindowLayout) { $body.diagnoseWindowLayout = $true }
+    if ($hasReviewedLayout) { $body.reviewedWindowLayoutSha256 = $ReviewedWindowLayoutSha256 }
+    $request = $body | ConvertTo-Json -Depth 4 -Compress -WarningAction Stop
 } catch {
     return [pscustomobject]@{ status = 'invalid-request' }
 }

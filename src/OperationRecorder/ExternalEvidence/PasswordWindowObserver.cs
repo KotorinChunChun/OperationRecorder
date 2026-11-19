@@ -25,6 +25,8 @@ public static class PasswordWindowObserver
     internal sealed record LayoutObservation(string WindowClass, string UiSha256, long FieldHwnd, long LabelHwnd,
         PasswordLayoutCandidateField Field);
 
+    internal sealed record BackdropObservation(PasswordLayoutDiagnostics Diagnostics, LayoutObservation Layout = null);
+
     internal static LayoutObservation ObserveLayout(PasswordLayoutCandidateRequest request, WindowObservation window,
         WindowGraphSnapshot graph, CancellationToken token)
     {
@@ -41,37 +43,159 @@ public static class PasswordWindowObserver
             if (!CoversVisibleChildren(graph, elements)) return null;
             var structure = PasswordEvidenceGate.StructureSha256(new(elements.Select(element => element.Node).ToArray(), false));
             if (structure == null) return null;
-
-            LayoutObservation result = null;
-            foreach (var label in elements)
-            {
-                token.ThrowIfCancellationRequested();
-                if (label.Node.IsPassword || label.Node.ControlTypeId != UiaTextControl ||
-                    !MatchedNativeChild(label, target, window, graph, out var labelClass) ||
-                    !IsPublicLabelClass(labelClass) || !PasswordLayoutCandidate.IsNativeClass(labelClass)) continue;
-
-                // Comparison only after verifying this is a visible, non-password native STATIC with matching UIA bounds.
-                if (!string.Equals(label.Element.Current.Name, request.PublicLabel, StringComparison.Ordinal)) continue;
-                if (result != null) return null;
-                foreach (var field in elements)
-                {
-                    token.ThrowIfCancellationRequested();
-                    if (!IsAdjacent(label.Bounds, field.Bounds, window.Dpi) ||
-                        !MatchedNativeChild(field, target, window, graph, out var fieldClass) ||
-                        !PasswordLayoutCandidate.IsNativeClass(fieldClass) ||
-                        !PasswordLayoutCandidate.MatchesField(request.FieldClassPrefix, fieldClass, field.Node)) continue;
-                    if (result != null) return null;
-                    result = new(rootClass, structure, field.Hwnd, label.Hwnd,
-                        new(fieldClass, labelClass, field.Node.ControlTypeId, field.Bounds, label.Bounds,
-                            RelativeTo(field.Bounds, window.Bounds), RelativeTo(label.Bounds, window.Bounds)));
-                }
-                if (result == null) return null;
-            }
-
-            token.ThrowIfCancellationRequested();
-            return result;
+            return BindCandidateField(request, window, graph, elements, rootClass, structure, token);
         }
         finally { N.SetThreadDpiAwarenessContext(previousDpi); }
+    }
+
+    internal static BackdropObservation ObserveBackdrop(PasswordLayoutCandidateRequest request, WindowGraphSnapshot graph,
+        string appSha256, string appFileVersion, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        var previousDpi = N.SetThreadDpiAwarenessContext(N.DPI_PER_MONITOR_AWARE_V2);
+        if (previousDpi == IntPtr.Zero) return new(new("window-layout-unavailable"));
+        try
+        {
+            var target = request.Target;
+            var (login, background, selectionReason) = PasswordLayoutBackdrop.Select(target, graph);
+            var topology = ReadBackdropTopology(target, login, background, selectionReason);
+            if (topology.Reason != null) return new(topology);
+
+            var publicStructurePolicy = new EvidencePolicy(MaxElements: MaximumElements, MaxDepth: MaximumDepth);
+            var loginElements = ReadBackdropStructure(target, login, background, publicStructurePolicy, token);
+            var backgroundElements = ReadBackdropStructure(target, background, login, publicStructurePolicy, token);
+            string loginHash = StructureHash(loginElements);
+            string backgroundHash = StructureHash(backgroundElements);
+            if (topology != ReadBackdropTopology(target, login, background, selectionReason))
+                return new(new("window-layout-changed"));
+
+            var observed = topology with
+            {
+                Login = topology.Login with { UiSha256 = loginHash },
+                Background = topology.Background with { UiSha256 = backgroundHash }
+            };
+            if (loginHash == null || !loginElements[0].Node.Enabled)
+                return new(observed with { Reason = "login-structure-unproven" });
+            if (backgroundHash == null || backgroundElements[0].Node.Enabled)
+                return new(observed with { Reason = "background-structure-unproven" });
+            if (!CoversBackdropChildren(graph, login, background, loginElements, backgroundElements))
+                return new(observed with { Reason = "window-layout-unavailable" });
+            if (HasBackgroundAuthentication(backgroundElements, background))
+                return new(observed with { Reason = "background-authentication-ui" });
+
+            string layoutSha256 = PasswordLayoutBackdrop.LayoutHash(appSha256, appFileVersion, observed.Ownership,
+                observed.Login, observed.Background);
+            var diagnostic = observed with { Reason = "review-required", LayoutSha256 = layoutSha256 };
+            if (!string.Equals(request.ReviewedWindowLayoutSha256, layoutSha256, StringComparison.OrdinalIgnoreCase))
+                return new(diagnostic);
+
+            var layout = BindCandidateField(request, login, graph, loginElements, observed.Login.WindowClass, loginHash, token);
+            return topology == ReadBackdropTopology(target, login, background, selectionReason)
+                ? new(diagnostic, layout) : new(new("window-layout-changed"));
+        }
+        finally { N.SetThreadDpiAwarenessContext(previousDpi); }
+    }
+
+    static PasswordLayoutDiagnostics ReadBackdropTopology(EvidenceTarget target, WindowObservation login,
+        WindowObservation background, string selectionReason)
+    {
+        var loginState = ReadBackdropWindow(login, target.Pid);
+        if (selectionReason != null) return new(selectionReason, Login: loginState);
+        var backgroundState = ReadBackdropWindow(background, target.Pid);
+        if (loginState == null || backgroundState == null) return new("window-layout-unavailable", Login: loginState, Background: backgroundState);
+        string ownership = PasswordLayoutBackdrop.GetOwnership(loginState.Hwnd, loginState.OwnerHwnd,
+            backgroundState.Hwnd, backgroundState.OwnerHwnd);
+        string reason = null;
+        if (!loginState.Enabled) reason = "login-window-disabled";
+        else if (backgroundState.Enabled) reason = "background-window-enabled";
+        else if (!MatchesClass(loginState.WindowClass, "WindowsForms10.Window.8.") ||
+            !string.Equals(loginState.WindowClass, backgroundState.WindowClass, StringComparison.Ordinal))
+            reason = "background-window-class-mismatch";
+        else if (ownership == null) reason = "unsupported-ownership";
+        return new(reason, ownership, Login: loginState, Background: backgroundState);
+    }
+
+    static PasswordLayoutWindow ReadBackdropWindow(WindowObservation window, int pid)
+    {
+        const long ChildStyle = 0x40000000;
+        if (window == null || !MatchesNativeTopLevel(window, pid, out bool enabled)) return null;
+        var handle = new IntPtr(window.Hwnd);
+        if ((N.GetWindowLongPtr(handle, N.GWL_STYLE).ToInt64() & ChildStyle) != 0) return null;
+        string className = ReadClass(handle);
+        return PasswordLayoutCandidate.IsNativeClass(className)
+            ? new(window.Hwnd, window.OwnerHwnd, className, window.Visible, enabled, window.Dpi, window.Bounds) : null;
+    }
+
+    static List<ObservedElement> ReadBackdropStructure(EvidenceTarget target, WindowObservation window,
+        WindowObservation peer, EvidencePolicy policy, CancellationToken token)
+    {
+        try { return ReadVisibleStructure(target, window, policy, token, peer.Hwnd); }
+        catch (OperationCanceledException) { throw; }
+        catch (COMException) { return null; }
+        catch (ElementNotAvailableException) { return null; }
+        catch (InvalidOperationException) { return null; }
+        catch (ArgumentException) { return null; }
+    }
+
+    static string StructureHash(List<ObservedElement> elements) => elements == null ? null :
+        PasswordEvidenceGate.StructureSha256(new(elements.Select(element => element.Node).ToArray(), false));
+
+    static bool CoversBackdropChildren(WindowGraphSnapshot graph, WindowObservation login, WindowObservation background,
+        List<ObservedElement> loginElements, List<ObservedElement> backgroundElements)
+    {
+        var loginHandles = loginElements.Select(element => element.Hwnd).ToHashSet();
+        var backgroundHandles = backgroundElements.Select(element => element.Hwnd).ToHashSet();
+        foreach (var child in graph.Windows.Where(window => window.IsChild && window.Visible))
+        {
+            var handle = new IntPtr(child.Hwnd);
+            if (!NativePidMatches(handle, login.Pid) || !N.IsWindowVisible(handle)) return false;
+            long root = N.GetAncestor(handle, N.GA_ROOT).ToInt64();
+            if (root == login.Hwnd && loginHandles.Contains(child.Hwnd)) continue;
+            if (root == background.Hwnd && backgroundHandles.Contains(child.Hwnd)) continue;
+            return false;
+        }
+        return true;
+    }
+
+    static bool HasBackgroundAuthentication(List<ObservedElement> elements, WindowObservation background) => elements.Any(element =>
+        element.Node.IsPassword || (element.Node.Enabled && (element.Node.ControlTypeId is 50004 or 50025 ||
+            element.Node.ControlTypeId == 50033 && NativePidMatches(new IntPtr(element.Hwnd), background.Pid) &&
+            MatchesClass(ReadClass(new IntPtr(element.Hwnd)), "WindowsForms10.Window.") &&
+            elements.Any(label => label.Node.ControlTypeId == UiaTextControl &&
+                IsAdjacent(label.Bounds, element.Bounds, background.Dpi)))));
+
+    static LayoutObservation BindCandidateField(PasswordLayoutCandidateRequest request, WindowObservation window,
+        WindowGraphSnapshot graph, List<ObservedElement> elements, string rootClass, string structure, CancellationToken token)
+    {
+        var target = request.Target;
+        var approvedName = new PropertyCondition(AutomationElement.NameProperty, request.PublicLabel);
+        LayoutObservation result = null;
+        foreach (var label in elements)
+        {
+            token.ThrowIfCancellationRequested();
+            if (label.Node.IsPassword || label.Node.ControlTypeId != UiaTextControl ||
+                !MatchedNativeChild(label, target, window, graph, out var labelClass) ||
+                !IsPublicLabelClass(labelClass) || !PasswordLayoutCandidate.IsNativeClass(labelClass)) continue;
+
+            // Ask the provider to compare the known label. Do not retrieve captions from nonmatching elements.
+            if (label.Element.FindFirst(TreeScope.Element, approvedName) == null) continue;
+            if (result != null) return null;
+            foreach (var field in elements)
+            {
+                token.ThrowIfCancellationRequested();
+                if (!IsAdjacent(label.Bounds, field.Bounds, window.Dpi) ||
+                    !MatchedNativeChild(field, target, window, graph, out var fieldClass) ||
+                    !PasswordLayoutCandidate.IsNativeClass(fieldClass) ||
+                    !PasswordLayoutCandidate.MatchesField(request.FieldClassPrefix, fieldClass, field.Node)) continue;
+                if (result != null) return null;
+                result = new(rootClass, structure, field.Hwnd, label.Hwnd,
+                    new(fieldClass, labelClass, field.Node.ControlTypeId, field.Bounds, label.Bounds,
+                        RelativeTo(field.Bounds, window.Bounds), RelativeTo(label.Bounds, window.Bounds)));
+            }
+            if (result == null) return null;
+        }
+        token.ThrowIfCancellationRequested();
+        return result;
     }
 
     /// <summary>For the isolated worker, with application identity already validated by the caller.</summary>
@@ -170,21 +294,29 @@ public static class PasswordWindowObserver
                 (window.Hwnd != root.Hwnd && window.Visible && (!window.IsChild || window.Relation != "child"))))
             return false;
 
-        var hwnd = new IntPtr(root.Hwnd);
-        if (!NativePidMatches(hwnd, target.Pid) || !N.IsWindowVisible(hwnd) || !IsWindowEnabled(hwnd) || N.IsIconic(hwnd) ||
-            N.GetAncestor(hwnd, N.GA_ROOT) != hwnd || N.GetDpiForWindow(hwnd) != (uint)root.Dpi ||
-            GetWindow(hwnd, GwOwner).ToInt64() != root.OwnerHwnd ||
-            N.DwmGetWindowAttribute(hwnd, N.DWMWA_CLOAKED, out int cloak, sizeof(int)) != 0 || cloak != 0 ||
-            N.DwmGetWindowAttribute(hwnd, N.DWMWA_EXTENDED_FRAME_BOUNDS, out N.RECT frame, Marshal.SizeOf<N.RECT>()) != 0 ||
-            !TryRectangle(frame, out var frameBounds) || frameBounds != root.Bounds)
-            return false;
+        if (!MatchesNativeTopLevel(root, target.Pid, out bool enabled) || !enabled) return false;
 
         if (root.OwnerHwnd != 0 && !graph.Windows.Any(window => window.Hwnd == root.OwnerHwnd &&
             window.Hwnd != root.Hwnd && !window.IsChild && !window.Visible && NativePidMatches(new IntPtr(window.Hwnd), target.Pid)))
             return false;
 
-        className = ReadClass(hwnd);
+        className = ReadClass(new IntPtr(root.Hwnd));
         return className != null;
+    }
+
+    static bool MatchesNativeTopLevel(WindowObservation window, int pid, out bool enabled)
+    {
+        var hwnd = new IntPtr(window.Hwnd);
+        enabled = false;
+        if (!NativePidMatches(hwnd, pid) || !N.IsWindowVisible(hwnd) || N.IsIconic(hwnd) ||
+            N.GetAncestor(hwnd, N.GA_ROOT) != hwnd || N.GetDpiForWindow(hwnd) != (uint)window.Dpi ||
+            GetWindow(hwnd, GwOwner).ToInt64() != window.OwnerHwnd ||
+            N.DwmGetWindowAttribute(hwnd, N.DWMWA_CLOAKED, out int cloak, sizeof(int)) != 0 || cloak != 0 ||
+            N.DwmGetWindowAttribute(hwnd, N.DWMWA_EXTENDED_FRAME_BOUNDS, out N.RECT frame, Marshal.SizeOf<N.RECT>()) != 0 ||
+            !TryRectangle(frame, out var frameBounds) || frameBounds != window.Bounds)
+            return false;
+        enabled = IsWindowEnabled(hwnd);
+        return true;
     }
 
     static bool MatchesScene(PasswordEvidenceScene scene, WindowObservation root, string rootClass) =>
@@ -193,7 +325,7 @@ public static class PasswordWindowObserver
         MatchesClass(rootClass, scene.WindowClassPrefix);
 
     static List<ObservedElement> ReadVisibleStructure(EvidenceTarget target, WindowObservation window,
-        EvidencePolicy policy, CancellationToken token)
+        EvidencePolicy policy, CancellationToken token, long excludedPeer = 0)
     {
         int count = 0;
         int elementLimit = Math.Clamp(policy.MaxElements, 1, MaximumElements);
@@ -207,6 +339,9 @@ public static class PasswordWindowObserver
             if (depth > depthLimit || ++count > elementLimit) return false;
 
             var current = element.Current;
+            // A separate observation covers the native top-level peer when UIA exposes it under this window.
+            if (depth > 0 && excludedPeer != 0 && unchecked((uint)current.NativeWindowHandle) == excludedPeer)
+                return current.ProcessId == target.Pid;
             bool password = current.IsPassword;
             if (current.ProcessId != target.Pid) return false;
             bool offscreen = current.IsOffscreen;

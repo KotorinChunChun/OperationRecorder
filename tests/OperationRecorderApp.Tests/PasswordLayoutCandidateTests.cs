@@ -66,4 +66,12 @@ public sealed class PasswordLayoutCandidateTests
     [Fact]
     public Task ValidSelectorDoesNotReportSuccessWithoutTheWorker() =>
         CheckStatus(Request(Target(), "専用カスタム欄:", "WindowsForms10.Window"), "layout-unproven");
+
+    [Theory]
+    [InlineData("\"diagnoseWindowLayout\":true,", "layout-unproven")]
+    [InlineData("\"reviewedWindowLayoutSha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",", "layout-unproven")]
+    [InlineData("\"reviewedWindowLayoutSha256\":\"bad\",", "invalid-request")]
+    [InlineData("\"diagnoseWindowLayout\":true,\"reviewedWindowLayoutSha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",", "invalid-request")]
+    public Task LayoutOptionsAreValidatedBeforeStartingAWorker(string properties, string expected) =>
+        CheckStatus(Request(Target(), "専用標準欄:", "WindowsForms10.EDIT").Insert(1, properties), expected);
 }

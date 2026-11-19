@@ -11,7 +11,8 @@ using System.Threading.Tasks;
 
 namespace OperationRecorderApp.ExternalEvidence;
 
-internal sealed record PasswordLayoutCandidateRequest(EvidenceTarget Target, string PublicLabel, string FieldClassPrefix);
+internal sealed record PasswordLayoutCandidateRequest(EvidenceTarget Target, string PublicLabel, string FieldClassPrefix,
+    bool DiagnoseWindowLayout = false, string ReviewedWindowLayoutSha256 = null);
 
 internal sealed record PasswordLayoutCandidateWork(PasswordLayoutCandidateRequest Request, DateTimeOffset DeadlineUtc);
 
@@ -24,7 +25,8 @@ internal sealed record PasswordLayoutCandidateField(string FieldClass, string La
 internal sealed record PasswordLayoutCandidateReply(string Status, string Scope = null, string AppSha256 = null,
     string AppFileVersion = null, int? Dpi = null,
     [property: JsonConverter(typeof(ApprovedRoiRectangleConverter))] Rectangle CaptureBounds = default,
-    string UiSha256 = null, string WindowClass = null, PasswordLayoutCandidateField Field = null);
+    string UiSha256 = null, string WindowClass = null, PasswordLayoutCandidateField Field = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PasswordLayoutDiagnostics Diagnostics = null);
 
 /// <summary>Isolated inspection of a predeclared public label and its password-layout geometry.</summary>
 public static class PasswordLayoutCandidate
@@ -36,7 +38,7 @@ public static class PasswordLayoutCandidate
     const string WinFormsCustom = "WindowsForms10.Window";
     const int UiaEdit = 50004, UiaCustom = 50025, UiaPane = 50033;
     const string InvalidRequest = "invalid-request", TargetMismatch = "target-mismatch", LayoutUnproven = "layout-unproven",
-        DeadlineExceeded = "deadline-exceeded", CandidateOnly = "candidate-only";
+        DeadlineExceeded = "deadline-exceeded", CandidateOnly = "candidate-only", DiagnosticOnly = "diagnostic-only";
 
     /// <summary>Starts a one-request process and closes its kill-on-close job when the request ends.</summary>
     public static async Task<string> ObserveJsonAsync(string executable, string requestJson, int timeoutMilliseconds)
@@ -83,9 +85,13 @@ public static class PasswordLayoutCandidate
         finally { try { if (!process.HasExited) process.Kill(true); } catch { } }
     }
 
-    static string Serialize(PasswordLayoutCandidateReply reply) => reply.Status == CandidateOnly
-        ? JsonSerializer.Serialize(reply, EvidenceProtocol.Json)
-        : JsonSerializer.Serialize(new { status = reply.Status }, EvidenceProtocol.Json);
+    static string Serialize(PasswordLayoutCandidateReply reply) => reply.Status switch
+    {
+        CandidateOnly => JsonSerializer.Serialize(reply, EvidenceProtocol.Json),
+        DiagnosticOnly => JsonSerializer.Serialize(
+            new { reply.Status, reply.Scope, reply.AppSha256, reply.AppFileVersion, reply.Diagnostics }, EvidenceProtocol.Json),
+        _ => JsonSerializer.Serialize(new { status = reply.Status }, EvidenceProtocol.Json)
+    };
 
     internal static async Task<int> RunAsync()
     {
@@ -142,6 +148,9 @@ public static class PasswordLayoutCandidate
         token.ThrowIfCancellationRequested();
 
         var graph = registry.Snapshot(target, 256);
+        if (request.DiagnoseWindowLayout || request.ReviewedWindowLayoutSha256 != null)
+            return ObserveBackdrop(request, registry, graph, scope, sha256, version, token);
+
         var window = graph.Windows.SingleOrDefault(candidate => candidate.Hwnd == target.WindowHandle);
         var observation = PasswordWindowObserver.ObserveLayout(request, window, graph, token);
         if (observation == null) return new(LayoutUnproven);
@@ -155,12 +164,33 @@ public static class PasswordLayoutCandidate
             observation.UiSha256, observation.WindowClass, observation.Field);
     }
 
+    static PasswordLayoutCandidateReply ObserveBackdrop(PasswordLayoutCandidateRequest request, WindowGraphRegistry registry,
+        WindowGraphSnapshot graph, string scope, string sha256, string version, CancellationToken token)
+    {
+        PasswordLayoutCandidateReply Diagnostic(PasswordLayoutDiagnostics diagnostics) => request.DiagnoseWindowLayout
+            ? new(DiagnosticOnly, scope, sha256, version, Diagnostics: diagnostics)
+            : new(LayoutUnproven);
+        if (graph.Truncated) return Diagnostic(new("window-layout-unavailable"));
+
+        var first = PasswordLayoutBackdrop.ObserveStable(graph, () => registry.Snapshot(request.Target, 256),
+            observed => PasswordWindowObserver.ObserveBackdrop(request, observed, sha256, version, token));
+        if (first == null) return Diagnostic(new("window-layout-changed"));
+        token.ThrowIfCancellationRequested();
+
+        if (first.Layout == null) return Diagnostic(first.Diagnostics);
+        var login = first.Diagnostics.Login;
+        return new(CandidateOnly, scope, sha256, version, login.Dpi, login.CaptureBounds,
+            first.Layout.UiSha256, first.Layout.WindowClass, first.Layout.Field);
+    }
+
     static string Validate(PasswordLayoutCandidateRequest request, out string scope)
     {
         scope = null;
         var target = request?.Target;
         if (target == null || target.Pid <= 0 || target.WindowsSessionId < 0 || target.WindowHandle <= 0 ||
             target.ProcessStartTimeUtc == default || string.IsNullOrWhiteSpace(target.ExePath) ||
+            request.ReviewedWindowLayoutSha256 != null &&
+                (request.DiagnoseWindowLayout || !EvidenceProtocol.IsHash(request.ReviewedWindowLayoutSha256)) ||
             request.FieldClassPrefix is not (WinFormsEdit or WinFormsCustom or "Edit")) return InvalidRequest;
         try
         {

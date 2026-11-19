@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using OperationRecorderApp.ExternalEvidence;
@@ -21,6 +22,30 @@ public sealed class PasswordEvidenceGateTests
         new(50004, 8, 7, 16, 4, true, true),
         new(50025, 9, 25, 16, 4, false, true)
     }, false);
+
+    [Fact]
+    public void 承認済みでも別の可視トップレベルがあればパスワード証拠を拒否する()
+    {
+        var target = new EvidenceTarget(77, DateTimeOffset.UnixEpoch, "C:/fixture.exe", 1, 11);
+        var login = new WindowObservation(Guid.NewGuid(), 1, target.WindowHandle, 0, 0, target.Pid, false, true,
+            false, false, new Rectangle(90, 90, 100, 60), 96, "root");
+        var backdrop = new WindowObservation(Guid.NewGuid(), 1, 12, 0, 0, target.Pid, false, true, false, false,
+            new Rectangle(10, 10, 320, 200), 96, "unowned");
+        var approvals = new[]
+        {
+            new WindowApproval(login.Hwnd, "root", true, login.WindowId, login.Generation),
+            new WindowApproval(backdrop.Hwnd, "support", false, backdrop.WindowId, backdrop.Generation)
+        };
+        var knownGroup = typeof(PasswordEvidenceGate).Assembly
+            .GetType("OperationRecorderApp.ExternalEvidence.PasswordGroupEvidenceWorker", throwOnError: true)
+            .GetMethod("IsKnownGroup", BindingFlags.Static | BindingFlags.NonPublic);
+
+        bool Allows(WindowObservation window) => (bool)knownGroup.Invoke(null,
+            new object[] { new WindowGraphSnapshot(1, false, new[] { login, window }), target, approvals });
+
+        Assert.True(Allows(backdrop with { Visible = false }));
+        Assert.False(Allows(backdrop));
+    }
 
     [Fact]
     public void 登録ファイルの識別子と版とハッシュが一致した規則を読む()
