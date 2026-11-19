@@ -14,14 +14,19 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
     readonly Label customLabel;
     readonly CustomPasswordControl custom;
     readonly bool allowTransition;
+    readonly bool allowBackdrop;
     readonly List<TransitionWindow> destinations = new();
     TransitionWindow? notice;
+    BackdropWindow? backdrop;
+    BackdropWindow? extraBackdrop;
+    BackdropWindow? hiddenOwner;
     Control? unknown;
     int actionCount;
 
-    PasswordEvidenceFixtureWindow(Guid id, bool allowTransition)
+    PasswordEvidenceFixtureWindow(Guid id, bool allowTransition, bool allowBackdrop)
     {
         this.allowTransition = allowTransition;
+        this.allowBackdrop = allowBackdrop;
         pipeName = "oprec-password-fixture-" + id.ToString("N");
         Text = "パスワード証拠の専用試験";
         AutoScaleMode = AutoScaleMode.None;
@@ -58,10 +63,10 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
 
     protected override bool ShowWithoutActivation => true;
 
-    internal static int Run(Guid id, bool allowTransition = false)
+    internal static int Run(Guid id, bool allowTransition = false, bool allowBackdrop = false)
     {
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
-        using var fixture = new PasswordEvidenceFixtureWindow(id, allowTransition);
+        using var fixture = new PasswordEvidenceFixtureWindow(id, allowTransition, allowBackdrop);
         if (allowTransition)
         {
             // Keep the fixture message pump and its pipe alive if the original login HWND is destroyed.
@@ -165,6 +170,27 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
                 return TransitionStatus();
             case "transition-status" when allowTransition:
                 return TransitionStatus();
+            case "layout-owned" or "layout-owning" or "layout-unowned" when allowBackdrop:
+                SetBackdropOwnership(command);
+                return LayoutStatus();
+            case "layout-change-structure" when allowBackdrop && backdrop != null:
+                backdrop.WidenLabel();
+                return LayoutStatus();
+            case "layout-enable-backdrop" when allowBackdrop && backdrop != null:
+                backdrop.Enabled = true;
+                return LayoutStatus();
+            case "layout-extra-backdrop" when allowBackdrop && backdrop != null:
+                extraBackdrop ??= ShowBackdrop(backdrop.Location + new Size(10, 10));
+                return LayoutStatus();
+            case "layout-hidden-owner" when allowBackdrop && backdrop != null && backdrop.Owner == null:
+                hiddenOwner ??= new BackdropWindow(backdrop.Location);
+                backdrop.Owner = hiddenOwner;
+                return LayoutStatus();
+            case "layout-backdrop-password" when allowBackdrop && backdrop != null:
+                backdrop.AddPasswordControl();
+                return LayoutStatus();
+            case "layout-status" when allowBackdrop:
+                return LayoutStatus();
             default:
                 return "unsupported";
         }
@@ -173,6 +199,43 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
             actionCount, x = Left, y = Top, standard = standard.Handle.ToInt64(), custom = custom.Handle.ToInt64(),
             standardLabel = standardLabel.Handle.ToInt64(), customLabel = customLabel.Handle.ToInt64(),
             customWidth = custom.Width, unknown = unknown != null
+        });
+    }
+
+    void SetBackdropOwnership(string command)
+    {
+        Owner = null;
+        extraBackdrop?.Dispose();
+        extraBackdrop = null;
+        backdrop?.Dispose();
+        hiddenOwner?.Dispose();
+        hiddenOwner = null;
+        backdrop = ShowBackdrop(Location - new Size(16, 16));
+        if (command == "layout-owned") Owner = backdrop;
+        if (command == "layout-owning") backdrop.Owner = this;
+        EnableWindow(backdrop.Handle, false);
+    }
+
+    static BackdropWindow ShowBackdrop(Point location)
+    {
+        var window = new BackdropWindow(location);
+        window.Show();
+        window.Enabled = false;
+        return window;
+    }
+
+    string LayoutStatus()
+    {
+        Refresh();
+        backdrop?.Refresh();
+        DwmFlush();
+        return JsonSerializer.Serialize(new
+        {
+            loginHwnd = Handle.ToInt64(), loginOwnerHwnd = GetWindow(Handle, 4).ToInt64(), loginEnabled = IsWindowEnabled(Handle),
+            loginX = Left, loginY = Top,
+            backgroundHwnd = backdrop?.Handle.ToInt64(), backgroundOwnerHwnd = backdrop == null ? 0 : GetWindow(backdrop.Handle, 4).ToInt64(),
+            backgroundVisible = backdrop?.Visible, backgroundEnabled = backdrop == null ? null : (bool?)IsWindowEnabled(backdrop.Handle),
+            extraHwnd = extraBackdrop?.Handle.ToInt64(), hiddenOwnerHwnd = hiddenOwner?.Handle.ToInt64()
         });
     }
 
@@ -218,6 +281,10 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
     {
         if (disposing)
         {
+            Owner = null;
+            extraBackdrop?.Dispose();
+            backdrop?.Dispose();
+            hiddenOwner?.Dispose();
             notice?.Dispose();
             foreach (var destination in destinations) destination.Dispose();
             stop.Dispose();
@@ -230,6 +297,53 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
 
     [DllImport("dwmapi.dll")]
     static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+
+    [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr window, uint command);
+    [DllImport("user32.dll")] static extern bool IsWindowEnabled(IntPtr window);
+    [DllImport("user32.dll")] static extern bool EnableWindow(IntPtr window, bool enable);
+
+    sealed class BackdropWindow : Form
+    {
+        readonly Label label;
+        protected override bool ShowWithoutActivation => true;
+
+        public BackdropWindow(Point location)
+        {
+            Text = "OPREC_FIXTURE_BACKDROP_TITLE";
+            AutoScaleMode = AutoScaleMode.None;
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.Manual;
+            Location = location;
+            ClientSize = new Size(500, 312);
+            label = new Label
+            {
+                Name = "OPREC_FIXTURE_BACKDROP_LABEL_NAME",
+                Text = "OPREC_FIXTURE_BACKDROP_DYNAMIC_TEXT",
+                Bounds = new Rectangle(20, 275, 260, 24),
+                Enabled = false,
+                FlatStyle = FlatStyle.System
+            };
+            Controls.Add(label);
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            SetCaptureAppearance(Handle);
+            base.OnLoad(e);
+        }
+
+        public void WidenLabel() => label.Width += 16;
+
+        public void AddPasswordControl() => Controls.Add(new TextBox
+        {
+            Name = "OPREC_FIXTURE_BACKDROP_PASSWORD_NAME",
+            Text = "OPREC_FIXTURE_BACKDROP_PASSWORD_VALUE",
+            UseSystemPasswordChar = true,
+            Enabled = false,
+            AutoSize = false,
+            Bounds = new Rectangle(164, 70, 220, 28)
+        });
+    }
 
     sealed class TransitionWindow : Form
     {

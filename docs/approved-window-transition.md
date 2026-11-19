@@ -45,8 +45,35 @@ $candidate | ConvertTo-Json -Depth 10
 
 `candidate-only` は対象EXEのSHA256とファイル版、DPI、キャプチャ枠、文字を含まないUI構造のSHA256、公開ラベルに対応する欄のクラス・型・物理ピクセル座標を取得できた状態です。WinFormsの標準パスワード欄には `WindowsForms10.EDIT` を指定できます。専用の読み取りプロセスが構造を確認し、画像取得、欄の値取得、入力、プロファイル書き込みは行いません。候補からマスクの余白と描画範囲を確認し、登録資材は別に審査してください。
 
+### ログイン窓と無効な背後窓が同時に表示される場合
+
+0.1.14以降は、読み取り専用コマンドでウィンドウ構成を診断できます。対象には、別途確認した正規のログインHWNDを指定します。
+
+```powershell
+$layoutArgs = @{
+    Executable = $exe
+    Target = $loginTarget
+    PublicLabel = 'パスワード:'
+    FieldClassPrefix = 'WindowsForms10.Window'
+}
+$layout = ./scripts/Get-OperationEvidencePasswordLayoutCandidate.ps1 @layoutArgs -DiagnoseWindowLayout
+$layout | ConvertTo-Json -Depth 10
+```
+
+`diagnostic-only` の `diagnostics` には、判定理由、確認できた2窓の所有関係・可視／有効状態・クラス・DPI・物理枠・文字なしのUI構造ハッシュが入ります。所有関係は `login-owned-by-background`（背後窓がログイン窓を直接所有）、`background-owned-by-login`（ログイン窓が背後窓を直接所有）、`unowned`（どちらにも所有元がない）のいずれかです。窓タイトル、可変文字、画素は取得しません。
+
+`review-required` で `diagnostics.layoutSha256` が得られた場合は、対象版・ログインHWND・背後窓・所有関係・無効状態を確認します。構成を確認した後に、そのハッシュを `$reviewedLayoutSha256` に指定します。
+
+```powershell
+$candidate = ./scripts/Get-OperationEvidencePasswordLayoutCandidate.ps1 @layoutArgs `
+    -ReviewedWindowLayoutSha256 $reviewedLayoutSha256
+```
+
+同一PIDの確認済み構成が観測中も一致すれば `candidate-only` を返します。別の有効窓・第三の可視窓・別の所有元・別PID・認証用の背後画面・ウィンドウ構成の変化ではハッシュを発行せず、候補取得も拒否します。同じクラスでも、UI構造、DPI、2窓の相対位置が変われば確認済みハッシュは一致しません。窓構成ハッシュは候補取得専用です。マスク済み証拠の保存と操作許可は引き続き[パスワード欄の保護](password-only-local-evidence.md)の条件で判定します。
+
 試験は専用WinFormsで実施します。
 
 ```powershell
 pwsh -NoProfile -File ./dev/scripts/Test-OperationRecorder.ps1 -Suite WindowTransition
+pwsh -NoProfile -File ./dev/scripts/Test-OperationRecorder.ps1 -Suite PasswordLayoutBackdrop
 ```

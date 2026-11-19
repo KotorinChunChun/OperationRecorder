@@ -11,8 +11,8 @@ param(
 $ErrorActionPreference = 'Stop'
 # nativeの非0はTRXと合わせて分類する。呼出元の設定で先に例外へ変換しない。
 $PSNativeCommandUseErrorActionPreference = $false
-if ($Suite -notin @('Core', 'Desktop', 'WindowEvents', 'Wgc', 'WindowGraph', 'Snapshot', 'ApprovedRoi', 'PasswordEvidence', 'WindowTransition', 'All') -or $Configuration -notin @('Debug', 'Release')) {
-    [Console]::Error.WriteLine('SuiteはCore/Desktop/WindowEvents/Wgc/WindowGraph/Snapshot/ApprovedRoi/PasswordEvidence/WindowTransition/All、ConfigurationはDebug/Releaseを指定してください。')
+if ($Suite -notin @('Core', 'Desktop', 'WindowEvents', 'Wgc', 'WindowGraph', 'Snapshot', 'ApprovedRoi', 'PasswordEvidence', 'WindowTransition', 'PasswordLayoutBackdrop', 'All') -or $Configuration -notin @('Debug', 'Release')) {
+    [Console]::Error.WriteLine('SuiteはCore/Desktop/WindowEvents/Wgc/WindowGraph/Snapshot/ApprovedRoi/PasswordEvidence/WindowTransition/PasswordLayoutBackdrop/All、ConfigurationはDebug/Releaseを指定してください。')
     exit 2
 }
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -36,7 +36,7 @@ function Invoke-Dotnet([string[]]$Arguments, [string]$LogName) {
 
 function Invoke-Suite([string]$Name) {
     $entry = [ordered]@{ name = $Name; status = 'failed'; total = 0; passed = 0; failed = 0; skipped = 0; trx = $null; reason = $null }
-    if ($Name -in @('Desktop', 'WindowEvents', 'Snapshot', 'ApprovedRoi', 'PasswordEvidence', 'WindowTransition')) {
+    if ($Name -in @('Desktop', 'WindowEvents', 'Snapshot', 'ApprovedRoi', 'PasswordEvidence', 'WindowTransition', 'PasswordLayoutBackdrop')) {
         if (-not $IsWindows -or -not [Environment]::UserInteractive) {
             $entry.status = 'blocked'; $entry.reason = 'DESKTOP_BLOCKED: 対話可能なWindowsデスクトップが必要です。'; return $entry
         }
@@ -60,6 +60,7 @@ function Invoke-Suite([string]$Name) {
         elseif ($Name -eq 'ApprovedRoi') { 'FullyQualifiedName~ApprovedRoiDesktopTests' }
         elseif ($Name -eq 'PasswordEvidence') { 'FullyQualifiedName~PasswordEvidenceDesktopTests' }
         elseif ($Name -eq 'WindowTransition') { 'FullyQualifiedName~WindowTransitionDesktopTests' }
+        elseif ($Name -eq 'PasswordLayoutBackdrop') { 'FullyQualifiedName~PasswordLayoutBackdropDesktopTests' }
         elseif ($Name -eq 'Wgc') { 'FullyQualifiedName~WgcBackendTests|FullyQualifiedName~WgcGroupNativeTests' }
         elseif ($Name -eq 'WindowGraph') { 'FullyQualifiedName~WindowGraphTests|FullyQualifiedName~WindowGraphNativeTests' }
         elseif ($Name -eq 'WindowEvents') { 'FullyQualifiedName~WindowChangeTests|FullyQualifiedName~WindowObservationTests' }
@@ -73,7 +74,7 @@ function Invoke-Suite([string]$Name) {
     $failedResults = @($trx.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' })
     $blockedResults = @($failedResults | Where-Object { $_.Output.ErrorInfo.Message -like '*DESKTOP_BLOCKED:*' })
     if ($Name -eq 'Wgc') { $blockedResults = @($failedResults | Where-Object { $_.Output.ErrorInfo.Message -like '*WGC_BLOCKED:*' }) }
-    if ($Name -in @('Desktop','Wgc','Snapshot','ApprovedRoi','PasswordEvidence','WindowTransition') -and $blockedResults.Count -gt 0 -and $failedResults.Count -eq $blockedResults.Count -and $entry.skipped -eq 0) {
+    if ($Name -in @('Desktop','Wgc','Snapshot','ApprovedRoi','PasswordEvidence','WindowTransition','PasswordLayoutBackdrop') -and $blockedResults.Count -gt 0 -and $failedResults.Count -eq $blockedResults.Count -and $entry.skipped -eq 0) {
         $entry.status = 'blocked'; $entry.reason = $(if($Name -eq 'Wgc'){'WGC_BLOCKED: 入力デスクトップ/取得条件を満たさず実フレームの受入は未完了。'}else{'DESKTOP_BLOCKED: デスクトップ条件を満たさない試験があります。詳細はTRXを参照してください。'})
     }
     elseif ($testExit -eq 0 -and $entry.total -gt 0 -and $entry.total -eq $entry.passed -and $entry.skipped -eq 0) { $entry.status = 'passed' }

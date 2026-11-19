@@ -14,6 +14,8 @@ internal static class Program
             return PasswordEvidenceFixtureWindow.Run(passwordFixtureId);
         if (args.Length == 2 && args[0] == "--window-transition" && Guid.TryParseExact(args[1], "N", out var transitionFixtureId))
             return PasswordEvidenceFixtureWindow.Run(transitionFixtureId, allowTransition: true);
+        if (args.Length == 2 && args[0] == "--password-layout-backdrop" && Guid.TryParseExact(args[1], "N", out var backdropFixtureId))
+            return PasswordEvidenceFixtureWindow.Run(backdropFixtureId, allowBackdrop: true);
         if (args.Length == 1 && args[0] == "--window")
         {
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
