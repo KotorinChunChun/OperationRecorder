@@ -43,6 +43,7 @@ public sealed record EvidenceRequest
     public string ErrorCode { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public GroupEvidencePolicy GroupPolicy { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public WindowApproval[] WindowApprovals { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool ExpectWindowTransition { get; init; }
 }
 public sealed record EvidenceReply
 {

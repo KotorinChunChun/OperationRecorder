@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -62,6 +64,45 @@ public sealed class GroupEvidenceSessionTests
         Assert.False((await c.Session.HandleAsync(request)).OperationAllowed);
         var after=await c.Session.HandleAsync(c.Request("EndStep",token:before.StepToken));Assert.Equal("after-saved",after.Status);Assert.Empty(after.PendingSteps);
         Assert.Equal(2,c.Backend.Calls);Assert.Equal("stopped",(await c.Session.HandleAsync(c.Request("StopSession"))).Status);
+    }
+    [Theory]
+    [InlineData(true, "deadline-exceeded")]
+    [InlineData(false, "caller-unavailable")]
+    public async Task Expired_or_cancelled_transition_ack_cannot_be_retried(bool expired, string expectedStatus)
+    {
+        using var context = new Context();
+        var started = await context.Start();
+        Assert.DoesNotContain("approved-window-transition", started.Capabilities);
+        var begin = await context.Session.HandleAsync(context.Request("BeginStep", Guid.NewGuid()));
+        Assert.True(begin.OperationAllowed);
+
+        // Register an issued transition token without a live Win32 fixture. The expiration
+        // and retry paths run before native observation or any capture backend call.
+        const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic;
+        var steps = (Dictionary<Guid, EvidenceStep>)typeof(GroupEvidenceSession).GetField("steps", fields).GetValue(context.Session);
+        var step = steps[begin.StepId];
+        step.ExpectWindowTransition = true;
+        typeof(GroupEvidenceSession).GetMethod("RegisterTransitionAttempt", fields).Invoke(context.Session, new[] { step });
+        var end = context.Request("EndStep", token: begin.StepToken);
+
+        var rejected = await context.Session.HandleAsync(end with
+        {
+            Target = new EvidenceTarget(222, DateTimeOffset.UtcNow, @"C:\fixture.exe", 1, 56)
+        });
+        Assert.Equal("invalid-request", rejected.Status);
+        var missed = expired
+            ? await context.Session.HandleAsync(end with { DeadlineUtc = DateTimeOffset.UtcNow.AddSeconds(-1) })
+            : await context.Session.HandleAsync(end, new CancellationToken(true));
+        Assert.Equal(expectedStatus, missed.Status);
+
+        var retry = await context.Session.HandleAsync(context.Request("EndStep", token: begin.StepToken));
+        Assert.Equal("step-indeterminate", retry.Status);
+        Assert.Equal(begin.StepId, Assert.Single(retry.PendingSteps));
+        Assert.Equal(1, context.Backend.Calls);
+        var saved = JsonSerializer.Deserialize<EvidenceStep>(
+            File.ReadAllBytes(Path.Combine(context.SessionDirectory, "steps", begin.StepId.ToString("N"), "step.json")), EvidenceProtocol.Json);
+        Assert.Equal("after-unconfirmed", saved.Status);
+        Assert.Equal("unknown", saved.Outcome);
     }
     [Fact]public async Task 黒画像の保存だけでは診断成功や操作許可を返さない()
     {

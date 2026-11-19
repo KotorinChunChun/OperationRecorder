@@ -66,6 +66,7 @@ public static class ExternalEvidenceCommand
         try
         {
             if (args.Length == 1 && args[0] == "--evidence-worker") return EvidenceWorker.RunAsync().GetAwaiter().GetResult();
+            if (args.Length == 1 && args[0] == "--evidence-layout-candidate") return PasswordLayoutCandidate.RunAsync().GetAwaiter().GetResult();
             if (args.Length != 4 || args[0] != "--evidence-host" || !int.TryParse(args[2], out int pid) || !long.TryParse(args[3], out long ticks)) return 2;
             using var validator = new WindowsEvidenceValidator();
             var backend = new EvidenceWorkerBackend(() => { var info = new ProcessStartInfo(Environment.ProcessPath); info.ArgumentList.Add("--evidence-worker"); return info; });

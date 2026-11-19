@@ -22,6 +22,58 @@ public static class PasswordWindowObserver
 
     sealed record ObservedElement(AutomationElement Element, long Hwnd, Rectangle Bounds, EvidenceNode Node);
 
+    internal sealed record LayoutObservation(string WindowClass, string UiSha256, long FieldHwnd, long LabelHwnd,
+        PasswordLayoutCandidateField Field);
+
+    internal static LayoutObservation ObserveLayout(PasswordLayoutCandidateRequest request, WindowObservation window,
+        WindowGraphSnapshot graph, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        var previousDpi = N.SetThreadDpiAwarenessContext(N.DPI_PER_MONITOR_AWARE_V2);
+        if (previousDpi == IntPtr.Zero) return null;
+        try
+        {
+            var target = request.Target;
+            if (!MatchesNativeRoot(target, window, graph, out var rootClass) ||
+                !PasswordLayoutCandidate.IsNativeClass(rootClass)) return null;
+            var elements = ReadVisibleStructure(target, window,
+                new EvidencePolicy(MaxElements: MaximumElements, MaxDepth: MaximumDepth), token);
+            if (!CoversVisibleChildren(graph, elements)) return null;
+            var structure = PasswordEvidenceGate.StructureSha256(new(elements.Select(element => element.Node).ToArray(), false));
+            if (structure == null) return null;
+
+            LayoutObservation result = null;
+            foreach (var label in elements)
+            {
+                token.ThrowIfCancellationRequested();
+                if (label.Node.IsPassword || label.Node.ControlTypeId != UiaTextControl ||
+                    !MatchedNativeChild(label, target, window, graph, out var labelClass) ||
+                    !IsPublicLabelClass(labelClass) || !PasswordLayoutCandidate.IsNativeClass(labelClass)) continue;
+
+                // Comparison only after verifying this is a visible, non-password native STATIC with matching UIA bounds.
+                if (!string.Equals(label.Element.Current.Name, request.PublicLabel, StringComparison.Ordinal)) continue;
+                if (result != null) return null;
+                foreach (var field in elements)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (!IsAdjacent(label.Bounds, field.Bounds, window.Dpi) ||
+                        !MatchedNativeChild(field, target, window, graph, out var fieldClass) ||
+                        !PasswordLayoutCandidate.IsNativeClass(fieldClass) ||
+                        !PasswordLayoutCandidate.MatchesField(request.FieldClassPrefix, fieldClass, field.Node)) continue;
+                    if (result != null) return null;
+                    result = new(rootClass, structure, field.Hwnd, label.Hwnd,
+                        new(fieldClass, labelClass, field.Node.ControlTypeId, field.Bounds, label.Bounds,
+                            RelativeTo(field.Bounds, window.Bounds), RelativeTo(label.Bounds, window.Bounds)));
+                }
+                if (result == null) return null;
+            }
+
+            token.ThrowIfCancellationRequested();
+            return result;
+        }
+        finally { N.SetThreadDpiAwarenessContext(previousDpi); }
+    }
+
     /// <summary>For the isolated worker, with application identity already validated by the caller.</summary>
     public static PasswordWindowMatch Match(EvidenceTarget target, WindowObservation window, WindowGraphSnapshot graph,
         PasswordEvidenceProfile profile, string phase, EvidencePolicy policy, CancellationToken token)
@@ -39,11 +91,7 @@ public static class PasswordWindowObserver
             if (candidates.Length == 0) return null;
 
             var elements = ReadVisibleStructure(target, window, policy, token);
-            if (elements == null) return null;
-            // A native child that is visible but absent from UIA cannot be covered by the approved shape.
-            var visibleHandles = elements.Select(element => element.Hwnd).ToHashSet();
-            if (graph.Windows.Any(child => child.Visible && child.IsChild && !visibleHandles.Contains(child.Hwnd)))
-                return null;
+            if (!CoversVisibleChildren(graph, elements)) return null;
             var ui = new EvidenceUi(elements.Select(element => element.Node).ToArray(), false);
             var structure = PasswordEvidenceGate.StructureSha256(ui);
             if (structure == null) return null;
@@ -64,6 +112,14 @@ public static class PasswordWindowObserver
         catch (OperationCanceledException) { throw; }
         catch { return null; }
         finally { N.SetThreadDpiAwarenessContext(previousDpi); }
+    }
+
+    static bool CoversVisibleChildren(WindowGraphSnapshot graph, List<ObservedElement> elements)
+    {
+        if (elements == null) return false;
+        // A native child that is visible but absent from UIA cannot be covered by the observed shape.
+        var visibleHandles = elements.Select(element => element.Hwnd).ToHashSet();
+        return !graph.Windows.Any(child => child.Visible && child.IsChild && !visibleHandles.Contains(child.Hwnd));
     }
 
     /// <summary>Rechecks live native identities and registered bounds in the broker without any UIA calls.</summary>

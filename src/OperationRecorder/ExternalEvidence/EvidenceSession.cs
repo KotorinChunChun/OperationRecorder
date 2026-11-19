@@ -25,6 +25,8 @@ public sealed class EvidenceStep
     public string Before { get; set; }
     public string After { get; set; }
     public string Failure { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ExpectWindowTransition { get; set; }
 }
 public sealed class EvidenceSession : IDisposable
 {
@@ -67,7 +69,7 @@ public sealed class EvidenceSession : IDisposable
         EvidenceStep processing = null;
         try
         {
-            if (request == null || request.SchemaVersion != 1 || id == Guid.Empty || request.SessionId == Guid.Empty ||
+            if (request == null || request.SchemaVersion != 1 || request.ExpectWindowTransition || id == Guid.Empty || request.SessionId == Guid.Empty ||
                 request.DeadlineUtc <= DateTimeOffset.UtcNow || request.DeadlineUtc > DateTimeOffset.UtcNow.AddSeconds(30)) return Reply("invalid-request");
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(request.DeadlineUtc - DateTimeOffset.UtcNow);

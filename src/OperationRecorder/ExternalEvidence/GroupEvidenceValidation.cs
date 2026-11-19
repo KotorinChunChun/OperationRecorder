@@ -103,6 +103,10 @@ public static class GroupEvidenceValidation
     {
         var plan = work?.GroupPlan;
         Require(plan?.Snapshot?.Windows!=null && plan.Policy!=null && manifest?.Windows!=null && manifest.Quality!=null);
+        if (plan.TransitionAfterTarget != null)
+            Require(work.Phase == "after" && plan.TransitionAfterTarget == work.Target &&
+                plan.Policy.RoiProfile != null && plan.Policy.PasswordProfile == null &&
+                plan.Policy.TransitionAfterRoiProfile == null);
         ApprovedRoiProfile roiProfile = null;
         PasswordEvidenceProfile passwordProfile = null;
         if (plan.Policy.RoiProfile != null)

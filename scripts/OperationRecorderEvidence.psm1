@@ -129,11 +129,19 @@ function Invoke-OperationEvidenceStep {
         [Parameter(Mandatory)][scriptblock]$Action,
         [hashtable]$ExpectedStateMetadata = @{},
         [hashtable]$ActualStateMetadata = @{},
-        [ValidateRange(200,30000)][int]$TimeoutMilliseconds = 10000
+        [ValidateRange(200,30000)][int]$TimeoutMilliseconds = 10000,
+        [switch]$ExpectWindowTransition
     )
-    $before = Send-OperationEvidenceRequest -Session $Session -Request @{
+    $beforeRequest = @{
         method='BeginStep'; stepId=$StepId.ToString(); operationName=$OperationName; expectedStateMetadata=$ExpectedStateMetadata
-    } -TimeoutMilliseconds $TimeoutMilliseconds
+    }
+    if ($ExpectWindowTransition) {
+        if ($Session.SchemaVersion -ne 2 -or 'approved-window-transition' -notin $Session.Capabilities) {
+            throw 'このセッションではウィンドウ切替の記録を利用できません。'
+        }
+        $beforeRequest.expectWindowTransition = $true
+    }
+    $before = Send-OperationEvidenceRequest -Session $Session -Request $beforeRequest -TimeoutMilliseconds $TimeoutMilliseconds
     if ($before.status -ne 'before-saved' -or $before.operationAllowed -ne $true) { throw "操作前証拠が未確定です。操作は実行していません: $($before.status)" }
     try { $null = & $Action }
     catch {

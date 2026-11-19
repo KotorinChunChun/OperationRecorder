@@ -39,6 +39,12 @@ public sealed class WindowGraphTracker
             if (current.Remove(hwnd)) revision++;
         }
     }
+    internal bool IsStillTracked(WindowObservation previous)
+    {
+        lock (sync)
+            return current.TryGetValue(previous.Hwnd, out var observed) &&
+                observed.WindowId == previous.WindowId && observed.Generation == previous.Generation;
+    }
     public WindowGraphSnapshot Update(IReadOnlyList<WindowGraphInput> inputs, bool truncated = false)
     {
         if (inputs == null || inputs.Count > 1024 || inputs.Any(w => w.Hwnd == 0 || w.Pid <= 0) || inputs.Select(w => w.Hwnd).Distinct().Count() != inputs.Count)
@@ -120,6 +126,37 @@ public sealed class WindowGraphRegistry : IDisposable
             }
             catch { return false; }
         }
+    }
+    // The original hook remains active after its root is destroyed. Use its history only
+    // to confirm existing windows, never to retarget this registry.
+    internal bool IsStillTracked(WindowObservation previous) =>
+        !disposed && hookHealthy && tracker.IsStillTracked(previous);
+
+    internal static WindowGraphInput[] ObserveTransitionTopWindows(EvidenceTarget root, int maxWindows)
+    {
+        var inputs = new List<WindowGraphInput>();
+        bool valid = true;
+        IntPtr previousDpi = N.SetThreadDpiAwarenessContext(N.DPI_PER_MONITOR_AWARE_V2);
+        try
+        {
+            var old = new IntPtr(root.WindowHandle);
+            N.EnumWindowsProc read = (window, data) =>
+            {
+                long hwnd = window.ToInt64();
+                if (PidOf(hwnd) != root.Pid && hwnd != root.WindowHandle &&
+                    !InChain(GetWindow(window, GwOwner).ToInt64(), root.WindowHandle, root.Pid, true))
+                    return true;
+                if (inputs.Count >= maxWindows) return false;
+                try { inputs.Add(Read(hwnd, root.Pid, root.WindowHandle)); }
+                catch (EvidenceUnavailableException) { valid = false; return false; }
+                return true;
+            };
+            if (!EnumWindows(read, IntPtr.Zero) || !valid ||
+                N.IsWindow(old) && !inputs.Any(window => window.Hwnd == root.WindowHandle))
+                throw new EvidenceUnavailableException("transition-unconfirmed");
+            return inputs.ToArray();
+        }
+        finally { if (previousDpi != IntPtr.Zero) N.SetThreadDpiAwarenessContext(previousDpi); }
     }
     void EnsureHook(EvidenceTarget root)
     {

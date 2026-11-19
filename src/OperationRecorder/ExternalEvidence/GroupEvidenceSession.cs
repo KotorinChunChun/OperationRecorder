@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace OperationRecorderApp.ExternalEvidence;
 
-public sealed class GroupEvidenceSession : IDisposable
+public sealed partial class GroupEvidenceSession : IDisposable
 {
     readonly IEvidenceBackend backend;
     readonly WindowGraphRegistry registry;
@@ -33,10 +33,19 @@ public sealed class GroupEvidenceSession : IDisposable
             StepToken=step?.Token??Guid.Empty,Status=status,Outcome=step?.Outcome,Quality=quality,EvidencePaths=paths??Array.Empty<string>(),
             PendingSteps=steps.Values.Where(s=>s.Status!="completed"||s.Outcome=="unknown").Select(s=>s.StepId).ToArray()};
         bool entered=false;EvidenceStep current=null;
+        TransitionAttempt reservedTransition = null;
         try
         {
-            if(request==null||request.SchemaVersion!=2||request.RequestId==Guid.Empty||request.SessionId==Guid.Empty||request.DeadlineUtc<=DateTimeOffset.UtcNow||request.DeadlineUtc>DateTimeOffset.UtcNow.AddSeconds(30))return Reply("invalid-request");
-            using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancellation);deadline.CancelAfter(request.DeadlineUtc-DateTimeOffset.UtcNow);
+            if(request==null||request.SchemaVersion!=2||request.RequestId==Guid.Empty||request.SessionId==Guid.Empty||request.DeadlineUtc>DateTimeOffset.UtcNow.AddSeconds(30)||
+                request.ExpectWindowTransition && request.Method!="BeginStep")return Reply("invalid-request");
+            // Reserve only an issued transition token. Queue cancellation and an expired deadline
+            // must not allow another EndStep with fresh timing to capture a different window state.
+            bool transitionReserved = request.Method == "EndStep" && transitionAttempts.TryGetValue(request.StepToken, out var attempt) &&
+                attempt.TryReserve(request);
+            if (transitionReserved) reservedTransition = transitionAttempts[request.StepToken];
+            var remaining = request.DeadlineUtc - DateTimeOffset.UtcNow;
+            if (remaining <= TimeSpan.Zero) return Reply(transitionReserved ? "deadline-exceeded" : "invalid-request");
+            using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancellation);deadline.CancelAfter(remaining);
             await gate.WaitAsync(deadline.Token);entered=true;
             string hash=EvidenceFiles.Hash(JsonSerializer.SerializeToUtf8Bytes(request,EvidenceProtocol.Json));
             if(requests.TryGetValue(request.RequestId,out var previous))return Reply(previous==hash?"duplicate-request":"request-conflict");
@@ -51,6 +60,8 @@ public sealed class GroupEvidenceSession : IDisposable
                 if (selected.RoiProfile != null && (selected.Disclosure != null || !selected.RequirePublicDiagnostic))
                     return Reply("unsupported-policy");
                 if (selected.PasswordProfile != null && (selected.Disclosure != null || selected.RoiProfile != null || !selected.RequirePublicDiagnostic))
+                    return Reply("unsupported-policy");
+                if (selected.TransitionAfterRoiProfile != null && selected.PasswordProfile == null)
                     return Reply("unsupported-policy");
                 if(JsonSerializer.SerializeToUtf8Bytes(selected,EvidenceProtocol.Json).Length>16384 || selected.Disclosure!=null&&!DisclosureGate.IsValidProfile(selected.Disclosure))return Reply("invalid-profile");
                 var windows=snapshot(request.Target,selected.MaxWindows);
@@ -69,6 +80,14 @@ public sealed class GroupEvidenceSession : IDisposable
                     if (!PasswordEvidenceCatalog.MatchesApplication(approved, target.ExePath, appHash))
                         return Reply("profile-app-mismatch");
                 }
+                if (selected.TransitionAfterRoiProfile != null)
+                {
+                    var approved = ApprovedRoiCatalog.Load(selected.TransitionAfterRoiProfile);
+                    if (!string.Equals(approved.AppSha256, appHash, StringComparison.OrdinalIgnoreCase))
+                        return Reply("profile-app-mismatch");
+                    if (!approved.Scenes.Any(scene => scene.Role == "root" && scene.Phases.Contains("after")))
+                        return Reply("unsupported-policy");
+                }
                 var approvals=Bind(selected.Approvals??new[]{new WindowApproval(target.WindowHandle,"root")},windows,true).ToList();
                 if (selected.RoiProfile != null && !approvals.Any(window => window.Hwnd == target.WindowHandle && window.Required))
                     return Reply("invalid-window-approval");
@@ -85,13 +104,23 @@ public sealed class GroupEvidenceSession : IDisposable
                 security.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User,FileSystemRights.FullControl,InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow));new DirectoryInfo(root).SetAccessControl(security);
                 fileLock=new FileStream(Path.Combine(root,"external.lock"),FileMode.CreateNew,FileAccess.Write,FileShare.None);
                 id=request.SessionId;directory=root;started=DateTimeOffset.UtcNow;
-                EvidenceFiles.AtomicJson(Path.Combine(root,"external-session.json"),new{schemaVersion=2,product="operation-recorder-evidence-group",sessionId=id,target,appHash,policy,started});
-                return Reply("started") with{WindowGraph=windows,Capabilities=new[]{"wgc-required","window-groups","explicit-window-approval","approved-pixel-png","opaque-default","geometry-only","quality-gated","snapshot-only","capture-snapshot","approved-roi-scenes","password-only-local-evidence"}};
+                var metadataPath = Path.Combine(root, "external-session.json");
+                if (policy.TransitionAfterRoiProfile != null)
+                {
+                    transitionInitialHelpers = windows.Windows.Where(window => window.Hwnd != target.WindowHandle &&
+                        !window.IsChild && !window.Visible && approvals.Any(grant => grant.Hwnd == window.Hwnd && !grant.Required)).ToArray();
+                    EvidenceFiles.AtomicJson(metadataPath,new{schemaVersion=2,product="operation-recorder-evidence-group",sessionId=id,target,appHash,policy,started,transitionInitialHelpers});
+                }
+                else EvidenceFiles.AtomicJson(metadataPath,new{schemaVersion=2,product="operation-recorder-evidence-group",sessionId=id,target,appHash,policy,started});
+                var capabilities = new[] {"wgc-required","window-groups","explicit-window-approval","approved-pixel-png","opaque-default","geometry-only","quality-gated","snapshot-only","capture-snapshot","approved-roi-scenes","password-only-local-evidence"};
+                if (policy.TransitionAfterRoiProfile != null && registry != null)
+                    capabilities = capabilities.Append("approved-window-transition").ToArray();
+                return Reply("started") with { WindowGraph = windows, Capabilities = capabilities };
             }
             if(id==Guid.Empty||id!=request.SessionId)return Reply("session-mismatch");
             if (snapshotRequest)
             {
-                if (stopped) return Reply("session-stopped");
+                if (stopped || transitionFinished) return Reply("session-stopped");
                 if (!IsSnapshotRequest(request)) return Reply("invalid-request");
                 var result = await SnapshotLease.RunAsync(() => CaptureSnapshot(request, deadline.Token), deadline.Token);
                 deadline.Token.ThrowIfCancellationRequested();
@@ -111,6 +140,21 @@ public sealed class GroupEvidenceSession : IDisposable
             }
             if(stopped)return Reply("session-stopped");
             if(!ValidState(request.ExpectedStateMetadata)||!ValidState(request.ActualStateMetadata))return Reply("invalid-metadata");
+            if (request.Method == "EndStep")
+            {
+                current = steps.Values.FirstOrDefault(step => request.StepToken != Guid.Empty && step.Token == request.StepToken);
+                if (current == null) return Reply("unknown-step");
+                if (current?.ExpectWindowTransition == true)
+                    return await EndTransitionAsync(current, request, Reply, transitionReserved, deadline.Token);
+            }
+            if (request.Method == "RecordFailure" && steps.GetValueOrDefault(request.StepId)?.ExpectWindowTransition == true)
+            {
+                current = steps[request.StepId];
+                return RecordTransitionFailure(current, request, Reply);
+            }
+            if (transitionFinished) return Reply("session-stopped");
+            if (request.ExpectWindowTransition && (policy.TransitionAfterRoiProfile == null || registry == null || request.Target != null ||
+                request.WindowApprovals != null)) return Reply("unsupported-policy");
             var observed=snapshot(target,policy.MaxWindows);
             if(request.Method=="ListWindows")return Reply("observed") with{WindowGraph=observed};
             if(request.Method=="ApproveWindows")
@@ -130,12 +174,14 @@ public sealed class GroupEvidenceSession : IDisposable
                 if(steps.TryGetValue(request.StepId,out var duplicate))return Reply("duplicate-step",duplicate);
                 if(steps.Count>=10000)return Reply("session-limit");
                 if(steps.Values.Any(s=>s.Status!="completed"||s.Outcome=="unknown"))return Reply("pending-step");
-                current=new(){StepId=request.StepId,Token=Guid.NewGuid(),Sequence=steps.Count+1,OperationName=request.OperationName,Expected=request.ExpectedStateMetadata};steps.Add(current.StepId,current);Save(current);
+                current=new(){StepId=request.StepId,Token=Guid.NewGuid(),Sequence=steps.Count+1,OperationName=request.OperationName,Expected=request.ExpectedStateMetadata,ExpectWindowTransition=request.ExpectWindowTransition};steps.Add(current.StepId,current);Save(current);
                 var result=await Capture(current,"before",request,observed,deadline.Token);
                 current.Before=CommitPath(current,"before");current.Status=result.Quality.RequirementsMet?"before-saved":"before-inadequate";Save(current);
                 var final=FinalizeFreshness(current,"before",request,result);
                 if(!ReferenceEquals(final,result)){result=final;current.Status="before-inadequate";Save(current);}
                 deadline.Token.ThrowIfCancellationRequested();
+                if (current.ExpectWindowTransition && current.Status == "before-saved")
+                    RegisterTransitionAttempt(current);
                 return Reply(current.Status,current,result.Quality,new[]{current.Before}) with{OperationAllowed=result.Quality.RequirementsMet,SavedAt=DateTimeOffset.UtcNow};
             }
             current=request.Method=="RecordFailure"?steps.GetValueOrDefault(request.StepId):steps.Values.FirstOrDefault(s=>s.Token==request.StepToken&&request.StepToken!=Guid.Empty);
@@ -168,7 +214,19 @@ public sealed class GroupEvidenceSession : IDisposable
         catch(OperationCanceledException){return Reply(cancellation.IsCancellationRequested?"caller-unavailable":"deadline-exceeded",current);}
         catch(EvidenceUnavailableException e){return Reply(e.Code,current);}
         catch{return Reply("save-unavailable",current);}
-        finally{if(entered)gate.Release();}
+        finally
+        {
+            try
+            {
+                if (reservedTransition != null)
+                {
+                    reservedTransition.Abandon();
+                    if (!entered) entered = gate.Wait(0);
+                    if (entered) SealAbandonedTransition(request.StepToken);
+                }
+            }
+            finally { if (entered) gate.Release(); }
+        }
     }
     static bool IsSnapshotRequest(EvidenceRequest request) => request.Target == null && request.OutputDirectory == null &&
         request.Policy == null && request.GroupPolicy == null && request.WindowApprovals == null &&
@@ -241,11 +299,14 @@ public sealed class GroupEvidenceSession : IDisposable
         }
     }
 
-    async Task<GroupEvidenceManifest> CaptureCore(CaptureWork work, Guid requestId, CancellationToken token, bool waitForWorkerCleanup)
+    async Task<GroupEvidenceManifest> CaptureCore(CaptureWork work, Guid requestId, CancellationToken token, bool waitForWorkerCleanup,
+        Func<EvidenceTarget,int,WindowGraphSnapshot> observe = null)
     {
         var graph = work.GroupPlan.Snapshot;
+        var capturePolicy = work.GroupPlan.Policy;
+        observe ??= snapshot;
         string path = work.Directory;
-        foreach(var a in policy.Approvals)
+        foreach(var a in capturePolicy.Approvals)
             if(!graph.Windows.Any(w=>w.Hwnd==a.Hwnd&&w.WindowId==a.WindowId&&w.Generation==a.Generation))throw new EvidenceUnavailableException("window-generation-mismatch");
         token.ThrowIfCancellationRequested();
         EvidenceFiles.AtomicJson(Path.Combine(path,"started.json"),new{schemaVersion=2,requestId,work.StepId,Token=work.StepToken,work.Phase});
@@ -257,10 +318,12 @@ public sealed class GroupEvidenceSession : IDisposable
         token.ThrowIfCancellationRequested();EvidenceFiles.Verify(work);
         var result=JsonSerializer.Deserialize<GroupEvidenceManifest>(File.ReadAllBytes(Path.Combine(path,"group.json")),EvidenceProtocol.Json);
         GroupEvidenceValidation.Verify(work,result);
-        var after=snapshot(target,policy.MaxWindows);
+        var after=observe(work.Target,capturePolicy.MaxWindows);
         bool changed = GroupEvidenceContract.Fingerprint(after)!=GroupEvidenceContract.Fingerprint(graph)||after.Truncated||
-            policy.Approvals.Any(a=>!after.Windows.Any(w=>w.Hwnd==a.Hwnd&&w.WindowId==a.WindowId&&w.Generation==a.Generation));
-        if (changed || policy.PasswordProfile != null && result.Quality.RequirementsMet && !PasswordProofMatches(work, result, after))
+            capturePolicy.Approvals.Any(a=>!after.Windows.Any(w=>w.Hwnd==a.Hwnd&&w.WindowId==a.WindowId&&w.Generation==a.Generation));
+        if (changed && work.GroupPlan.TransitionAfterTarget != null)
+            throw new EvidenceUnavailableException("transition-unconfirmed");
+        if (changed || capturePolicy.PasswordProfile != null && result.Quality.RequirementsMet && !PasswordProofMatches(work, result, after))
         {
             var rows=result.Windows.Select(row=>
             {
@@ -346,6 +409,12 @@ public sealed class GroupEvidenceSession : IDisposable
         string root=request.OutputDirectory;EvidenceFiles.RequireLocalUnlinkedPath(root);
         using var json=JsonDocument.Parse(ReadMetadata(Path.Combine(root,"external-session.json")));
         if(json.RootElement.GetProperty("product").GetString()!="operation-recorder-evidence-group"||json.RootElement.GetProperty("schemaVersion").GetInt32()!=2||json.RootElement.GetProperty("sessionId").GetGuid()!=request.SessionId)throw new EvidenceUnavailableException("session-mismatch");
+        var source = json.RootElement.GetProperty("target").Deserialize<EvidenceTarget>(EvidenceProtocol.Json);
+        var startTime = json.RootElement.GetProperty("started").GetDateTimeOffset();
+        string hash = json.RootElement.GetProperty("appHash").GetString();
+        var sessionPolicy = json.RootElement.GetProperty("policy").Deserialize<GroupEvidencePolicy>(EvidenceProtocol.Json);
+        var initialHelpers = json.RootElement.TryGetProperty("transitionInitialHelpers", out var helperData)
+            ? helperData.Deserialize<WindowObservation[]>(EvidenceProtocol.Json) : Array.Empty<WindowObservation>();
         var list=new List<EvidenceStepSummary>();string folder=Path.Combine(root,"steps");
         if(Directory.Exists(folder))
         {
@@ -362,13 +431,17 @@ public sealed class GroupEvidenceSession : IDisposable
             {
                 try
                 {
-                    string path=Path.Combine(dir,phase);EvidenceFiles.RequireLocalUnlinkedPath(path);
-                    var planFile=Path.Combine(path,"plan.json");EvidenceFiles.RequireLocalUnlinkedPath(planFile);
-                    var plan=JsonSerializer.Deserialize<GroupCapturePlan>(ReadMetadata(planFile),EvidenceProtocol.Json);
-                    if(plan.AppSha256!=json.RootElement.GetProperty("appHash").GetString())return false;
-                    var work=new CaptureWork(request.SessionId,step.StepId,step.Token,phase,json.RootElement.GetProperty("target").Deserialize<EvidenceTarget>(EvidenceProtocol.Json),new(),path,json.RootElement.GetProperty("started").GetDateTimeOffset(),request.DeadlineUtc,GroupPlan:plan);
-                    EvidenceFiles.Verify(work);
-                    GroupEvidenceValidation.Verify(work,JsonSerializer.Deserialize<GroupEvidenceManifest>(ReadMetadata(Path.Combine(path,"group.json")),EvidenceProtocol.Json));return true;
+                    var work = ReadWork(Path.Combine(dir, phase), request.SessionId, step, phase, source, startTime, request.DeadlineUtc);
+                    if (work.GroupPlan.AppSha256 != hash) return false;
+                    if (phase != "after" || !step.ExpectWindowTransition)
+                    {
+                        if (work.GroupPlan.TransitionAfterTarget != null) return false;
+                        ReadVerifiedManifest(work);
+                        return true;
+                    }
+                    if (step.Status != "completed" || step.Outcome != "success") return false;
+                    var before = ReadWork(Path.Combine(dir, "before"), request.SessionId, step, "before", source, startTime, request.DeadlineUtc);
+                    return VerifyTransitionHistory(before, work, ReadVerifiedManifest(work), source, sessionPolicy, hash, initialHelpers);
                 }
                 catch{return false;}
             }

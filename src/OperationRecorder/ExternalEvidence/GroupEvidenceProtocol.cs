@@ -10,8 +10,10 @@ public sealed record WindowApproval(long Hwnd, string Role, bool Required = true
 public sealed record GroupEvidencePolicy(WindowApproval[] Approvals = null, DisclosureProfile Disclosure = null,
     bool RequirePublicDiagnostic = true, int MaxWindows = 16, int MaxFrameAgeMs = 3000, int MaxGroupSkewMs = 2000, int MaxTotalPixels = 8388608,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RoiProfileSelection RoiProfile = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PasswordProfileSelection PasswordProfile = null);
-public sealed record GroupCapturePlan(WindowGraphSnapshot Snapshot, GroupEvidencePolicy Policy, string AppSha256);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PasswordProfileSelection PasswordProfile = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RoiProfileSelection TransitionAfterRoiProfile = null);
+public sealed record GroupCapturePlan(WindowGraphSnapshot Snapshot, GroupEvidencePolicy Policy, string AppSha256,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] EvidenceTarget TransitionAfterTarget = null);
 public sealed record GroupQuality(string CaptureStatus, string DisclosureStatus, string DiagnosticStatus, bool RequirementsMet,
     string[] Reasons, Guid[] MissingWindows);
 public sealed record WindowEvidence(WindowObservation Window, string Role, string CaptureMethod, long? SourceHwnd,
