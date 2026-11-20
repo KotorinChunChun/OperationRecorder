@@ -4,6 +4,8 @@
 
 ## 版別資料
 
+- [0.1.15 要求](history/v0.1.15/v0.1.15-req.md)・[計画と報告](history/v0.1.15/v0.1.15-imp.md)・[ケース一覧](history/v0.1.15/test-cases.json)：パスワード欄の読み取り診断で構造、ルート状態、構成変化を区別。
+
 - [0.1.14 要求](history/v0.1.14/v0.1.14-req.md)・[計画と報告](history/v0.1.14/v0.1.14-imp.md)・[ケース一覧](history/v0.1.14/test-cases.json)：無効な背後窓を伴うログイン画面の診断と設定候補。
 
 - [0.1.13 要求](history/v0.1.13/v0.1.13-req.md)・[計画と報告](history/v0.1.13/v0.1.13-imp.md)・[ケース一覧](history/v0.1.13/test-cases.json)：別ウィンドウへの工程引継ぎとパスワード欄の設定候補。

@@ -179,6 +179,13 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
             case "layout-enable-backdrop" when allowBackdrop && backdrop != null:
                 backdrop.Enabled = true;
                 return LayoutStatus();
+            case "layout-disable-managed" when allowBackdrop && backdrop != null:
+                backdrop.Enabled = false;
+                return LayoutStatus();
+            case "layout-disable-native" when allowBackdrop && backdrop != null:
+                backdrop.Enabled = true;
+                EnableWindow(backdrop.Handle, false);
+                return LayoutStatus();
             case "layout-extra-backdrop" when allowBackdrop && backdrop != null:
                 extraBackdrop ??= ShowBackdrop(backdrop.Location + new Size(10, 10));
                 return LayoutStatus();
@@ -187,7 +194,13 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
                 backdrop.Owner = hiddenOwner;
                 return LayoutStatus();
             case "layout-backdrop-password" when allowBackdrop && backdrop != null:
-                backdrop.AddPasswordControl();
+                backdrop.AddEditControl(masked: true);
+                return LayoutStatus();
+            case "layout-backdrop-disabled-edit" when allowBackdrop && backdrop != null:
+                backdrop.AddEditControl(masked: false);
+                return LayoutStatus();
+            case "layout-backdrop-deep" when allowBackdrop && backdrop != null:
+                backdrop.AddDeepStructure();
                 return LayoutStatus();
             case "layout-status" when allowBackdrop:
                 return LayoutStatus();
@@ -235,6 +248,8 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
             loginX = Left, loginY = Top,
             backgroundHwnd = backdrop?.Handle.ToInt64(), backgroundOwnerHwnd = backdrop == null ? 0 : GetWindow(backdrop.Handle, 4).ToInt64(),
             backgroundVisible = backdrop?.Visible, backgroundEnabled = backdrop == null ? null : (bool?)IsWindowEnabled(backdrop.Handle),
+            backgroundManagedEnabled = backdrop?.Enabled,
+            backgroundEditHwnd = backdrop?.EditHandle,
             extraHwnd = extraBackdrop?.Handle.ToInt64(), hiddenOwnerHwnd = hiddenOwner?.Handle.ToInt64()
         });
     }
@@ -305,7 +320,9 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
     sealed class BackdropWindow : Form
     {
         readonly Label label;
+        TextBox? edit;
         protected override bool ShowWithoutActivation => true;
+        public long? EditHandle => edit?.Handle.ToInt64();
 
         public BackdropWindow(Point location)
         {
@@ -334,15 +351,34 @@ internal sealed class PasswordEvidenceFixtureWindow : Form
 
         public void WidenLabel() => label.Width += 16;
 
-        public void AddPasswordControl() => Controls.Add(new TextBox
+        public void AddEditControl(bool masked)
         {
-            Name = "OPREC_FIXTURE_BACKDROP_PASSWORD_NAME",
-            Text = "OPREC_FIXTURE_BACKDROP_PASSWORD_VALUE",
-            UseSystemPasswordChar = true,
-            Enabled = false,
-            AutoSize = false,
-            Bounds = new Rectangle(164, 70, 220, 28)
-        });
+            edit = new TextBox
+            {
+                Name = "OPREC_FIXTURE_BACKDROP_PASSWORD_NAME",
+                Text = "OPREC_FIXTURE_BACKDROP_PASSWORD_VALUE",
+                UseSystemPasswordChar = masked,
+                Enabled = false,
+                AutoSize = false,
+                Bounds = new Rectangle(164, 70, 220, 28)
+            };
+            Controls.Add(edit);
+        }
+
+        public void AddDeepStructure()
+        {
+            Control parent = this;
+            for (int depth = 1; depth <= 18; depth++)
+            {
+                var child = new Panel
+                {
+                    AccessibleRole = AccessibleRole.Pane,
+                    Bounds = depth == 1 ? new Rectangle(24, 80, 110, 78) : new Rectangle(0, 0, 110, 78)
+                };
+                parent.Controls.Add(child);
+                parent = child;
+            }
+        }
     }
 
     sealed class TransitionWindow : Form

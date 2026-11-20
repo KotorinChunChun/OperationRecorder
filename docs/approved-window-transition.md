@@ -71,6 +71,28 @@ $candidate = ./scripts/Get-OperationEvidencePasswordLayoutCandidate.ps1 @layoutA
 
 同一PIDの確認済み構成が観測中も一致すれば `candidate-only` を返します。別の有効窓・第三の可視窓・別の所有元・別PID・認証用の背後画面・ウィンドウ構成の変化ではハッシュを発行せず、候補取得も拒否します。同じクラスでも、UI構造、DPI、2窓の相対位置が変われば確認済みハッシュは一致しません。窓構成ハッシュは候補取得専用です。マスク済み証拠の保存と操作許可は引き続き[パスワード欄の保護](password-only-local-evidence.md)の条件で判定します。
 
+#### 構成を確認できない場合の診断項目
+
+0.1.15以降、`-DiagnoseWindowLayout` は従来の `diagnostics.reason` に加えて、次の情報を返します。
+
+```powershell
+$layout.diagnostics |
+    Select-Object reason, failureRole, loginStructure, backgroundStructure, change |
+    ConvertTo-Json -Depth 6
+```
+
+| 項目 | 内容 |
+|---|---|
+| `failureRole` | 判定に失敗した窓を特定できた場合の `login` または `background` |
+| `loginStructure` / `backgroundStructure` | 固定の `code`、確認できたルートの `win32RootEnabled` と `uiaRootEnabled`、走査の `visitedElements` と `deepestDepth`、上限の `maxElements` と `maxDepth` |
+| `change` | 差があった `stage` と `kinds`。初回のグラフが不完全な場合も `first-snapshot` / `snapshot-truncated` を返す。この応答に審査用の構成ハッシュは付かない |
+
+有効状態だけが食い違ったときは `uia-root-enabled-mismatch` で、両方の観測値を確認できます。背後窓がWin32で無効、UIAで有効を返す場合でも、他の2窓の条件、完全なUIA構造、認証候補の不在を繰り返し確認できれば、診断は `review-required` と構成ハッシュを返します。この構成で候補を得るには、状態の食い違いを含む構成を審査し、そのハッシュを指定します。
+
+構造の `code` は、ルートの観測不能 `uia-root-unavailable`、HWND・型・表示状態の不一致 `uia-root-hwnd-mismatch`、`uia-root-control-type-mismatch`、`uia-root-offscreen`、矩形の不一致 `uia-bounds-invalid`、`uia-root-bounds-mismatch`、`uia-child-outside-window`、別PIDのノード `uia-process-mismatch`、上限 `uia-depth-limit`、`uia-element-limit`、UIA例外 `uia-exception`、構造ハッシュ不成立 `uia-structure-hash-unavailable`、画面外の認証要素 `uia-hidden-password`、可視のネイティブ子との照合不能 `uia-native-children-unproven`、構造成立 `ok` を区別します。ルートの深さは0で、要素に到達する前の深さは-1です。
+
+`window-layout-changed` の `stage` は、ネイティブ再確認 `native-recheck`、2回目のグラフ `confirmation-snapshot`、UIAと構造の再観測 `confirmation-observation`、最終グラフ `final-snapshot` を区別します。`kinds` は `graph-revision`、`window-set`、`native-root-enabled`、`uia-root-enabled`、`uia-structure`、`uia-traversal` 等の変化した項目だけを返します。`graph-revision` だけが返る場合は、構造や矩形は同じでも観測中にウィンドウイベントがあったことを示します。UIAの例外本文、窓タイトル、可変文字、パスワードの名前・値、画素は応答に入りません。
+
 試験は専用WinFormsで実施します。
 
 ```powershell

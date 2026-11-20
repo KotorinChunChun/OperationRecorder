@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Automation;
 using OperationRecorderApp.ExternalEvidence;
 using Xunit;
 
@@ -29,6 +30,41 @@ public sealed class PasswordLayoutBackdropDesktopTests
     };
     static readonly Rectangle StandardField = new(164, 74, 220, 28), CustomField = new(164, 122, 220, 28);
     static readonly Rectangle StandardLabel = new(20, 74, 140, 28), CustomLabel = new(20, 122, 140, 28);
+
+    [Fact, Trait("Category", "Desktop")]
+    public async Task 専用WinFormsの無効化方法ごとにWin32とUIAの有効状態を確認する()
+    {
+        if (Environment.GetEnvironmentVariable("OPREC_PASSIVE_WINDOW_TESTS") != "1" || !Environment.UserInteractive)
+            throw new InvalidOperationException("DESKTOP_BLOCKED: 専用fixture指定と対話デスクトップが必要です。");
+
+        await using var fixture = await Fixture.StartAsync();
+        var observations = new List<object>();
+        foreach (var ownership in new[] { "layout-owned", "layout-owning", "layout-unowned" })
+        {
+            await fixture.ChangeAsync(ownership);
+            foreach (var command in new[] { "layout-disable-managed", "layout-disable-native" })
+            {
+                var state = await fixture.ChangeAsync(command);
+                Assert.True(state.BackgroundVisible);
+                Assert.False(state.BackgroundEnabled);
+                var background = AutomationElement.FromHandle(new IntPtr(state.BackgroundHwnd.Value));
+                Assert.Equal(fixture.Target.Pid, background.Current.ProcessId);
+                bool uiaEnabled = background.Current.IsEnabled;
+                bool nativeOnly = command == "layout-disable-native";
+                Assert.Equal(nativeOnly, state.BackgroundManagedEnabled);
+                Assert.Equal(nativeOnly, uiaEnabled);
+                observations.Add(new { ownership, command, win32Enabled = state.BackgroundEnabled,
+                    uiaEnabled, managedEnabled = state.BackgroundManagedEnabled });
+            }
+        }
+
+        var artifacts = Environment.GetEnvironmentVariable("OPREC_RECORDING_ARTIFACTS");
+        if (artifacts != null)
+        {
+            Directory.CreateDirectory(artifacts);
+            WriteJson(Path.Combine(artifacts, "winforms-enabled-probe.json"), observations);
+        }
+    }
 
     [Fact, Trait("Category", "Desktop")]
     public async Task 可視で無効な背後窓はレビュー済みの構成だけで候補を取得する()
@@ -66,6 +102,7 @@ public sealed class PasswordLayoutBackdropDesktopTests
             };
             var digests = new HashSet<string>(StringComparer.Ordinal);
             string reviewedHash = null;
+            string managedOwnedHash = null;
             foreach (var (command, mode) in ownerships)
             {
                 var state = await fixture.ChangeAsync(command);
@@ -80,6 +117,7 @@ public sealed class PasswordLayoutBackdropDesktopTests
                 var diagnosis = await ReadAsync(mode + "-diagnostic", Diagnostic);
                 reviewedHash = VerifyReviewedLayout(diagnosis, fixture.Target, state, mode, dpi);
                 Assert.True(digests.Add(reviewedHash), "所有関係を変えると構成ハッシュも変わる必要があります。");
+                if (mode == "login-owned-by-background") managedOwnedHash = reviewedHash;
                 VerifyCandidate(await ReadAsync(mode + "-standard", hash: reviewedHash), fixture.Target, state, dpi, standard: true);
                 VerifyCandidate(await ReadAsync(mode + "-custom", hash: reviewedHash, field: "custom"), fixture.Target, state, dpi, standard: false);
             }
@@ -96,6 +134,46 @@ public sealed class PasswordLayoutBackdropDesktopTests
             await VerifyRejectedLayout("layout-extra-backdrop", "ambiguous-background", "ambiguous-window-layout", reset: true);
             await VerifyRejectedLayout("layout-hidden-owner", "unknown-owner", "unsupported-ownership", reset: true);
             await VerifyRejectedLayout("layout-backdrop-password", "background-with-password", "background-authentication-ui", reset: true);
+
+            await fixture.ChangeAsync("layout-unowned");
+            await fixture.ChangeAsync("layout-backdrop-deep");
+            var deep = VerifyDiagnostic(await ReadAsync("background-depth-diagnostic", Diagnostic), "background-structure-unproven");
+            var deepStructure = VerifyBackgroundFailure(deep, "uia-depth-limit", uiaEnabled: false);
+            Assert.Equal(17, deepStructure.GetProperty("deepestDepth").GetInt32());
+            Assert.InRange(deepStructure.GetProperty("visitedElements").GetInt32(), 17, 256);
+            VerifyStatusOnly(await ReadAsync("unproven-background-depth", hash: reviewedHash), Rejected);
+
+            await fixture.ChangeAsync("layout-owned");
+            var nativeDisabled = await fixture.ChangeAsync("layout-disable-native");
+            Assert.False(nativeDisabled.BackgroundEnabled);
+            Assert.True(nativeDisabled.BackgroundManagedEnabled);
+            VerifyStatusOnly(await ReadAsync("native-disabled-no-review"), Rejected);
+            var nativeDiagnosis = await ReadAsync("native-disabled-diagnostic", Diagnostic);
+            string nativeHash = VerifyReviewedLayout(nativeDiagnosis, fixture.Target, nativeDisabled, "login-owned-by-background", dpi);
+            var diagnostics = nativeDiagnosis.GetProperty("diagnostics");
+            Assert.False(diagnostics.TryGetProperty("failureRole", out _));
+            VerifyBackgroundStructure(diagnostics, "uia-root-enabled-mismatch", uiaEnabled: true);
+            Assert.DoesNotContain(nativeHash, digests);
+            VerifyStatusOnly(await ReadAsync("managed-hash-with-native-disable", hash: managedOwnedHash), Rejected);
+            VerifyCandidate(await ReadAsync("native-disabled-standard", hash: nativeHash), fixture.Target, nativeDisabled, dpi, standard: true);
+            VerifyCandidate(await ReadAsync("native-disabled-custom", hash: nativeHash, field: "custom"), fixture.Target, nativeDisabled, dpi, standard: false);
+
+            var withEdit = await fixture.ChangeAsync("layout-backdrop-disabled-edit");
+            var edit = AutomationElement.FromHandle(new IntPtr(withEdit.BackgroundEditHwnd.Value));
+            Assert.Equal(fixture.Target.Pid, edit.Current.ProcessId);
+            Assert.Equal(50004, edit.Current.ControlType.Id);
+            Assert.False(edit.Current.IsPassword);
+            Assert.False(edit.Current.IsEnabled);
+            var blockedEdit = VerifyDiagnostic(await ReadAsync("native-disabled-edit-diagnostic", Diagnostic), "background-authentication-ui");
+            VerifyBackgroundFailure(blockedEdit, "uia-root-enabled-mismatch", uiaEnabled: true);
+            VerifyStatusOnly(await ReadAsync("native-disabled-edit-blocked", hash: nativeHash), Rejected);
+
+            await fixture.ChangeAsync("layout-owned");
+            await fixture.ChangeAsync("layout-disable-native");
+            await fixture.ChangeAsync("layout-backdrop-deep");
+            var nativeDeep = VerifyDiagnostic(await ReadAsync("native-disabled-depth-diagnostic", Diagnostic), "background-structure-unproven");
+            Assert.Equal(17, VerifyBackgroundFailure(nativeDeep, "uia-depth-limit", uiaEnabled: true).GetProperty("deepestDepth").GetInt32());
+            VerifyStatusOnly(await ReadAsync("native-disabled-depth-blocked", hash: nativeHash), Rejected);
 
             await using (var foreign = await Fixture.StartAsync())
             {
@@ -185,6 +263,24 @@ public sealed class PasswordLayoutBackdropDesktopTests
         var diagnostic = reply.GetProperty("diagnostics");
         Assert.Equal(reason, diagnostic.GetProperty("reason").GetString());
         return diagnostic;
+    }
+
+    static JsonElement VerifyBackgroundFailure(JsonElement diagnostic, string code, bool uiaEnabled)
+    {
+        Assert.Equal(JsonValueKind.Null, diagnostic.GetProperty("layoutSha256").ValueKind);
+        Assert.Equal("background", diagnostic.GetProperty("failureRole").GetString());
+        return VerifyBackgroundStructure(diagnostic, code, uiaEnabled);
+    }
+
+    static JsonElement VerifyBackgroundStructure(JsonElement diagnostic, string code, bool uiaEnabled)
+    {
+        var structure = diagnostic.GetProperty("backgroundStructure");
+        Assert.Equal(code, structure.GetProperty("code").GetString());
+        Assert.False(structure.GetProperty("win32RootEnabled").GetBoolean());
+        Assert.Equal(uiaEnabled, structure.GetProperty("uiaRootEnabled").GetBoolean());
+        Assert.Equal(16, structure.GetProperty("maxDepth").GetInt32());
+        Assert.Equal(256, structure.GetProperty("maxElements").GetInt32());
+        return structure;
     }
 
     static void VerifyCandidate(JsonElement reply, EvidenceTarget target, LayoutState state, int dpi, bool standard)
@@ -360,7 +456,8 @@ public sealed class PasswordLayoutBackdropDesktopTests
     }
 
     sealed record LayoutState(long LoginHwnd, long LoginOwnerHwnd, bool LoginEnabled, int LoginX, int LoginY,
-        long? BackgroundHwnd, long BackgroundOwnerHwnd, bool? BackgroundVisible, bool? BackgroundEnabled, long? ExtraHwnd, long? HiddenOwnerHwnd);
+        long? BackgroundHwnd, long BackgroundOwnerHwnd, bool? BackgroundVisible, bool? BackgroundEnabled,
+        bool? BackgroundManagedEnabled, long? BackgroundEditHwnd, long? ExtraHwnd, long? HiddenOwnerHwnd);
 
     [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr window);
 }
