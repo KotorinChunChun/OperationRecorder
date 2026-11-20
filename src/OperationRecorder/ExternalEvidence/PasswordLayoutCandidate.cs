@@ -87,7 +87,7 @@ public static class PasswordLayoutCandidate
 
     static string Serialize(PasswordLayoutCandidateReply reply) => reply.Status switch
     {
-        CandidateOnly => JsonSerializer.Serialize(reply, EvidenceProtocol.Json),
+        CandidateOnly => JsonSerializer.Serialize(reply with { Diagnostics = null }, EvidenceProtocol.Json),
         DiagnosticOnly => JsonSerializer.Serialize(
             new { reply.Status, reply.Scope, reply.AppSha256, reply.AppFileVersion, reply.Diagnostics }, EvidenceProtocol.Json),
         _ => JsonSerializer.Serialize(new { status = reply.Status }, EvidenceProtocol.Json)
@@ -170,11 +170,13 @@ public static class PasswordLayoutCandidate
         PasswordLayoutCandidateReply Diagnostic(PasswordLayoutDiagnostics diagnostics) => request.DiagnoseWindowLayout
             ? new(DiagnosticOnly, scope, sha256, version, Diagnostics: diagnostics)
             : new(LayoutUnproven);
-        if (graph.Truncated) return Diagnostic(new("window-layout-unavailable"));
+        if (graph.Truncated)
+            return Diagnostic(new("window-layout-unavailable", Change: new("first-snapshot", new[] { "snapshot-truncated" })));
 
-        var first = PasswordLayoutBackdrop.ObserveStable(graph, () => registry.Snapshot(request.Target, 256),
-            observed => PasswordWindowObserver.ObserveBackdrop(request, observed, sha256, version, token));
-        if (first == null) return Diagnostic(new("window-layout-changed"));
+        var (first, change) = PasswordLayoutBackdrop.ObserveStable(graph, () => registry.Snapshot(request.Target, 256),
+            observed => PasswordWindowObserver.ObserveBackdrop(request, observed, sha256, version, token),
+            PasswordLayoutBackdrop.CompareObservations);
+        if (change != null) return Diagnostic(new("window-layout-changed", Change: change));
         token.ThrowIfCancellationRequested();
 
         if (first.Layout == null) return Diagnostic(first.Diagnostics);

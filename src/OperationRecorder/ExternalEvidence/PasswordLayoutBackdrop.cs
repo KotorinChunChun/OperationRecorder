@@ -11,7 +11,13 @@ internal sealed record PasswordLayoutWindow(long Hwnd, long OwnerHwnd, string Wi
     [property: JsonConverter(typeof(ApprovedRoiRectangleConverter))] Rectangle CaptureBounds, string UiSha256 = null);
 
 internal sealed record PasswordLayoutDiagnostics(string Reason, string Ownership = null, string LayoutSha256 = null,
-    PasswordLayoutWindow Login = null, PasswordLayoutWindow Background = null);
+    PasswordLayoutWindow Login = null, PasswordLayoutWindow Background = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PasswordLayoutStructureDiagnostic LoginStructure = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PasswordLayoutStructureDiagnostic BackgroundStructure = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string FailureRole = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PasswordLayoutChange Change = null);
+
+internal sealed record PasswordLayoutChange(string Stage, string[] Kinds);
 
 /// <summary>Checks the window set for the read-only layout candidate tool.</summary>
 internal static class PasswordLayoutBackdrop
@@ -44,14 +50,106 @@ internal static class PasswordLayoutBackdrop
         return loginOwner == 0 && backgroundOwner == 0 ? "unowned" : null;
     }
 
-    internal static T ObserveStable<T>(WindowGraphSnapshot graph, Func<WindowGraphSnapshot> snapshot,
-        Func<WindowGraphSnapshot, T> observe) where T : class
+    internal static (T Observation, PasswordLayoutChange Change) ObserveStable<T>(WindowGraphSnapshot graph,
+        Func<WindowGraphSnapshot> snapshot, Func<WindowGraphSnapshot, T> observe,
+        Func<T, T, (string Stage, string[] Kinds)?> compare) where T : class
     {
         var first = observe(graph);
         var next = snapshot();
-        return PasswordGroupEvidenceWorker.SameGroup(graph, next) &&
-            EqualityComparer<T>.Default.Equals(first, observe(next)) &&
-            PasswordGroupEvidenceWorker.SameGroup(graph, snapshot()) ? first : null;
+        if (!PasswordGroupEvidenceWorker.SameGroup(graph, next))
+            return (null, new("confirmation-snapshot", GraphDifferences(graph, next)));
+        if (compare(first, observe(next)) is { } difference)
+            return (null, new(difference.Stage, difference.Kinds));
+        var last = snapshot();
+        return PasswordGroupEvidenceWorker.SameGroup(graph, last)
+            ? (first, null) : (null, new("final-snapshot", GraphDifferences(graph, last)));
+    }
+
+    static string[] GraphDifferences(WindowGraphSnapshot first, WindowGraphSnapshot next)
+    {
+        var changes = new HashSet<string>(StringComparer.Ordinal);
+        if (next.Truncated) changes.Add("snapshot-truncated");
+        if (first.Revision != next.Revision) changes.Add("graph-revision");
+
+        var previousWindows = first.Windows.ToDictionary(window => window.Hwnd);
+        if (!previousWindows.Keys.ToHashSet().SetEquals(next.Windows.Select(window => window.Hwnd)))
+            changes.Add("window-set");
+        foreach (var window in next.Windows)
+        {
+            if (!previousWindows.TryGetValue(window.Hwnd, out var previous)) continue;
+            if (previous.WindowId != window.WindowId || previous.Generation != window.Generation || previous.Pid != window.Pid)
+                changes.Add("window-identity");
+            if (previous.ParentHwnd != window.ParentHwnd || previous.OwnerHwnd != window.OwnerHwnd ||
+                previous.IsChild != window.IsChild || previous.Relation != window.Relation) changes.Add("window-relationship");
+            if (previous.Visible != window.Visible || previous.Minimized != window.Minimized || previous.Cloaked != window.Cloaked)
+                changes.Add("window-visibility");
+            if (previous.Bounds != window.Bounds) changes.Add("window-geometry");
+            if (previous.Dpi != window.Dpi) changes.Add("window-dpi");
+        }
+        return changes.OrderBy(change => change, StringComparer.Ordinal).ToArray();
+    }
+
+    internal static (string Stage, string[] Kinds)? CompareObservations(PasswordWindowObserver.BackdropObservation first,
+        PasswordWindowObserver.BackdropObservation next)
+    {
+        var previous = first?.Diagnostics;
+        var current = next?.Diagnostics;
+        if ((previous?.Change ?? current?.Change) is { } nativeChange)
+            return (nativeChange.Stage, nativeChange.Kinds);
+        if (previous == null || current == null)
+            return ("confirmation-observation", new[] { "observation-result" });
+
+        // Keep the layout, binding and state checks that existed before diagnostic counters were added.
+        // A rejected layout needs a stable failure code before it can be reported as the cause.
+        bool sameFailure = previous.LayoutSha256 != null || (previous.FailureRole == current.FailureRole &&
+            SameStructureFailure(previous.LoginStructure, current.LoginStructure) &&
+            SameStructureFailure(previous.BackgroundStructure, current.BackgroundStructure));
+        if (previous.Reason == current.Reason && previous.Ownership == current.Ownership &&
+            previous.LayoutSha256 == current.LayoutSha256 && previous.Login == current.Login &&
+            previous.Background == current.Background && first.Layout == next.Layout && sameFailure)
+            return null;
+
+        var changes = ObservationDifferences(previous, current).ToList();
+        if (first.Layout != next.Layout) changes.Add("field-binding");
+        if (changes.Count == 0) changes.Add("observation-result");
+        return ("confirmation-observation", changes.OrderBy(change => change, StringComparer.Ordinal).ToArray());
+    }
+
+    static bool SameStructureFailure(PasswordLayoutStructureDiagnostic first, PasswordLayoutStructureDiagnostic next) =>
+        first?.Code == next?.Code && first?.UiaRootEnabled == next?.UiaRootEnabled;
+
+    internal static string[] ObservationDifferences(PasswordLayoutDiagnostics first, PasswordLayoutDiagnostics next)
+    {
+        if (first == null || next == null) return new[] { "observation-result" };
+        var changes = new HashSet<string>(StringComparer.Ordinal);
+        if (first.Reason != next.Reason || first.FailureRole != next.FailureRole) changes.Add("observation-result");
+        if (first.Ownership != next.Ownership) changes.Add("window-relationship");
+
+        void AddWindowDifferences(PasswordLayoutWindow previous, PasswordLayoutWindow current,
+            PasswordLayoutStructureDiagnostic previousStructure, PasswordLayoutStructureDiagnostic currentStructure)
+        {
+            if (previous == null || current == null)
+            {
+                if (previous != current) changes.Add("window-set");
+            }
+            else
+            {
+                if (previous.Hwnd != current.Hwnd || previous.WindowClass != current.WindowClass) changes.Add("window-identity");
+                if (previous.OwnerHwnd != current.OwnerHwnd) changes.Add("window-relationship");
+                if (previous.Visible != current.Visible) changes.Add("window-visibility");
+                if (previous.Enabled != current.Enabled) changes.Add("native-root-enabled");
+                if (previous.CaptureBounds != current.CaptureBounds) changes.Add("window-geometry");
+                if (previous.Dpi != current.Dpi) changes.Add("window-dpi");
+                if (previous.UiSha256 != current.UiSha256) changes.Add("uia-structure");
+            }
+            if (previousStructure?.UiaRootEnabled != currentStructure?.UiaRootEnabled) changes.Add("uia-root-enabled");
+            if (previousStructure?.Code != currentStructure?.Code || previousStructure?.VisitedElements != currentStructure?.VisitedElements ||
+                previousStructure?.DeepestDepth != currentStructure?.DeepestDepth) changes.Add("uia-traversal");
+        }
+
+        AddWindowDifferences(first.Login, next.Login, first.LoginStructure, next.LoginStructure);
+        AddWindowDifferences(first.Background, next.Background, first.BackgroundStructure, next.BackgroundStructure);
+        return changes.OrderBy(change => change, StringComparer.Ordinal).ToArray();
     }
 
     internal static string LayoutHash(string appSha256, string appFileVersion, string ownership,

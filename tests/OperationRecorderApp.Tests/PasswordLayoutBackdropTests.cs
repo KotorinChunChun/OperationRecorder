@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
 using OperationRecorderApp.ExternalEvidence;
 using Xunit;
 
@@ -72,27 +74,124 @@ public sealed class PasswordLayoutBackdropTests
     }
 
     [Theory]
-    [InlineData("stable", "disabled")]
-    [InlineData("revision-changed-before-confirmation", null)]
-    [InlineData("native-state-changed", null)]
-    [InlineData("graph-changed-after-confirmation", null)]
-    public void Collection_requires_the_same_observation_and_unchanged_graph(string scenario, string expected)
+    [InlineData("stable", null)]
+    [InlineData("revision-changed-before-confirmation", "confirmation-snapshot", "graph-revision")]
+    [InlineData("windows-changed-before-confirmation", "confirmation-snapshot", "window-dpi", "window-geometry", "window-identity",
+        "window-relationship", "window-set", "window-visibility")]
+    [InlineData("native-state-changed", "confirmation-observation", "native-root-enabled")]
+    [InlineData("graph-changed-after-confirmation", "final-snapshot", "snapshot-truncated")]
+    public void Collection_requires_the_same_observation_and_unchanged_graph(string scenario, string stage, params string[] kinds)
     {
-        var original = new WindowGraphSnapshot(1, false, new[] { Window(10, "root"), Window(20, "unowned") });
+        var login = Window(10, "root");
+        var behind = Window(20, "unowned");
+        var original = new WindowGraphSnapshot(1, false, new[] { login, behind });
         int snapshotCount = 0;
         int observationCount = 0;
         WindowGraphSnapshot Snapshot() => ++snapshotCount switch
         {
             1 when scenario == "revision-changed-before-confirmation" => original with { Revision = 2 },
+            1 when scenario == "windows-changed-before-confirmation" => original with
+            {
+                Windows = new[] { login with { Bounds = new Rectangle(8, 5, 300, 240), Dpi = 120, OwnerHwnd = 91 },
+                    behind with { Generation = 2, Visible = false }, Window(91, "unowned") }
+            },
             2 when scenario == "graph-changed-after-confirmation" => original with { Truncated = true },
             _ => original
         };
         string Observe(WindowGraphSnapshot graph) => ++observationCount == 2 && scenario == "native-state-changed"
             ? "enabled" : "disabled";
 
+        (string Stage, string[] Kinds)? Compare(string first, string next) => first == next ? null :
+            ("confirmation-observation", new[] { "native-root-enabled" });
         var method = Backdrop.GetMethod("ObserveStable", BindingFlags.NonPublic | BindingFlags.Static)
             .MakeGenericMethod(typeof(string));
-        Assert.Equal(expected, method.Invoke(null, new object[] { original, (Func<WindowGraphSnapshot>)Snapshot,
-            (Func<WindowGraphSnapshot, string>)Observe }));
+        var result = (ITuple)method.Invoke(null, new object[] { original, (Func<WindowGraphSnapshot>)Snapshot,
+            (Func<WindowGraphSnapshot, string>)Observe, (Func<string, string, (string, string[])?>)Compare });
+        if (stage == null)
+        {
+            Assert.Equal("disabled", result[0]);
+            Assert.Null(result[1]);
+            return;
+        }
+        Assert.Null(result[0]);
+        var difference = result[1];
+        Assert.NotNull(difference);
+        Assert.Equal(stage, difference.GetType().GetProperty("Stage").GetValue(difference));
+        Assert.Equal(kinds, (string[])difference.GetType().GetProperty("Kinds").GetValue(difference));
+    }
+
+    [Fact]
+    public void Confirmation_distinguishes_uia_root_state_and_structure_changes()
+    {
+        var observationType = typeof(PasswordWindowObserver).GetNestedType("BackdropObservation", BindingFlags.NonPublic);
+        object Observe(bool uiaEnabled, int visitedElements, string shape) => JsonSerializer.Deserialize(
+            JsonSerializer.Serialize(new
+            {
+                diagnostics = new
+                {
+                    reason = "background-structure-unproven",
+                    background = new { enabled = false, uiSha256 = shape },
+                    backgroundStructure = new { code = "uia-root-enabled-mismatch", uiaRootEnabled = uiaEnabled, visitedElements }
+                }
+            }, EvidenceProtocol.Json), observationType, EvidenceProtocol.Json);
+
+        var first = Observe(false, 5, Shape);
+        Assert.Null(Invoke("CompareObservations", first, Observe(false, 6, Shape)));
+        var difference = ((string Stage, string[] Kinds))Invoke("CompareObservations", first,
+            Observe(true, 6, new string('b', 64)));
+        Assert.Equal("confirmation-observation", difference.Stage);
+        Assert.Equal(new[] { "uia-root-enabled", "uia-structure", "uia-traversal" }, difference.Kinds);
+    }
+
+    [Fact]
+    public void Differing_failure_details_are_not_reported_as_a_stable_cause()
+    {
+        var observationType = typeof(PasswordWindowObserver).GetNestedType("BackdropObservation", BindingFlags.NonPublic);
+        object Observe(string code, bool? uiaRootEnabled) => JsonSerializer.Deserialize(
+            JsonSerializer.Serialize(new
+            {
+                diagnostics = new
+                {
+                    reason = "background-structure-unproven",
+                    failureRole = "background",
+                    backgroundStructure = new { code, uiaRootEnabled }
+                }
+            }, EvidenceProtocol.Json), observationType, EvidenceProtocol.Json);
+
+        var difference = ((string Stage, string[] Kinds))Invoke("CompareObservations", Observe("uia-root-unavailable", null),
+            Observe("uia-child-outside-window", false));
+        Assert.Equal("confirmation-observation", difference.Stage);
+        Assert.Equal(new[] { "uia-root-enabled", "uia-traversal" }, difference.Kinds);
+    }
+
+    [Theory]
+    [InlineData("candidate-only")]
+    [InlineData("layout-unproven")]
+    [InlineData("diagnostic-only")]
+    public void Added_diagnostic_details_are_only_serialized_for_diagnostics(string status)
+    {
+        var replyType = ApplicationAssembly.GetType("OperationRecorderApp.ExternalEvidence.PasswordLayoutCandidateReply", true);
+        var reply = JsonSerializer.Deserialize(JsonSerializer.Serialize(new
+        {
+            status,
+            diagnostics = new
+            {
+                reason = "window-layout-changed",
+                backgroundStructure = new { code = "uia-root-enabled-mismatch", win32RootEnabled = false, uiaRootEnabled = true },
+                change = new { stage = "confirmation-observation", kinds = new[] { "uia-root-enabled" } }
+            }
+        }, EvidenceProtocol.Json), replyType, EvidenceProtocol.Json);
+        string json = (string)typeof(PasswordLayoutCandidate).GetMethod("Serialize", BindingFlags.NonPublic | BindingFlags.Static)
+            .Invoke(null, new[] { reply });
+        using var response = JsonDocument.Parse(json);
+        Assert.Equal(status, response.RootElement.GetProperty("status").GetString());
+        Assert.Equal(status == "diagnostic-only", response.RootElement.TryGetProperty("diagnostics", out var diagnostics));
+        if (status == "diagnostic-only")
+        {
+            Assert.Equal("window-layout-changed", diagnostics.GetProperty("reason").GetString());
+            Assert.Equal(JsonValueKind.Null, diagnostics.GetProperty("layoutSha256").ValueKind);
+            Assert.Equal("confirmation-observation", diagnostics.GetProperty("change").GetProperty("stage").GetString());
+        }
+        if (status == "layout-unproven") Assert.Single(response.RootElement.EnumerateObject());
     }
 }

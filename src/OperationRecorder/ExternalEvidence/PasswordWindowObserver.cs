@@ -14,6 +14,9 @@ public sealed record PasswordFieldBinding(string FieldId, long FieldHwnd, long L
 public sealed record PasswordMaskEvidence(string SceneId, PasswordFieldBinding[] Fields);
 public sealed record PasswordWindowMatch(PasswordEvidenceScene Scene, EvidenceUi Ui, PasswordFieldBinding[] Fields);
 
+internal sealed record PasswordLayoutStructureDiagnostic(string Code, bool? Win32RootEnabled, bool? UiaRootEnabled,
+    int VisitedElements, int DeepestDepth, int MaxElements, int MaxDepth);
+
 /// <summary>Compares a pinned window against registered password-field rules without reading input values.</summary>
 public static class PasswordWindowObserver
 {
@@ -26,6 +29,27 @@ public static class PasswordWindowObserver
         PasswordLayoutCandidateField Field);
 
     internal sealed record BackdropObservation(PasswordLayoutDiagnostics Diagnostics, LayoutObservation Layout = null);
+
+    sealed class StructureTrace(bool win32RootEnabled, int maxElements, int maxDepth)
+    {
+        string failure;
+        internal int VisitedElements { get; set; }
+        internal int DeepestDepth { get; set; } = -1;
+        internal bool? UiaRootEnabled { get; set; }
+
+        internal bool Fail(string code)
+        {
+            failure = code;
+            return false;
+        }
+
+        internal PasswordLayoutStructureDiagnostic Describe(string structureHash)
+        {
+            string code = failure ?? (structureHash == null ? "uia-structure-hash-unavailable" :
+                UiaRootEnabled != win32RootEnabled ? "uia-root-enabled-mismatch" : "ok");
+            return new(code, win32RootEnabled, UiaRootEnabled, VisitedElements, DeepestDepth, maxElements, maxDepth);
+        }
+    }
 
     internal static LayoutObservation ObserveLayout(PasswordLayoutCandidateRequest request, WindowObservation window,
         WindowGraphSnapshot graph, CancellationToken token)
@@ -62,26 +86,46 @@ public static class PasswordWindowObserver
             if (topology.Reason != null) return new(topology);
 
             var publicStructurePolicy = new EvidencePolicy(MaxElements: MaximumElements, MaxDepth: MaximumDepth);
-            var loginElements = ReadBackdropStructure(target, login, background, publicStructurePolicy, token);
-            var backgroundElements = ReadBackdropStructure(target, background, login, publicStructurePolicy, token);
+            var loginTrace = request.DiagnoseWindowLayout ? new StructureTrace(topology.Login.Enabled, MaximumElements, MaximumDepth) : null;
+            var backgroundTrace = request.DiagnoseWindowLayout ? new StructureTrace(topology.Background.Enabled, MaximumElements, MaximumDepth) : null;
+            var loginElements = ReadBackdropStructure(target, login, background, publicStructurePolicy, token, loginTrace);
+            var backgroundElements = ReadBackdropStructure(target, background, login, publicStructurePolicy, token, backgroundTrace);
             string loginHash = StructureHash(loginElements);
             string backgroundHash = StructureHash(backgroundElements);
-            if (topology != ReadBackdropTopology(target, login, background, selectionReason))
-                return new(new("window-layout-changed"));
+            var afterStructure = ReadBackdropTopology(target, login, background, selectionReason);
+            if (topology != afterStructure) return NativeChange(request, topology, afterStructure);
 
             var observed = topology with
             {
                 Login = topology.Login with { UiSha256 = loginHash },
-                Background = topology.Background with { UiSha256 = backgroundHash }
+                Background = topology.Background with { UiSha256 = backgroundHash },
+                LoginStructure = loginTrace?.Describe(loginHash),
+                BackgroundStructure = backgroundTrace?.Describe(backgroundHash)
             };
             if (loginHash == null || !loginElements[0].Node.Enabled)
-                return new(observed with { Reason = "login-structure-unproven" });
-            if (backgroundHash == null || backgroundElements[0].Node.Enabled)
-                return new(observed with { Reason = "background-structure-unproven" });
-            if (!CoversBackdropChildren(graph, login, background, loginElements, backgroundElements))
-                return new(observed with { Reason = "window-layout-unavailable" });
-            if (HasBackgroundAuthentication(backgroundElements, background))
-                return new(observed with { Reason = "background-authentication-ui" });
+                return new(observed with { Reason = "login-structure-unproven",
+                    FailureRole = request.DiagnoseWindowLayout ? "login" : null });
+            if (backgroundHash == null)
+                return new(observed with { Reason = "background-structure-unproven",
+                    FailureRole = request.DiagnoseWindowLayout ? "background" : null });
+            if (!CoversBackdropChildren(graph, login, background, loginElements, backgroundElements, out var uncovered))
+                return new(observed with
+                {
+                    Reason = "window-layout-unavailable",
+                    FailureRole = request.DiagnoseWindowLayout ? uncovered : null,
+                    LoginStructure = uncovered == "background" || observed.LoginStructure == null ? observed.LoginStructure :
+                        observed.LoginStructure with { Code = "uia-native-children-unproven" },
+                    BackgroundStructure = uncovered == "login" || observed.BackgroundStructure == null ? observed.BackgroundStructure :
+                        observed.BackgroundStructure with { Code = "uia-native-children-unproven" }
+                });
+
+            // The known WinForms peer can report the managed Enabled state after native EnableWindow.
+            // Topology has required and rechecked Win32-disabled. Keep the actual UIA value in the
+            // structural hash and treat authentication-shaped controls as unproven even if the peer disables them.
+            bool backgroundEnabledMismatch = backgroundElements[0].Node.Enabled;
+            if (HasBackgroundAuthentication(backgroundElements, background, backgroundEnabledMismatch))
+                return new(observed with { Reason = "background-authentication-ui",
+                    FailureRole = request.DiagnoseWindowLayout ? "background" : null });
 
             string layoutSha256 = PasswordLayoutBackdrop.LayoutHash(appSha256, appFileVersion, observed.Ownership,
                 observed.Login, observed.Background);
@@ -90,11 +134,15 @@ public static class PasswordWindowObserver
                 return new(diagnostic);
 
             var layout = BindCandidateField(request, login, graph, loginElements, observed.Login.WindowClass, loginHash, token);
-            return topology == ReadBackdropTopology(target, login, background, selectionReason)
-                ? new(diagnostic, layout) : new(new("window-layout-changed"));
+            var afterField = ReadBackdropTopology(target, login, background, selectionReason);
+            return topology == afterField ? new(diagnostic, layout) : NativeChange(request, topology, afterField);
         }
         finally { N.SetThreadDpiAwarenessContext(previousDpi); }
     }
+
+    static BackdropObservation NativeChange(PasswordLayoutCandidateRequest request, PasswordLayoutDiagnostics first,
+        PasswordLayoutDiagnostics next) => new(new("window-layout-changed", Change: request.DiagnoseWindowLayout
+            ? new("native-recheck", PasswordLayoutBackdrop.ObservationDifferences(first, next)) : null));
 
     static PasswordLayoutDiagnostics ReadBackdropTopology(EvidenceTarget target, WindowObservation login,
         WindowObservation background, string selectionReason)
@@ -127,22 +175,26 @@ public static class PasswordWindowObserver
     }
 
     static List<ObservedElement> ReadBackdropStructure(EvidenceTarget target, WindowObservation window,
-        WindowObservation peer, EvidencePolicy policy, CancellationToken token)
+        WindowObservation peer, EvidencePolicy policy, CancellationToken token, StructureTrace trace)
     {
-        try { return ReadVisibleStructure(target, window, policy, token, peer.Hwnd); }
-        catch (OperationCanceledException) { throw; }
-        catch (COMException) { return null; }
-        catch (ElementNotAvailableException) { return null; }
-        catch (InvalidOperationException) { return null; }
-        catch (ArgumentException) { return null; }
+        try { return ReadVisibleStructure(target, window, policy, token, peer.Hwnd, trace); }
+        catch (Exception error) when (IsUiaObservationError(error))
+        {
+            trace?.Fail("uia-exception");
+            return null;
+        }
     }
+
+    static bool IsUiaObservationError(Exception error) =>
+        error is COMException or ElementNotAvailableException or InvalidOperationException or ArgumentException;
 
     static string StructureHash(List<ObservedElement> elements) => elements == null ? null :
         PasswordEvidenceGate.StructureSha256(new(elements.Select(element => element.Node).ToArray(), false));
 
     static bool CoversBackdropChildren(WindowGraphSnapshot graph, WindowObservation login, WindowObservation background,
-        List<ObservedElement> loginElements, List<ObservedElement> backgroundElements)
+        List<ObservedElement> loginElements, List<ObservedElement> backgroundElements, out string failureRole)
     {
+        failureRole = null;
         var loginHandles = loginElements.Select(element => element.Hwnd).ToHashSet();
         var backgroundHandles = backgroundElements.Select(element => element.Hwnd).ToHashSet();
         foreach (var child in graph.Windows.Where(window => window.IsChild && window.Visible))
@@ -152,13 +204,14 @@ public static class PasswordWindowObserver
             long root = N.GetAncestor(handle, N.GA_ROOT).ToInt64();
             if (root == login.Hwnd && loginHandles.Contains(child.Hwnd)) continue;
             if (root == background.Hwnd && backgroundHandles.Contains(child.Hwnd)) continue;
+            failureRole = root == login.Hwnd ? "login" : root == background.Hwnd ? "background" : null;
             return false;
         }
         return true;
     }
 
-    static bool HasBackgroundAuthentication(List<ObservedElement> elements, WindowObservation background) => elements.Any(element =>
-        element.Node.IsPassword || (element.Node.Enabled && (element.Node.ControlTypeId is 50004 or 50025 ||
+    static bool HasBackgroundAuthentication(List<ObservedElement> elements, WindowObservation background, bool enabledMismatch) => elements.Any(element =>
+        element.Node.IsPassword || ((enabledMismatch || element.Node.Enabled) && (element.Node.ControlTypeId is 50004 or 50025 ||
             element.Node.ControlTypeId == 50033 && NativePidMatches(new IntPtr(element.Hwnd), background.Pid) &&
             MatchesClass(ReadClass(new IntPtr(element.Hwnd)), "WindowsForms10.Window.") &&
             elements.Any(label => label.Node.ControlTypeId == UiaTextControl &&
@@ -325,7 +378,7 @@ public static class PasswordWindowObserver
         MatchesClass(rootClass, scene.WindowClassPrefix);
 
     static List<ObservedElement> ReadVisibleStructure(EvidenceTarget target, WindowObservation window,
-        EvidencePolicy policy, CancellationToken token, long excludedPeer = 0)
+        EvidencePolicy policy, CancellationToken token, long excludedPeer = 0, StructureTrace trace = null)
     {
         int count = 0;
         int elementLimit = Math.Clamp(policy.MaxElements, 1, MaximumElements);
@@ -336,35 +389,43 @@ public static class PasswordWindowObserver
         bool Visit(AutomationElement element, int depth)
         {
             token.ThrowIfCancellationRequested();
-            if (depth > depthLimit || ++count > elementLimit) return false;
+            if (trace != null) trace.DeepestDepth = Math.Max(trace.DeepestDepth, depth);
+            if (depth > depthLimit) return trace?.Fail("uia-depth-limit") ?? false;
+            if (++count > elementLimit) return trace?.Fail("uia-element-limit") ?? false;
+            if (trace != null) trace.VisitedElements = count;
 
             var current = element.Current;
             // A separate observation covers the native top-level peer when UIA exposes it under this window.
             if (depth > 0 && excludedPeer != 0 && unchecked((uint)current.NativeWindowHandle) == excludedPeer)
-                return current.ProcessId == target.Pid;
+                return current.ProcessId == target.Pid || (trace?.Fail("uia-process-mismatch") ?? false);
             bool password = current.IsPassword;
-            if (current.ProcessId != target.Pid) return false;
+            if (current.ProcessId != target.Pid) return trace?.Fail("uia-process-mismatch") ?? false;
             bool offscreen = current.IsOffscreen;
             if (offscreen)
             {
                 // Hidden password reports cannot establish that the credential stays inside the approved mask.
-                if (password || depth == 0) return false;
+                if (depth == 0) return trace?.Fail("uia-root-offscreen") ?? false;
+                if (password) return trace?.Fail("uia-hidden-password") ?? false;
             }
             else
             {
-                if (!TryRectangle(current.BoundingRectangle, out var bounds)) return false;
+                if (!TryRectangle(current.BoundingRectangle, out var bounds)) return trace?.Fail("uia-bounds-invalid") ?? false;
                 int type = current.ControlType?.Id ?? 0;
                 long handle = unchecked((uint)current.NativeWindowHandle);
                 if (depth == 0)
                 {
-                    if (handle != window.Hwnd || type != UiaWindowControl || !bounds.Contains(window.Bounds)) return false;
+                    if (handle != window.Hwnd) return trace?.Fail("uia-root-hwnd-mismatch") ?? false;
+                    if (type != UiaWindowControl) return trace?.Fail("uia-root-control-type-mismatch") ?? false;
+                    if (!bounds.Contains(window.Bounds)) return trace?.Fail("uia-root-bounds-mismatch") ?? false;
                     bounds = window.Bounds;
                 }
-                else if (!window.Bounds.Contains(bounds)) return false;
+                else if (!window.Bounds.Contains(bounds)) return trace?.Fail("uia-child-outside-window") ?? false;
 
                 var relative = RelativeTo(bounds, window.Bounds);
+                bool enabled = current.IsEnabled;
+                if (depth == 0 && trace != null) trace.UiaRootEnabled = enabled;
                 observed.Add(new(element, handle, bounds,
-                    new(type, relative.X, relative.Y, relative.Width, relative.Height, password, current.IsEnabled)));
+                    new(type, relative.X, relative.Y, relative.Width, relative.Height, password, enabled)));
             }
 
             for (var child = walker.GetFirstChild(element); child != null; child = walker.GetNextSibling(child))
@@ -372,8 +433,16 @@ public static class PasswordWindowObserver
             return true;
         }
 
-        var root = AutomationElement.FromHandle(new IntPtr(window.Hwnd));
-        return root != null && Visit(root, 0) ? observed : null;
+        AutomationElement root;
+        try { root = AutomationElement.FromHandle(new IntPtr(window.Hwnd)); }
+        catch (Exception error) when (trace != null && IsUiaObservationError(error))
+        {
+            trace.Fail("uia-root-unavailable");
+            return null;
+        }
+        if (root != null) return Visit(root, 0) ? observed : null;
+        trace?.Fail("uia-root-unavailable");
+        return null;
     }
 
     static PasswordFieldBinding[] BindFields(PasswordEvidenceScene scene, EvidenceTarget target, WindowObservation root,
