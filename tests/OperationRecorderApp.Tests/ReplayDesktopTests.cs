@@ -15,6 +15,8 @@ namespace OperationRecorderApp.Tests;
 [Trait("Category", "Desktop")]
 public class ReplayDesktopTests
 {
+    const string CliStopShortcut = "Ctrl+Alt+Shift+F24";
+
     [Fact]
     public async Task 実記録からの再生は同じ要素と前後画像を確認してクリックする()
     {
@@ -128,7 +130,7 @@ public class ReplayDesktopTests
     {
         using var test = new RecordingDesktopTests.DesktopCase("replay-exe-" + trigger);
         using var scope = new AutomationScope(); var config = ForFixture(test);
-        config.StopKey = "Ctrl+Alt+Shift+F24"; config.MaxRuns = runs; config.TriggerTimeoutMs = 5000;
+        config.StopKey = CliStopShortcut; config.MaxRuns = runs; config.TriggerTimeoutMs = 5000;
         config.Triggers = new() { new() { Type = trigger, Target = "app", IntervalSeconds = 1 } };
         string file = scope.Workspace.Resolve("plan.json"); config.Save(file);
         var executed = scope.Process("--replay", "watch", "--config", file, "--logs", Path.Combine(test.Root, "cli-logs"));
@@ -142,7 +144,7 @@ public class ReplayDesktopTests
     public async Task ps1から実行しても状態表示をエラー扱いせずクリックを完了する()
     {
         using var test = new RecordingDesktopTests.DesktopCase("replay-ps1-run");
-        using var scope = new AutomationScope(); var config = ForFixture(test); config.StopKey = "Ctrl+Alt+Shift+F24";
+        using var scope = new AutomationScope(); var config = ForFixture(test); config.StopKey = CliStopShortcut;
         string file = scope.Workspace.Resolve("plan.json"); config.Save(file);
         var start = new ProcessStartInfo("pwsh") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
         foreach (var arg in new[] { "-NoProfile", "-File", Path.Combine(AppContext.BaseDirectory, "scripts", "Invoke-OperationReplay.ps1"),

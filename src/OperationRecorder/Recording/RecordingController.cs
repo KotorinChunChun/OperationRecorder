@@ -97,6 +97,8 @@ namespace OperationRecorderApp
         public void RequestRestart() { if (!disposed && State == RecState.Recording) activeSession.RequestRestart(); }
         public void RequestStop() { if (!disposed && State == RecState.Recording) activeSession.RequestStop(); }
 
+        internal string LiveTranscriptionText => (activeSession as NativeRecordingSession)?.LiveText;
+
         void OnTick(object sender, EventArgs e) => Poll();
 
         // CLI試験ではタイマーを止め、同じ状態遷移を明示的に進められる。
@@ -270,6 +272,7 @@ namespace OperationRecorderApp
                 var native = session as NativeRecordingSession;
                 try
                 {
+                    if (!save) native?.DiscardTranscript();
                     session.Stop(); stopped = true;
                     if (!save)
                     {
@@ -314,7 +317,11 @@ namespace OperationRecorderApp
         {
             if (disposed) return;
             disposed = true; generation++; timer.Stop(); timer.Dispose();
-            if (activeSession != null) { try { activeSession.Stop(); } catch { } }
+            if (activeSession != null)
+            {
+                try { (activeSession as NativeRecordingSession)?.DiscardTranscript(); activeSession.Stop(); }
+                catch { }
+            }
             activeSession = null; Current = null; State = RecState.Idle;
             DisableStartHotkey();
         }

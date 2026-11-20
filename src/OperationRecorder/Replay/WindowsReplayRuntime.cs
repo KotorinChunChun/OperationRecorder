@@ -144,6 +144,12 @@ public sealed class WindowsReplayRuntime : IReplayRuntime
         Send(match, c.Targets[step.Target], Move(point));
         uint down = step.Kind == "rightclick" || step.Kind == "rightdrag" ? 8u : step.Kind == "middleclick" ? 32u : 2u;
         if (step.Kind == "wheel") { Send(match, c.Targets[step.Target], Mouse(0x800, unchecked((uint)(step.WheelNotches * 120)))); return; }
+        if (step.Kind is "mouseback" or "mouseforward")
+        {
+            uint button = step.Kind == "mouseback" ? 1u : 2u;
+            Send(match, c.Targets[step.Target], Mouse(0x80, button), Mouse(0x100, button));
+            return;
+        }
         if (step.Kind == "drag" || step.Kind == "rightdrag")
         {
             Point end = ReplayGeometry.Position(match.Bounds, step.EndX, step.EndY); VerifyPoint(match, end);

@@ -4,8 +4,8 @@
   "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
   "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
   "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
-  "methodCount": 454,
-  "expandedCaseCount": 749,
+  "methodCount": 468,
+  "expandedCaseCount": 772,
   "additionalSuites": [
     {
       "id": "html-browser",
@@ -88,9 +88,9 @@
     },
     {
       "id": "F-OVERLAY",
-      "title": "オーバーレイの直近手順・ボタン・逃避計算",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
-      "caseCount": 8,
+      "title": "オーバーレイの直近手順・ボタン・近接透過",
+      "boundary": "実コントロールと透過状態遷移、全DPIでの外観は判定しない",
+      "caseCount": 4,
       "status": "automated"
     },
     {
@@ -98,6 +98,20 @@
       "title": "記録の開始・取消・取り直し・保存と失敗処理",
       "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
       "caseCount": 17,
+      "status": "automated"
+    },
+    {
+      "id": "F-TRANSCRIPTION",
+      "title": "文字起こし方式、鍵保管、音声送信と時刻",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "caseCount": 14,
+      "status": "automated"
+    },
+    {
+      "id": "F-SKILL-DRAFT",
+      "title": "根拠付き手順案、送信内容の確認、スキル出力",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "caseCount": 4,
       "status": "automated"
     },
     {
@@ -599,6 +613,21 @@
       ]
     },
     {
+      "id": "TEST-CD6C054A5EC7",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.クリックの丸を個別に保存して読み直せる",
+      "title": "クリックの丸を個別に保存して読み直せる",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.クリックの丸を個別に保存して読み直せる"
+      ]
+    },
+    {
       "id": "TEST-AFD258099EC2",
       "fullName": "OperationRecorderApp.Tests.AppSettingsTests.以前のテンプレートはuserに読み替える",
       "title": "以前のテンプレートはuserに読み替える",
@@ -702,21 +731,6 @@
       "displayNames": [
         "OperationRecorderApp.Tests.AppSettingsTests.操作前だけの選択は設定の再読込でも保持する(version: 0)",
         "OperationRecorderApp.Tests.AppSettingsTests.操作前だけの選択は設定の再読込でも保持する(version: 5)"
-      ]
-    },
-    {
-      "id": "TEST-F0F2A9E3DB88",
-      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.逃げる設定を保存して読み直せる",
-      "title": "逃げる設定を保存して読み直せる",
-      "featureIds": [
-        "F-SETTINGS"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "専用設定JSON、通常設定は変更しない",
-      "displayNames": [
-        "OperationRecorderApp.Tests.AppSettingsTests.逃げる設定を保存して読み直せる"
       ]
     },
     {
@@ -4388,108 +4402,48 @@
       ]
     },
     {
-      "id": "TEST-872EF3DA173C",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.デスクトップとタスクバーからは逃げない",
-      "title": "デスクトップとタスクバーからは逃げない",
+      "id": "TEST-07B8D1979323",
+      "fullName": "OperationRecorderApp.Tests.OverlayProximityTests.修飾キーを離しても離れるまで操作できる",
+      "title": "修飾キーを離しても離れるまで操作できる",
       "featureIds": [
         "F-OVERLAY"
       ],
       "layer": "unit",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "boundary": "実コントロールと透過状態遷移、全DPIでの外観は判定しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.デスクトップとタスクバーからは逃げない"
+        "OperationRecorderApp.Tests.OverlayProximityTests.修飾キーを離しても離れるまで操作できる"
       ]
     },
     {
-      "id": "TEST-106D164B0750",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.どこも重なるなら今より重なりが減るときだけ動く",
-      "title": "どこも重なるなら今より重なりが減るときだけ動く",
+      "id": "TEST-64C222C59526",
+      "fullName": "OperationRecorderApp.Tests.OverlayProximityTests.新しい記録では修飾キーによる解除を持ち越さない",
+      "title": "新しい記録では修飾キーによる解除を持ち越さない",
       "featureIds": [
         "F-OVERLAY"
       ],
       "layer": "unit",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "boundary": "実コントロールと透過状態遷移、全DPIでの外観は判定しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.どこも重なるなら今より重なりが減るときだけ動く"
+        "OperationRecorderApp.Tests.OverlayProximityTests.新しい記録では修飾キーによる解除を持ち越さない"
       ]
     },
     {
-      "id": "TEST-6CE639BA7CAF",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.重なっていなければ動かない",
-      "title": "重なっていなければ動かない",
+      "id": "TEST-442B5ADC7611",
+      "fullName": "OperationRecorderApp.Tests.OverlayProximityTests.百ピクセルまで近づくと透過する",
+      "title": "百ピクセルまで近づくと透過する",
       "featureIds": [
         "F-OVERLAY"
       ],
       "layer": "unit",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "boundary": "実コントロールと透過状態遷移、全DPIでの外観は判定しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.重なっていなければ動かない"
-      ]
-    },
-    {
-      "id": "TEST-EDD58CB1BBCE",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.重ならない隅のうち近いところへ動く",
-      "title": "重ならない隅のうち近いところへ動く",
-      "featureIds": [
-        "F-OVERLAY"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
-      "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.重ならない隅のうち近いところへ動く"
-      ]
-    },
-    {
-      "id": "TEST-061235769AFE",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.全画面のウィンドウなら別のディスプレイへ",
-      "title": "全画面のウィンドウなら別のディスプレイへ",
-      "featureIds": [
-        "F-OVERLAY"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
-      "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.全画面のウィンドウなら別のディスプレイへ"
-      ]
-    },
-    {
-      "id": "TEST-8C0B8EFEA63D",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.逃げる設定がオフなら調べない",
-      "title": "逃げる設定がオフなら調べない",
-      "featureIds": [
-        "F-OVERLAY"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
-      "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.逃げる設定がオフなら調べない"
-      ]
-    },
-    {
-      "id": "TEST-F4E4EECC5F12",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.動かした直後とオーバーレイの上では調べない",
-      "title": "動かした直後とオーバーレイの上では調べない",
-      "featureIds": [
-        "F-OVERLAY"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
-      "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.動かした直後とオーバーレイの上では調べない"
+        "OperationRecorderApp.Tests.OverlayProximityTests.百ピクセルまで近づくと透過する"
       ]
     },
     {
@@ -5089,6 +5043,8 @@
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"letter\", kind: \"key\")",
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"manual\", kind: \"capture\")",
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"middleclick\", kind: \"middleclick\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"mouseback\", kind: \"mouseback\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"mouseforward\", kind: \"mouseforward\")",
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"rightclick\", kind: \"rightclick\")",
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"rightdrag\", kind: \"rightdrag\")",
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"special\", kind: \"key\")",
@@ -6145,6 +6101,66 @@
       ]
     },
     {
+      "id": "TEST-9D692F92628E",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.拡大縮小した表示でマスクの座標を元画像へ変換する",
+      "title": "拡大縮小した表示でマスクの座標を元画像へ変換する",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.拡大縮小した表示でマスクの座標を元画像へ変換する"
+      ]
+    },
+    {
+      "id": "TEST-FF506071639F",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.古い記録の画像が無くても文章だけを分析に選べる",
+      "title": "古い記録の画像が無くても文章だけを分析に選べる",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.古い記録の画像が無くても文章だけを分析に選べる"
+      ]
+    },
+    {
+      "id": "TEST-63B2D28ABABF",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.承認済みの文章とマスク画像だけ送信し編集案からスキルと手順書を作成する",
+      "title": "承認済みの文章とマスク画像だけ送信し編集案からスキルと手順書を作成する",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.承認済みの文章とマスク画像だけ送信し編集案からスキルと手順書を作成する"
+      ]
+    },
+    {
+      "id": "TEST-CB9ECCBC466A",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.送信対象にない操作を根拠とする応答を拒否する",
+      "title": "送信対象にない操作を根拠とする応答を拒否する",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.送信対象にない操作を根拠とする応答を拒否する"
+      ]
+    },
+    {
       "id": "TEST-FAA1776B011A",
       "fullName": "OperationRecorderApp.Tests.SnapshotDesktopTests.別ツールで親子窓と確認ダイアログを取得しても通常記録が続く",
       "title": "別ツールで親子窓と確認ダイアログを取得しても通常記録が続く",
@@ -6512,6 +6528,223 @@
       ]
     },
     {
+      "id": "TEST-3158C7959543",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.APIの失敗にキーや応答本文を含めない",
+      "title": "APIの失敗にキーや応答本文を含めない",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.APIの失敗にキーや応答本文を含めない"
+      ]
+    },
+    {
+      "id": "TEST-6394BAA79BDB",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.exeでキー未登録なら既存の文字起こしを残す",
+      "title": "exeでキー未登録なら既存の文字起こしを残す",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.exeでキー未登録なら既存の文字起こしを残す"
+      ]
+    },
+    {
+      "id": "TEST-12894545FA78",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.Geminiの音声と構造化出力を指定し時刻を読む",
+      "title": "Geminiの音声と構造化出力を指定し時刻を読む",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.Geminiの音声と構造化出力を指定し時刻を読む"
+      ]
+    },
+    {
+      "id": "TEST-8CBEFB3CCA84",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.OpenAIに時刻付きGPT形式を指定する",
+      "title": "OpenAIに時刻付きGPT形式を指定する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.OpenAIに時刻付きGPT形式を指定する"
+      ]
+    },
+    {
+      "id": "TEST-EBB78906BFC6",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない",
+      "title": "TranscriptionServerが未準備かモデルが使えない場合は音声を送らない",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 2, ready: True, accepting: True, message: \"protocolVersion\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 3, ready: False, accepting: True, message: \"受付できません\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 3, ready: True, accepting: False, message: \"受付できません\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 3, ready: True, accepting: True, message: \"指定したモデル\")"
+      ]
+    },
+    {
+      "id": "TEST-549B74285098",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する",
+      "title": "TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する(mode: \"bearer\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する(mode: \"lan\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する(mode: \"local\")"
+      ]
+    },
+    {
+      "id": "TEST-896B1FB4F363",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.キーを暗号化してサービスと接続先ごとに保管する",
+      "title": "キーを暗号化してサービスと接続先ごとに保管する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.キーを暗号化してサービスと接続先ごとに保管する"
+      ]
+    },
+    {
+      "id": "TEST-6E7A0CC61921",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.モデル削除は管理用フォルダーの読み取り専用ファイルだけを削除する",
+      "title": "モデル削除は管理用フォルダーの読み取り専用ファイルだけを削除する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.モデル削除は管理用フォルダーの読み取り専用ファイルだけを削除する"
+      ]
+    },
+    {
+      "id": "TEST-EB48EDC6A312",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する",
+      "title": "暗号化されない外部接続と資格情報付きURLを拒否する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する(address: \"http://asr.example.test/v1\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する(address: \"https://asr.example.test/?key=secret\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する(address: \"https://name:password@asr.example.test/\")"
+      ]
+    },
+    {
+      "id": "TEST-1D2285A779B8",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.旧Haas設定を引き継ぎWhisperの設定と別々に保存する",
+      "title": "旧Haas設定を引き継ぎWhisperの設定と別々に保存する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.旧Haas設定を引き継ぎWhisperの設定と別々に保存する"
+      ]
+    },
+    {
+      "id": "TEST-4C260591D749",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.互換サーバーのモデルを省略し分割後の時刻を戻す",
+      "title": "互換サーバーのモデルを省略し分割後の時刻を戻す",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.互換サーバーのモデルを省略し分割後の時刻を戻す"
+      ]
+    },
+    {
+      "id": "TEST-F510129A8D0E",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.本文再生成は選択した手順の範囲だけを読み取る",
+      "title": "本文再生成は選択した手順の範囲だけを読み取る",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.本文再生成は選択した手順の範囲だけを読み取る"
+      ]
+    },
+    {
+      "id": "TEST-16A849DBC59A",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.録音だけを選べて既存のWhisper設定は引き継ぐ",
+      "title": "録音だけを選べて既存のWhisper設定は引き継ぐ",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.録音だけを選べて既存のWhisper設定は引き継ぐ"
+      ]
+    },
+    {
+      "id": "TEST-C18FFB9AF898",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.録音中に先行区間を処理し停止時に最後の区間を一度だけ保存する",
+      "title": "録音中に先行区間を処理し停止時に最後の区間を一度だけ保存する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.録音中に先行区間を処理し停止時に最後の区間を一度だけ保存する"
+      ]
+    },
+    {
       "id": "TEST-57081998C022",
       "fullName": "OperationRecorderApp.Tests.UiTextsTests.オーバーレイに使えるキーの一覧を出す",
       "title": "オーバーレイに使えるキーの一覧を出す",
@@ -6557,18 +6790,18 @@
       ]
     },
     {
-      "id": "TEST-9C9697EDA866",
-      "fullName": "OperationRecorderApp.Tests.UiWiringTests.オーバーレイの状態ボタン直近十手取消消去と逃避無効を非表示で検証する",
-      "title": "オーバーレイの状態ボタン直近十手取消消去と逃避無効を非表示で検証する",
+      "id": "TEST-D10500B709D8",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.オーバーレイのボタンにキーを表示し直近十手と非表示を確認する",
+      "title": "オーバーレイのボタンにキーを表示し直近十手と非表示を確認する",
       "featureIds": [
         "F-OVERLAY"
       ],
       "layer": "sta",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "boundary": "実コントロールと透過状態遷移、全DPIでの外観は判定しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.UiWiringTests.オーバーレイの状態ボタン直近十手取消消去と逃避無効を非表示で検証する"
+        "OperationRecorderApp.Tests.UiWiringTests.オーバーレイのボタンにキーを表示し直近十手と非表示を確認する"
       ]
     },
     {

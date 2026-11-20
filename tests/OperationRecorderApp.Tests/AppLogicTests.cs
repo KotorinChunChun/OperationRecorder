@@ -14,7 +14,7 @@ namespace OperationRecorderApp.Tests
         public void 設定が無ければ既定値()
         {
             var s = AppSettings.FromJson(null);
-            Assert.True(s.OverlayFlee);
+            Assert.True(s.ShowClickRipple);
             Assert.True(s.OpenHtmlAfterSave);   // 保存したら HTML を開く
             Assert.False(s.Rule(CaptureRules.MouseWheel).Record);
             Assert.Equal(new[] { "user" }, s.Templates);
@@ -120,76 +120,50 @@ namespace OperationRecorderApp.Tests
             Assert.True(s.OpensMd);
         }
         [Fact]
-        public void 逃げる設定を保存して読み直せる()
+        public void クリックの丸を個別に保存して読み直せる()
         {
             var s = AppSettings.FromJson(null);
-            s.OverlayFlee = false;
-            Assert.False(AppSettings.FromJson(s.ToJson()).OverlayFlee);
+            s.ShowClickRipple = false;
+            Assert.False(AppSettings.FromJson(s.ToJson()).ShowClickRipple);
         }
     }
 
-    // オーバーレイがポインタのあるウィンドウから逃げるときの行き先
-    public class OverlayPlacementTests
+    public class OverlayProximityTests
     {
-        static readonly Rectangle Screen1 = new Rectangle(0, 0, 1920, 1040);   // 作業領域(タスクバーを除く)
-        static readonly Size Overlay = new Size(360, 260);
-
-        static Rectangle At(Point p) => new Rectangle(p, Overlay);
+        static readonly Rectangle Bounds = new Rectangle(300, 200, 490, 370);
 
         [Fact]
-        public void 逃げる設定がオフなら調べない()
+        public void 百ピクセルまで近づくと透過する()
         {
-            Assert.False(OverlayPlacement.ShouldCheck(false, 10, At(new Point(0, 0)), new Point(1000, 500)));
-            Assert.True(OverlayPlacement.ShouldCheck(true, 10, At(new Point(0, 0)), new Point(1000, 500)));
+            var proximity = new OverlayProximity();
+            Assert.False(proximity.IsTransparent(Bounds, new Point(199, 350), false));
+            Assert.True(proximity.IsTransparent(Bounds, new Point(200, 350), false));
+            Assert.True(proximity.IsTransparent(Bounds, new Point(390, 350), false));
         }
 
         [Fact]
-        public void 動かした直後とオーバーレイの上では調べない()
+        public void 修飾キーを離しても離れるまで操作できる()
         {
-            Assert.False(OverlayPlacement.ShouldCheck(true, 0.5, At(new Point(0, 0)), new Point(1000, 500)));
-            Assert.False(OverlayPlacement.ShouldCheck(true, 10, At(new Point(0, 0)), new Point(10, 10)));
+            var proximity = new OverlayProximity();
+            Assert.True(proximity.IsTransparent(Bounds, new Point(250, 300), false));
+            Assert.False(proximity.IsTransparent(Bounds, new Point(250, 300), true));
+            Assert.False(proximity.IsTransparent(Bounds, new Point(250, 300), false));
+            Assert.False(proximity.IsTransparent(Bounds, new Point(150, 300), false));
+            Assert.False(proximity.IsTransparent(Bounds, new Point(250, 300), false));
+            Assert.False(proximity.IsTransparent(Bounds, new Point(139, 300), false));
+            Assert.True(proximity.IsTransparent(Bounds, new Point(250, 300), false));
         }
 
         [Fact]
-        public void デスクトップとタスクバーからは逃げない()
+        public void 新しい記録では修飾キーによる解除を持ち越さない()
         {
-            Assert.True(TargetRules.IsShellWindow("Progman"));
-            Assert.True(TargetRules.IsShellWindow("Shell_TrayWnd"));
-            Assert.False(TargetRules.IsShellWindow("Chrome_WidgetWin_1"));
-        }
-
-        [Fact]
-        public void 重なっていなければ動かない()
-        {
-            var overlay = At(new Point(1548, 768));
-            Assert.Null(OverlayPlacement.Choose(overlay, new Rectangle(0, 0, 800, 600), new[] { Screen1 }));
-        }
-
-        [Fact]
-        public void 重ならない隅のうち近いところへ動く()
-        {
-            // 右下にいるオーバーレイに、右半分を占めるウィンドウが重なった → 左下へ
-            var overlay = At(new Point(1548, 768));
-            var to = OverlayPlacement.Choose(overlay, new Rectangle(960, 0, 960, 1040), new[] { Screen1 });
-            Assert.Equal(new Point(OverlayPlacement.Margin, 1040 - 260 - OverlayPlacement.Margin), to);
-        }
-
-        [Fact]
-        public void 全画面のウィンドウなら別のディスプレイへ()
-        {
-            var screen2 = new Rectangle(1920, 0, 1920, 1040);
-            var overlay = At(new Point(1548, 768));
-            var to = OverlayPlacement.Choose(overlay, Screen1, new[] { Screen1, screen2 });
-            Assert.True(to.HasValue && screen2.Contains(new Rectangle(to.Value, Overlay)));
-        }
-
-        [Fact]
-        public void どこも重なるなら今より重なりが減るときだけ動く()
-        {
-            var overlay = At(new Point(1548, 768));
-            Assert.Null(OverlayPlacement.Choose(overlay, Screen1, new[] { Screen1 }));
+            var proximity = new OverlayProximity();
+            Assert.False(proximity.IsTransparent(Bounds, Bounds.Location, true));
+            proximity.Reset();
+            Assert.True(proximity.IsTransparent(Bounds, Bounds.Location, false));
         }
     }
+
 
     // 「出力する報告書」の選択肢
     public class OutputChoicesTests

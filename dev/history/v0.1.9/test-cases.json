@@ -4,8 +4,8 @@
   "description": "全テストメソッドとTheoryの引数行を機能へ対応付ける。status=automatedは実行入口があることで、今回実行済みの意味ではない。結果は各実行のsummary.json/TRXを見る。",
   "generatedBy": "dev/scripts/Update-TestCaseManifest.ps1",
   "command": "pwsh -NoProfile -File ./dev/scripts/Update-TestCaseManifest.ps1 -TestAssembly <ビルド済みOperationRecorderApp.Tests.dll>",
-  "methodCount": 390,
-  "expandedCaseCount": 625,
+  "methodCount": 353,
+  "expandedCaseCount": 574,
   "additionalSuites": [
     {
       "id": "html-browser",
@@ -47,8 +47,8 @@
     {
       "id": "F-EVIDENCE",
       "title": "外部操作の保存完了APIと機密保護",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "caseCount": 75,
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
+      "caseCount": 24,
       "status": "automated"
     },
     {
@@ -88,9 +88,9 @@
     },
     {
       "id": "F-OVERLAY",
-      "title": "オーバーレイの直近手順・ボタン・逃避計算",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
-      "caseCount": 8,
+      "title": "オーバーレイの直近手順・ボタン・近接透過",
+      "boundary": "実コントロールと透過状態遷移、全DPIでの外観は判定しない",
+      "caseCount": 4,
       "status": "automated"
     },
     {
@@ -98,6 +98,20 @@
       "title": "記録の開始・取消・取り直し・保存と失敗処理",
       "boundary": "実controllerに記録・ホットキー・dispatch・保存境界を注入",
       "caseCount": 17,
+      "status": "automated"
+    },
+    {
+      "id": "F-TRANSCRIPTION",
+      "title": "文字起こし方式、鍵保管、音声送信と時刻",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "caseCount": 14,
+      "status": "automated"
+    },
+    {
+      "id": "F-SKILL-DRAFT",
+      "title": "根拠付き手順案、送信内容の確認、スキル出力",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "caseCount": 4,
       "status": "automated"
     },
     {
@@ -305,6 +319,21 @@
       ]
     },
     {
+      "id": "TEST-CD6C054A5EC7",
+      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.クリックの丸を個別に保存して読み直せる",
+      "title": "クリックの丸を個別に保存して読み直せる",
+      "featureIds": [
+        "F-SETTINGS"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "専用設定JSON、通常設定は変更しない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.AppSettingsTests.クリックの丸を個別に保存して読み直せる"
+      ]
+    },
+    {
       "id": "TEST-AFD258099EC2",
       "fullName": "OperationRecorderApp.Tests.AppSettingsTests.以前のテンプレートはuserに読み替える",
       "title": "以前のテンプレートはuserに読み替える",
@@ -408,21 +437,6 @@
       "displayNames": [
         "OperationRecorderApp.Tests.AppSettingsTests.操作前だけの選択は設定の再読込でも保持する(version: 0)",
         "OperationRecorderApp.Tests.AppSettingsTests.操作前だけの選択は設定の再読込でも保持する(version: 5)"
-      ]
-    },
-    {
-      "id": "TEST-F0F2A9E3DB88",
-      "fullName": "OperationRecorderApp.Tests.AppSettingsTests.逃げる設定を保存して読み直せる",
-      "title": "逃げる設定を保存して読み直せる",
-      "featureIds": [
-        "F-SETTINGS"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "専用設定JSON、通常設定は変更しない",
-      "displayNames": [
-        "OperationRecorderApp.Tests.AppSettingsTests.逃げる設定を保存して読み直せる"
       ]
     },
     {
@@ -1638,234 +1652,6 @@
       ]
     },
     {
-      "id": "TEST-E01FAE34632B",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.canonicalハッシュはLE寸法とstrideを除いた不透明BGRAである",
-      "title": "canonicalハッシュはLE寸法とstrideを除いた不透明BGRAである",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.canonicalハッシュはLE寸法とstrideを除いた不透明BGRAである"
-      ]
-    },
-    {
-      "id": "TEST-E328EFEAC998",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.一部の公開に成功しても必須領域不足を診断成功にしない",
-      "title": "一部の公開に成功しても必須領域不足を診断成功にしない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.一部の公開に成功しても必須領域不足を診断成功にしない"
-      ]
-    },
-    {
-      "id": "TEST-4BC540127F38",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.画面世代や保護領域が未確定なら承認画像でも公開しない",
-      "title": "画面世代や保護領域が未確定なら承認画像でも公開しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.画面世代や保護領域が未確定なら承認画像でも公開しない"
-      ]
-    },
-    {
-      "id": "TEST-BBCD45C88958",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.公開領域外の認証表示変化でも未承認状態の全画素を保護する",
-      "title": "公開領域外の認証表示変化でも未承認状態の全画素を保護する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.公開領域外の認証表示変化でも未承認状態の全画素を保護する"
-      ]
-    },
-    {
-      "id": "TEST-D80CD215EB9E",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.公開領域内の秘密混入を自動学習せず拒否する",
-      "title": "公開領域内の秘密混入を自動学習せず拒否する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.公開領域内の秘密混入を自動学習せず拒否する"
-      ]
-    },
-    {
-      "id": "TEST-8426191D9ED1",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.指定なしは全体マスクで診断成功にしない",
-      "title": "指定なしは全体マスクで診断成功にしない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.指定なしは全体マスクで診断成功にしない"
-      ]
-    },
-    {
-      "id": "TEST-98F3B55D20DF",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.状態の事前承認がなければROI承認だけで公開しない",
-      "title": "状態の事前承認がなければROI承認だけで公開しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.状態の事前承認がなければROI承認だけで公開しない"
-      ]
-    },
-    {
-      "id": "TEST-82F2585F695F",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.全黒の承認画像も診断成功と表示しない",
-      "title": "全黒の承認画像も診断成功と表示しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.全黒の承認画像も診断成功と表示しない"
-      ]
-    },
-    {
-      "id": "TEST-F5C9860EA710",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.透明画素は黒背景へ合成し隠れたRGBを出力しない",
-      "title": "透明画素は黒背景へ合成し隠れたRGBを出力しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.透明画素は黒背景へ合成し隠れたRGBを出力しない"
-      ]
-    },
-    {
-      "id": "TEST-7431EC845577",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.同じ承認済みフレームの公開領域だけを不透明PNGへ合成する",
-      "title": "同じ承認済みフレームの公開領域だけを不透明PNGへ合成する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.同じ承認済みフレームの公開領域だけを不透明PNGへ合成する"
-      ]
-    },
-    {
-      "id": "TEST-A2BC1F42AAC6",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.認証や未知領域との重なりは画素承認より優先する",
-      "title": "認証や未知領域との重なりは画素承認より優先する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.認証や未知領域との重なりは画素承認より優先する"
-      ]
-    },
-    {
-      "id": "TEST-F0AAEF1B2811",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.版や部品条件の不一致は公開しない",
-      "title": "版や部品条件の不一致は公開しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.版や部品条件の不一致は公開しない(expected: \"application-mismatch\")",
-        "OperationRecorderApp.Tests.DisclosureGateTests.版や部品条件の不一致は公開しない(expected: \"dpi-mismatch\")",
-        "OperationRecorderApp.Tests.DisclosureGateTests.版や部品条件の不一致は公開しない(expected: \"role-not-approved\")",
-        "OperationRecorderApp.Tests.DisclosureGateTests.版や部品条件の不一致は公開しない(expected: \"size-mismatch\")"
-      ]
-    },
-    {
-      "id": "TEST-FC3150100D07",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.範囲外や使用不能フレームは固定コードで拒否する",
-      "title": "範囲外や使用不能フレームは固定コードで拒否する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.範囲外や使用不能フレームは固定コードで拒否する"
-      ]
-    },
-    {
-      "id": "TEST-344B6B4B3897",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.負のstrideでも画面上の行順序を同じハッシュにする",
-      "title": "負のstrideでも画面上の行順序を同じハッシュにする",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.負のstrideでも画面上の行順序を同じハッシュにする"
-      ]
-    },
-    {
-      "id": "TEST-3BE3FDCE40F3",
-      "fullName": "OperationRecorderApp.Tests.DisclosureGateTests.無効なプロファイルの内容を例外や判定理由へ写さない",
-      "title": "無効なプロファイルの内容を例外や判定理由へ写さない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.DisclosureGateTests.無効なプロファイルの内容を例外や判定理由へ写さない"
-      ]
-    },
-    {
       "id": "TEST-B751134457EA",
       "fullName": "OperationRecorderApp.Tests.DragArrowTests.ほとんど動いていなければ描かない",
       "title": "ほとんど動いていなければ描かない",
@@ -2404,7 +2190,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceCompatibilityTests.外部証拠の完了工程を既存テンプレートで出力して原本を保持する"
       ]
@@ -2419,7 +2205,7 @@
       "layer": "desktop",
       "suite": "Desktop",
       "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceNativeTests.PID再利用や別セッションやハンドル変更と破棄を拒否する"
       ]
@@ -2434,7 +2220,7 @@
       "layer": "desktop",
       "suite": "Desktop",
       "environment": "Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceNativeTests.専用UIA操作の前後を実ワーカーで保存し秘密をPNGとMP4へ残さない(video: False)",
         "OperationRecorderApp.Tests.ExternalEvidenceNativeTests.専用UIA操作の前後を実ワーカーで保存し秘密をPNGとMP4へ残さない(video: True)"
@@ -2450,7 +2236,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidencePowerShellTests.PS7のガード付き操作は保存完了時だけ一度実行する(failBefore: False)",
         "OperationRecorderApp.Tests.ExternalEvidencePowerShellTests.PS7のガード付き操作は保存完了時だけ一度実行する(failBefore: True)"
@@ -2466,7 +2252,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.broker停止後もbefore成果物を読取専用で検査し再操作を許可しない"
       ]
@@ -2481,7 +2267,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.ワーカー異常終了の生例外やstderrを外へ出さない"
       ]
@@ -2496,7 +2282,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.過大IPCと秘密の環境継承を拒否する"
       ]
@@ -2511,7 +2297,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.呼出し元の死亡後に専用brokerが残留しない"
       ]
@@ -2526,7 +2312,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.実encoderプロセスの失敗や停止でも期限内に制御を戻す"
       ]
@@ -2541,7 +2327,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.実IPCで保存完了応答の相関を確認しクライアント期限後は成功扱いしない"
       ]
@@ -2556,7 +2342,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.実ワーカーの停止をプロセス境界で期限内に打ち切る(mode: \"--worker-hang\")",
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.実ワーカーの停止をプロセス境界で期限内に打ち切る(mode: \"--worker-save-hang\")"
@@ -2572,7 +2358,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.同一ユーザーでも別PIDのクライアントを拒否する"
       ]
@@ -2587,7 +2373,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.認証と未知の要素のNameを読まず認証サブツリーへ降りない"
       ]
@@ -2602,7 +2388,7 @@
       "layer": "cli",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceProcessTests.不正なAPI引数でも通常GUIを起動しない"
       ]
@@ -2617,7 +2403,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.after途中障害でもbeforeを保持し成否不明を明示する"
       ]
@@ -2632,7 +2418,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.before失敗やタイムアウトなら模擬操作を一度も実行しない(code: \"capture-unavailable\")",
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.before失敗やタイムアウトなら模擬操作を一度も実行しない(code: \"deadline-exceeded\")",
@@ -2650,7 +2436,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.ファイル改変や保存完了マーカー欠落を成功扱いしない"
       ]
@@ -2665,7 +2451,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.自由文字メタデータや未知の設定を受理しない"
       ]
@@ -2680,7 +2466,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.重複した要求や工程は撮影を再実行せず操作も再許可しない"
       ]
@@ -2695,7 +2481,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.操作結果が不明なら画像保存後も未確定として列挙する"
       ]
@@ -2710,7 +2496,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.不透明画像は文字や元画素を保持せず固定ローカル出力だけ許可する"
       ]
@@ -2725,7 +2511,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.不明トークンや変更対象を拒否し失敗証拠にも同じ工程IDを持たせる"
       ]
@@ -2740,7 +2526,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.保存完了後だけ操作許可し前後証拠と工程を独立確定する"
       ]
@@ -2755,7 +2541,7 @@
       "layer": "api",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
+      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換、専用Native fixtureでUIAとPNG/MP4復号。実業務アプリは未受入",
       "displayNames": [
         "OperationRecorderApp.Tests.ExternalEvidenceSessionTests.要求数の上限でも開始済み工程の確定とFlushとStopを妨げない"
       ]
@@ -2788,334 +2574,6 @@
       "boundary": "STA実フォーム、確認とOS副作用はAppInteraction差替え",
       "displayNames": [
         "OperationRecorderApp.Tests.FormSmokeTests.記録の合成の画面を表示できる"
-      ]
-    },
-    {
-      "id": "TEST-684BFA26FA80",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceSessionTests.ACK時に期限外のフレームは再保護して過去保存検査とは区別する",
-      "title": "ACK時に期限外のフレームは再保護して過去保存検査とは区別する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.ACK時に期限外のフレームは再保護して過去保存検査とは区別する(phase: \"after\", direction: -1)",
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.ACK時に期限外のフレームは再保護して過去保存検査とは区別する(phase: \"before\", direction: -1)",
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.ACK時に期限外のフレームは再保護して過去保存検査とは区別する(phase: \"before\", direction: 1)",
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.ACK時に期限外のフレームは再保護して過去保存検査とは区別する(phase: \"failure\", direction: -1)"
-      ]
-    },
-    {
-      "id": "TEST-F78AADC62D92",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceSessionTests.HWND同値の世代変更後は再保護して保存状態も不足にする",
-      "title": "HWND同値の世代変更後は再保護して保存状態も不足にする",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.HWND同値の世代変更後は再保護して保存状態も不足にする"
-      ]
-    },
-    {
-      "id": "TEST-AAD0498175ED",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceSessionTests.Inspectは破損した画像を保存済みとしない",
-      "title": "Inspectは破損した画像を保存済みとしない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.Inspectは破損した画像を保存済みとしない"
-      ]
-    },
-    {
-      "id": "TEST-EFED51895E28",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceSessionTests.Inspectは百件を超えた未完了と指定工程を隠さない",
-      "title": "Inspectは百件を超えた未完了と指定工程を隠さない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.Inspectは百件を超えた未完了と指定工程を隠さない"
-      ]
-    },
-    {
-      "id": "TEST-1054CFDC67D1",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceSessionTests.schema1のJSONへ新しい拡張項目を勝手に追加しない",
-      "title": "schema1のJSONへ新しい拡張項目を勝手に追加しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.schema1のJSONへ新しい拡張項目を勝手に追加しない"
-      ]
-    },
-    {
-      "id": "TEST-3A6F564CFA95",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceSessionTests.schema2保存品質と重複と前後を対応付ける",
-      "title": "schema2保存品質と重複と前後を対応付ける",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.schema2保存品質と重複と前後を対応付ける"
-      ]
-    },
-    {
-      "id": "TEST-E865A83B9C8C",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceSessionTests.既存承認の降格を同じセッションで受け付けない",
-      "title": "既存承認の降格を同じセッションで受け付けない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.既存承認の降格を同じセッションで受け付けない"
-      ]
-    },
-    {
-      "id": "TEST-1BB72CBC5B3E",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceSessionTests.空のwindow集合を成功と偽装した保存を拒否する",
-      "title": "空のwindow集合を成功と偽装した保存を拒否する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.空のwindow集合を成功と偽装した保存を拒否する"
-      ]
-    },
-    {
-      "id": "TEST-1B16FD44C21B",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceSessionTests.黒画像の保存だけでは診断成功や操作許可を返さない",
-      "title": "黒画像の保存だけでは診断成功や操作許可を返さない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceSessionTests.黒画像の保存だけでは診断成功や操作許可を返さない"
-      ]
-    },
-    {
-      "id": "TEST-F707A7C40CCE",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.ディレクトリリンク経由の成果物を拒否する",
-      "title": "ディレクトリリンク経由の成果物を拒否する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.ディレクトリリンク経由の成果物を拒否する"
-      ]
-    },
-    {
-      "id": "TEST-6B29422DE18B",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.空の窓一覧で保存完了や品質成功を偽装できない",
-      "title": "空の窓一覧で保存完了や品質成功を偽装できない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.空の窓一覧で保存完了や品質成功を偽装できない"
-      ]
-    },
-    {
-      "id": "TEST-8DAA5581EF2D",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.互換画像は検証済みroot画像か不透明黒だけを許し互換UIにも文字を許可しない",
-      "title": "互換画像は検証済みroot画像か不透明黒だけを許し互換UIにも文字を許可しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.互換画像は検証済みroot画像か不透明黒だけを許し互換UIにも文字を許可しない"
-      ]
-    },
-    {
-      "id": "TEST-329F36C7D788",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.公開領域外の画素や全黒画像の公開偽装を拒否する",
-      "title": "公開領域外の画素や全黒画像の公開偽装を拒否する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.公開領域外の画素や全黒画像の公開偽装を拒否する"
-      ]
-    },
-    {
-      "id": "TEST-581A5B0097E9",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.承認対象と異なる識別や所属や役割を保存済みと認めない",
-      "title": "承認対象と異なる識別や所属や役割を保存済みと認めない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.承認対象と異なる識別や所属や役割を保存済みと認めない(kind: \"bounds\")",
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.承認対象と異なる識別や所属や役割を保存済みと認めない(kind: \"generation\")",
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.承認対象と異なる識別や所属や役割を保存済みと認めない(kind: \"hwnd\")",
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.承認対象と異なる識別や所属や役割を保存済みと認めない(kind: \"id\")",
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.承認対象と異なる識別や所属や役割を保存済みと認めない(kind: \"owner\")",
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.承認対象と異なる識別や所属や役割を保存済みと認めない(kind: \"parent\")",
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.承認対象と異なる識別や所属や役割を保存済みと認めない(kind: \"pid\")",
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.承認対象と異なる識別や所属や役割を保存済みと認めない(kind: \"role\")"
-      ]
-    },
-    {
-      "id": "TEST-4906DB7E5515",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.証拠パスの逃げや別ウィンドウへの参照を拒否する",
-      "title": "証拠パスの逃げや別ウィンドウへの参照を拒否する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.証拠パスの逃げや別ウィンドウへの参照を拒否する(path: \"../outside.png\")",
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.証拠パスの逃げや別ウィンドウへの参照を拒否する(path: \"C:/outside.png\")",
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.証拠パスの逃げや別ウィンドウへの参照を拒否する(path: \"windows/wrong/frame.png\")",
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.証拠パスの逃げや別ウィンドウへの参照を拒否する(path: \"windows\\\\wrong\\\\frame.png\")"
-      ]
-    },
-    {
-      "id": "TEST-B33534230A48",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.成果物の改変や寸法偽装を拒否する",
-      "title": "成果物の改変や寸法偽装を拒否する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.成果物の改変や寸法偽装を拒否する"
-      ]
-    },
-    {
-      "id": "TEST-A122773F99A8",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.必須窓の欠落や時刻ずれや未確定な集合は要件未達とする",
-      "title": "必須窓の欠落や時刻ずれや未確定な集合は要件未達とする",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.必須窓の欠落や時刻ずれや未確定な集合は要件未達とする"
-      ]
-    },
-    {
-      "id": "TEST-FBEBE5F286F0",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.保存時の古い時刻でも正常な成果物を検証し全黒を診断成功としない",
-      "title": "保存時の古い時刻でも正常な成果物を検証し全黒を診断成功としない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.保存時の古い時刻でも正常な成果物を検証し全黒を診断成功としない"
-      ]
-    },
-    {
-      "id": "TEST-0BF6224249E2",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.本Gateで承認された公開画素だけが正常検証を通る",
-      "title": "本Gateで承認された公開画素だけが正常検証を通る",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.本Gateで承認された公開画素だけが正常検証を通る"
-      ]
-    },
-    {
-      "id": "TEST-73B5EFD56792",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.明示承認した同PID子だけを親画像に含まれる構造情報として扱う",
-      "title": "明示承認した同PID子だけを親画像に含まれる構造情報として扱う",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.明示承認した同PID子だけを親画像に含まれる構造情報として扱う"
-      ]
-    },
-    {
-      "id": "TEST-AA9D2861E1A2",
-      "fullName": "OperationRecorderApp.Tests.GroupEvidenceValidationTests.理由コードへ秘密や任意の文字列を混ぜない",
-      "title": "理由コードへ秘密や任意の文字列を混ぜない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.GroupEvidenceValidationTests.理由コードへ秘密や任意の文字列を混ぜない"
       ]
     },
     {
@@ -3987,108 +3445,48 @@
       ]
     },
     {
-      "id": "TEST-872EF3DA173C",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.デスクトップとタスクバーからは逃げない",
-      "title": "デスクトップとタスクバーからは逃げない",
+      "id": "TEST-07B8D1979323",
+      "fullName": "OperationRecorderApp.Tests.OverlayProximityTests.修飾キーを離しても離れるまで操作できる",
+      "title": "修飾キーを離しても離れるまで操作できる",
       "featureIds": [
         "F-OVERLAY"
       ],
       "layer": "unit",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "boundary": "実コントロールと透過状態遷移、全DPIでの外観は判定しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.デスクトップとタスクバーからは逃げない"
+        "OperationRecorderApp.Tests.OverlayProximityTests.修飾キーを離しても離れるまで操作できる"
       ]
     },
     {
-      "id": "TEST-106D164B0750",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.どこも重なるなら今より重なりが減るときだけ動く",
-      "title": "どこも重なるなら今より重なりが減るときだけ動く",
+      "id": "TEST-64C222C59526",
+      "fullName": "OperationRecorderApp.Tests.OverlayProximityTests.新しい記録では修飾キーによる解除を持ち越さない",
+      "title": "新しい記録では修飾キーによる解除を持ち越さない",
       "featureIds": [
         "F-OVERLAY"
       ],
       "layer": "unit",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "boundary": "実コントロールと透過状態遷移、全DPIでの外観は判定しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.どこも重なるなら今より重なりが減るときだけ動く"
+        "OperationRecorderApp.Tests.OverlayProximityTests.新しい記録では修飾キーによる解除を持ち越さない"
       ]
     },
     {
-      "id": "TEST-6CE639BA7CAF",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.重なっていなければ動かない",
-      "title": "重なっていなければ動かない",
+      "id": "TEST-442B5ADC7611",
+      "fullName": "OperationRecorderApp.Tests.OverlayProximityTests.百ピクセルまで近づくと透過する",
+      "title": "百ピクセルまで近づくと透過する",
       "featureIds": [
         "F-OVERLAY"
       ],
       "layer": "unit",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "boundary": "実コントロールと透過状態遷移、全DPIでの外観は判定しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.重なっていなければ動かない"
-      ]
-    },
-    {
-      "id": "TEST-EDD58CB1BBCE",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.重ならない隅のうち近いところへ動く",
-      "title": "重ならない隅のうち近いところへ動く",
-      "featureIds": [
-        "F-OVERLAY"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
-      "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.重ならない隅のうち近いところへ動く"
-      ]
-    },
-    {
-      "id": "TEST-061235769AFE",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.全画面のウィンドウなら別のディスプレイへ",
-      "title": "全画面のウィンドウなら別のディスプレイへ",
-      "featureIds": [
-        "F-OVERLAY"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
-      "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.全画面のウィンドウなら別のディスプレイへ"
-      ]
-    },
-    {
-      "id": "TEST-8C0B8EFEA63D",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.逃げる設定がオフなら調べない",
-      "title": "逃げる設定がオフなら調べない",
-      "featureIds": [
-        "F-OVERLAY"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
-      "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.逃げる設定がオフなら調べない"
-      ]
-    },
-    {
-      "id": "TEST-F4E4EECC5F12",
-      "fullName": "OperationRecorderApp.Tests.OverlayPlacementTests.動かした直後とオーバーレイの上では調べない",
-      "title": "動かした直後とオーバーレイの上では調べない",
-      "featureIds": [
-        "F-OVERLAY"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
-      "displayNames": [
-        "OperationRecorderApp.Tests.OverlayPlacementTests.動かした直後とオーバーレイの上では調べない"
+        "OperationRecorderApp.Tests.OverlayProximityTests.百ピクセルまで近づくと透過する"
       ]
     },
     {
@@ -4129,6 +3527,8 @@
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"letter\", kind: \"key\")",
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"manual\", kind: \"capture\")",
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"middleclick\", kind: \"middleclick\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"mouseback\", kind: \"mouseback\")",
+        "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"mouseforward\", kind: \"mouseforward\")",
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"rightclick\", kind: \"rightclick\")",
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"rightdrag\", kind: \"rightdrag\")",
         "OperationRecorderApp.Tests.RecordingDesktopTests.ネイティブ入力フックで各操作種別を検出する(gesture: \"special\", kind: \"key\")",
@@ -5185,6 +4585,66 @@
       ]
     },
     {
+      "id": "TEST-9D692F92628E",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.拡大縮小した表示でマスクの座標を元画像へ変換する",
+      "title": "拡大縮小した表示でマスクの座標を元画像へ変換する",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.拡大縮小した表示でマスクの座標を元画像へ変換する"
+      ]
+    },
+    {
+      "id": "TEST-FF506071639F",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.古い記録の画像が無くても文章だけを分析に選べる",
+      "title": "古い記録の画像が無くても文章だけを分析に選べる",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.古い記録の画像が無くても文章だけを分析に選べる"
+      ]
+    },
+    {
+      "id": "TEST-63B2D28ABABF",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.承認済みの文章とマスク画像だけ送信し編集案からスキルと手順書を作成する",
+      "title": "承認済みの文章とマスク画像だけ送信し編集案からスキルと手順書を作成する",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.承認済みの文章とマスク画像だけ送信し編集案からスキルと手順書を作成する"
+      ]
+    },
+    {
+      "id": "TEST-CB9ECCBC466A",
+      "fullName": "OperationRecorderApp.Tests.SkillDraftTests.送信対象にない操作を根拠とする応答を拒否する",
+      "title": "送信対象にない操作を根拠とする応答を拒否する",
+      "featureIds": [
+        "F-SKILL-DRAFT"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "模擬HTTP、人工の記録、元記録の保持とマスク済み画像を検証",
+      "displayNames": [
+        "OperationRecorderApp.Tests.SkillDraftTests.送信対象にない操作を根拠とする応答を拒否する"
+      ]
+    },
+    {
       "id": "TEST-33183FAE1689",
       "fullName": "OperationRecorderApp.Tests.TargetRulesTests.ウィンドウがいちばん広く映っているディスプレイ",
       "title": "ウィンドウがいちばん広く映っているディスプレイ",
@@ -5537,6 +4997,223 @@
       ]
     },
     {
+      "id": "TEST-3158C7959543",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.APIの失敗にキーや応答本文を含めない",
+      "title": "APIの失敗にキーや応答本文を含めない",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.APIの失敗にキーや応答本文を含めない"
+      ]
+    },
+    {
+      "id": "TEST-6394BAA79BDB",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.exeでキー未登録なら既存の文字起こしを残す",
+      "title": "exeでキー未登録なら既存の文字起こしを残す",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "cli",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.exeでキー未登録なら既存の文字起こしを残す"
+      ]
+    },
+    {
+      "id": "TEST-12894545FA78",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.Geminiの音声と構造化出力を指定し時刻を読む",
+      "title": "Geminiの音声と構造化出力を指定し時刻を読む",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.Geminiの音声と構造化出力を指定し時刻を読む"
+      ]
+    },
+    {
+      "id": "TEST-8CBEFB3CCA84",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.OpenAIに時刻付きGPT形式を指定する",
+      "title": "OpenAIに時刻付きGPT形式を指定する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.OpenAIに時刻付きGPT形式を指定する"
+      ]
+    },
+    {
+      "id": "TEST-EBB78906BFC6",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない",
+      "title": "TranscriptionServerが未準備かモデルが使えない場合は音声を送らない",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 2, ready: True, accepting: True, message: \"protocolVersion\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 3, ready: False, accepting: True, message: \"受付できません\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 3, ready: True, accepting: False, message: \"受付できません\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerが未準備かモデルが使えない場合は音声を送らない(protocol: 3, ready: True, accepting: True, message: \"指定したモデル\")"
+      ]
+    },
+    {
+      "id": "TEST-549B74285098",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する",
+      "title": "TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する(mode: \"bearer\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する(mode: \"lan\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.TranscriptionServerで認証とモデル確認をして時刻付き本文を保存する(mode: \"local\")"
+      ]
+    },
+    {
+      "id": "TEST-896B1FB4F363",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.キーを暗号化してサービスと接続先ごとに保管する",
+      "title": "キーを暗号化してサービスと接続先ごとに保管する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.キーを暗号化してサービスと接続先ごとに保管する"
+      ]
+    },
+    {
+      "id": "TEST-6E7A0CC61921",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.モデル削除は管理用フォルダーの読み取り専用ファイルだけを削除する",
+      "title": "モデル削除は管理用フォルダーの読み取り専用ファイルだけを削除する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.モデル削除は管理用フォルダーの読み取り専用ファイルだけを削除する"
+      ]
+    },
+    {
+      "id": "TEST-EB48EDC6A312",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する",
+      "title": "暗号化されない外部接続と資格情報付きURLを拒否する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する(address: \"http://asr.example.test/v1\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する(address: \"https://asr.example.test/?key=secret\")",
+        "OperationRecorderApp.Tests.TranscriptionTests.暗号化されない外部接続と資格情報付きURLを拒否する(address: \"https://name:password@asr.example.test/\")"
+      ]
+    },
+    {
+      "id": "TEST-1D2285A779B8",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.旧Haas設定を引き継ぎWhisperの設定と別々に保存する",
+      "title": "旧Haas設定を引き継ぎWhisperの設定と別々に保存する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.旧Haas設定を引き継ぎWhisperの設定と別々に保存する"
+      ]
+    },
+    {
+      "id": "TEST-4C260591D749",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.互換サーバーのモデルを省略し分割後の時刻を戻す",
+      "title": "互換サーバーのモデルを省略し分割後の時刻を戻す",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.互換サーバーのモデルを省略し分割後の時刻を戻す"
+      ]
+    },
+    {
+      "id": "TEST-F510129A8D0E",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.本文再生成は選択した手順の範囲だけを読み取る",
+      "title": "本文再生成は選択した手順の範囲だけを読み取る",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.本文再生成は選択した手順の範囲だけを読み取る"
+      ]
+    },
+    {
+      "id": "TEST-16A849DBC59A",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.録音だけを選べて既存のWhisper設定は引き継ぐ",
+      "title": "録音だけを選べて既存のWhisper設定は引き継ぐ",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.録音だけを選べて既存のWhisper設定は引き継ぐ"
+      ]
+    },
+    {
+      "id": "TEST-C18FFB9AF898",
+      "fullName": "OperationRecorderApp.Tests.TranscriptionTests.録音中に先行区間を処理し停止時に最後の区間を一度だけ保存する",
+      "title": "録音中に先行区間を処理し停止時に最後の区間を一度だけ保存する",
+      "featureIds": [
+        "F-TRANSCRIPTION"
+      ],
+      "layer": "unit",
+      "suite": "Core",
+      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
+      "boundary": "隔離設定、DPAPI、試験用WAVとHTTP応答。クラウドへの実送信は行わない",
+      "displayNames": [
+        "OperationRecorderApp.Tests.TranscriptionTests.録音中に先行区間を処理し停止時に最後の区間を一度だけ保存する"
+      ]
+    },
+    {
       "id": "TEST-57081998C022",
       "fullName": "OperationRecorderApp.Tests.UiTextsTests.オーバーレイに使えるキーの一覧を出す",
       "title": "オーバーレイに使えるキーの一覧を出す",
@@ -5582,18 +5259,18 @@
       ]
     },
     {
-      "id": "TEST-9C9697EDA866",
-      "fullName": "OperationRecorderApp.Tests.UiWiringTests.オーバーレイの状態ボタン直近十手取消消去と逃避無効を非表示で検証する",
-      "title": "オーバーレイの状態ボタン直近十手取消消去と逃避無効を非表示で検証する",
+      "id": "TEST-D10500B709D8",
+      "fullName": "OperationRecorderApp.Tests.UiWiringTests.オーバーレイのボタンにキーを表示し直近十手と非表示を確認する",
+      "title": "オーバーレイのボタンにキーを表示し直近十手と非表示を確認する",
       "featureIds": [
         "F-OVERLAY"
       ],
       "layer": "sta",
       "suite": "Core",
       "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "実コントロールと位置計算、外観の良さや全DPIは判定しない",
+      "boundary": "実コントロールと透過状態遷移、全DPIでの外観は判定しない",
       "displayNames": [
-        "OperationRecorderApp.Tests.UiWiringTests.オーバーレイの状態ボタン直近十手取消消去と逃避無効を非表示で検証する"
+        "OperationRecorderApp.Tests.UiWiringTests.オーバーレイのボタンにキーを表示し直近十手と非表示を確認する"
       ]
     },
     {
@@ -5849,99 +5526,6 @@
       ]
     },
     {
-      "id": "TEST-5C357895D8D2",
-      "fullName": "OperationRecorderApp.Tests.WgcBackendTests.QPC時刻は100ns単位で単調増加する",
-      "title": "QPC時刻は100ns単位で単調増加する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WgcBackendTests.QPC時刻は100ns単位で単調増加する"
-      ]
-    },
-    {
-      "id": "TEST-9961133A85F4",
-      "fullName": "OperationRecorderApp.Tests.WgcBackendTests.親WGCフレームから専用子領域を切出し既知色を照合する",
-      "title": "親WGCフレームから専用子領域を切出し既知色を照合する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "desktop",
-      "suite": "Desktop",
-      "environment": "Windows、WGC取得可能なdesktop/GPU、専用fixtureのみ。OS入力・前面化なし",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WgcBackendTests.親WGCフレームから専用子領域を切出し既知色を照合する"
-      ]
-    },
-    {
-      "id": "TEST-BAF403462595",
-      "fullName": "OperationRecorderApp.Tests.WgcBackendTests.専用窓の非アクティブ遮蔽非表示と子HWNDをWGCで実測する",
-      "title": "専用窓の非アクティブ遮蔽非表示と子HWNDをWGCで実測する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "desktop",
-      "suite": "Desktop",
-      "environment": "Windows、WGC取得可能なdesktop/GPU、専用fixtureのみ。OS入力・前面化なし",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WgcBackendTests.専用窓の非アクティブ遮蔽非表示と子HWNDをWGCで実測する"
-      ]
-    },
-    {
-      "id": "TEST-80405BB61F91",
-      "fullName": "OperationRecorderApp.Tests.WgcBackendTests.範囲外サイズを確保前に拒否する",
-      "title": "範囲外サイズを確保前に拒否する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WgcBackendTests.範囲外サイズを確保前に拒否する(width: 0, height: 1)",
-        "OperationRecorderApp.Tests.WgcBackendTests.範囲外サイズを確保前に拒否する(width: 1, height: 0)",
-        "OperationRecorderApp.Tests.WgcBackendTests.範囲外サイズを確保前に拒否する(width: 2049, height: 2049)",
-        "OperationRecorderApp.Tests.WgcBackendTests.範囲外サイズを確保前に拒否する(width: 4097, height: 1)"
-      ]
-    },
-    {
-      "id": "TEST-A8CF5987A2DE",
-      "fullName": "OperationRecorderApp.Tests.WgcBackendTests.不正HWNDを撮影せず拒否する",
-      "title": "不正HWNDを撮影せず拒否する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WgcBackendTests.不正HWNDを撮影せず拒否する"
-      ]
-    },
-    {
-      "id": "TEST-B2001D9616D8",
-      "fullName": "OperationRecorderApp.Tests.WgcGroupNativeTests.実brokerとworkerで公開profile未指定の工程を拒否し保護証拠を確定する",
-      "title": "実brokerとworkerで公開profile未指定の工程を拒否し保護証拠を確定する",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "desktop",
-      "suite": "Desktop",
-      "environment": "Windows、WGC取得可能なdesktop/GPU、専用fixtureのみ。OS入力・前面化なし",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WgcGroupNativeTests.実brokerとworkerで公開profile未指定の工程を拒否し保護証拠を確定する"
-      ]
-    },
-    {
       "id": "TEST-B3249EFDE0B7",
       "fullName": "OperationRecorderApp.Tests.WheelRulesTests.回して戻したら記録しない",
       "title": "回して戻したら記録しない",
@@ -6156,145 +5740,6 @@
       "boundary": "Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証",
       "displayNames": [
         "OperationRecorderApp.Tests.WindowChangeTests.表示と前面の通知をまとめて再切り替えを記録する"
-      ]
-    },
-    {
-      "id": "TEST-37167FF4ECA1",
-      "fullName": "OperationRecorderApp.Tests.WindowGraphNativeTests.専用の所有変更は新しい世代となり上限到達を完全取得としない",
-      "title": "専用の所有変更は新しい世代となり上限到達を完全取得としない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "desktop",
-      "suite": "Desktop",
-      "environment": "Windows、専用fixtureのNative構造読取り。OS入力・撮影・前面化なし",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WindowGraphNativeTests.専用の所有変更は新しい世代となり上限到達を完全取得としない"
-      ]
-    },
-    {
-      "id": "TEST-B8757F0C447C",
-      "fullName": "OperationRecorderApp.Tests.WindowGraphNativeTests.専用窓の親子と所有と無所有を区別しHideと最小化を識別失敗にしない",
-      "title": "専用窓の親子と所有と無所有を区別しHideと最小化を識別失敗にしない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "desktop",
-      "suite": "Desktop",
-      "environment": "Windows、専用fixtureのNative構造読取り。OS入力・撮影・前面化なし",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WindowGraphNativeTests.専用窓の親子と所有と無所有を区別しHideと最小化を識別失敗にしない"
-      ]
-    },
-    {
-      "id": "TEST-56B5A69E5B17",
-      "fullName": "OperationRecorderApp.Tests.WindowGraphTests.完全列挙で消えた窓は再出現時に旧許可を失い切詰めでは破棄と断定しない",
-      "title": "完全列挙で消えた窓は再出現時に旧許可を失い切詰めでは破棄と断定しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WindowGraphTests.完全列挙で消えた窓は再出現時に旧許可を失い切詰めでは破棄と断定しない"
-      ]
-    },
-    {
-      "id": "TEST-14D31B5CC401",
-      "fullName": "OperationRecorderApp.Tests.WindowGraphTests.重複や無効なHWNDや過大な観測を受理しない",
-      "title": "重複や無効なHWNDや過大な観測を受理しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WindowGraphTests.重複や無効なHWNDや過大な観測を受理しない"
-      ]
-    },
-    {
-      "id": "TEST-9C4D8EC45610",
-      "fullName": "OperationRecorderApp.Tests.WindowGraphTests.消えた窓の世代履歴も上限を持ち再利用監視を無制限に増やさない",
-      "title": "消えた窓の世代履歴も上限を持ち再利用監視を無制限に増やさない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WindowGraphTests.消えた窓の世代履歴も上限を持ち再利用監視を無制限に増やさない"
-      ]
-    },
-    {
-      "id": "TEST-BAF350BFE432",
-      "fullName": "OperationRecorderApp.Tests.WindowGraphTests.親子と所有と無所有と別PID候補の関係を混同しない",
-      "title": "親子と所有と無所有と別PID候補の関係を混同しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WindowGraphTests.親子と所有と無所有と別PID候補の関係を混同しない"
-      ]
-    },
-    {
-      "id": "TEST-20E8C9462C90",
-      "fullName": "OperationRecorderApp.Tests.WindowGraphTests.同じHWNDでも識別や所属の変更は旧承認を継承しない",
-      "title": "同じHWNDでも識別や所属の変更は旧承認を継承しない",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WindowGraphTests.同じHWNDでも識別や所属の変更は旧承認を継承しない(change: \"child\")",
-        "OperationRecorderApp.Tests.WindowGraphTests.同じHWNDでも識別や所属の変更は旧承認を継承しない(change: \"owner\")",
-        "OperationRecorderApp.Tests.WindowGraphTests.同じHWNDでも識別や所属の変更は旧承認を継承しない(change: \"parent\")",
-        "OperationRecorderApp.Tests.WindowGraphTests.同じHWNDでも識別や所属の変更は旧承認を継承しない(change: \"pid\")",
-        "OperationRecorderApp.Tests.WindowGraphTests.同じHWNDでも識別や所属の変更は旧承認を継承しない(change: \"relation\")"
-      ]
-    },
-    {
-      "id": "TEST-B2D76E337D8A",
-      "fullName": "OperationRecorderApp.Tests.WindowGraphTests.同じ窓の表示や位置やDPI変化は同一世代で記録し版を進める",
-      "title": "同じ窓の表示や位置やDPI変化は同一世代で記録し版を進める",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WindowGraphTests.同じ窓の表示や位置やDPI変化は同一世代で記録し版を進める"
-      ]
-    },
-    {
-      "id": "TEST-2A6C07338145",
-      "fullName": "OperationRecorderApp.Tests.WindowGraphTests.破棄直後の同一HWND再利用は同じ形でも新規世代になる",
-      "title": "破棄直後の同一HWND再利用は同じ形でも新規世代になる",
-      "featureIds": [
-        "F-EVIDENCE"
-      ],
-      "layer": "unit",
-      "suite": "Core",
-      "environment": "Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離",
-      "boundary": "Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入",
-      "displayNames": [
-        "OperationRecorderApp.Tests.WindowGraphTests.破棄直後の同一HWND再利用は同じ形でも新規世代になる"
       ]
     },
     {
