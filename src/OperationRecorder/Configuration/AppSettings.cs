@@ -49,12 +49,25 @@ namespace OperationRecorderApp
         public string FfmpegPath { get; set; } = "";
         public string TranscriptionPython { get; set; } = "";
         public string TranscriptionModel { get; set; } = "";
+        public string HaasPython { get; set; }
+        public string HaasModel { get; set; }
+        public bool RealtimeTranscription { get; set; }
+        public string NarrationProvider { get; set; }
+        public string TranscriptionServerUrl { get; set; } = "";
+        public string TranscriptionServerModel { get; set; } = "";
+        public string KotorinTranscriptionServerUrl { get; set; } = "http://127.0.0.1:8769";
+        public string KotorinTranscriptionServerModel { get; set; } = "";
+        public string TranscriptionOpenAIModel { get; set; } = "gpt-4o-transcribe-diarize";
+        public string TranscriptionGeminiModel { get; set; } = "gemini-3.5-flash-lite";
         public bool ShowOverlay { get; set; } = true;        // 記録中に撮影ログのオーバーレイを出す
-        public bool OverlayFlee { get; set; } = true;        // オーバーレイが、マウスポインタのあるウィンドウから逃げる
         public bool ShowTargetFrame { get; set; } = true;    // 記録の対象になっているウィンドウを枠で囲う
-        public bool FlashOnCapture { get; set; } = true;     // 撮影した瞬間に、枠を光らせ、クリック位置に丸を出す
+        public bool FlashOnCapture { get; set; } = true;
+        bool? clickRipple;
+        public bool ShowClickRipple { get => clickRipple ?? FlashOnCapture; set => clickRipple = value; }
         public int OverlayX { get; set; } = int.MinValue;    // オーバーレイの位置(未設定なら画面の右下)
         public int OverlayY { get; set; } = int.MinValue;
+        public int OverlayWidth { get; set; }
+        public int OverlayHeight { get; set; }
 
         // 出力
         public List<string> Templates { get; set; } = new List<string> { "user" };
@@ -165,6 +178,11 @@ namespace OperationRecorderApp
             // 操作キー。無い・壊れている(重なっている・修飾キーが無いなど)ときは既定に戻す
             if (s.Hotkeys == null || HotkeySet.Order.Any(a => s.Hotkeys.Get(a) == null) || s.Hotkeys.Validate().Count > 0)
                 s.Hotkeys = HotkeySet.Defaults();
+            if (s.HaasPython == null && s.HaasModel == null && string.Equals(s.NarrationProvider, "Haas", StringComparison.OrdinalIgnoreCase))
+            {
+                s.HaasPython = s.TranscriptionPython ?? "";
+                s.HaasModel = s.TranscriptionModel ?? "";
+            }
             return s;
         }
 

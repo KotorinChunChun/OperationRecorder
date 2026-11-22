@@ -18,6 +18,8 @@ namespace OperationRecorderApp
     public sealed partial class MainForm
     {
         TextBox txtRecordsDir, txtSesCaption, txtSesDescription, txtSesReportDir, txtStepHeadline, txtStepBody;
+        Button btnRegenerateBody;
+        bool regeneratingBody;
         ListView lvSessions;
         ListBox lbSteps;
         PictureBox picBefore, picAfter;
@@ -26,6 +28,7 @@ namespace OperationRecorderApp
         Label lblSesInfo, lblStepInfo, lblStepEdited;
         Button btnSaveMeta, btnOutHtml, btnOutMd, btnOpenSaveFolder, btnDeleteSession, btnSaveStep, btnResetStep, btnDeleteStep, btnEditTemplates, btnMerge;
         Button btnOutPdf, btnOutDocx;
+        Button btnSkillDraft;
         bool documentExporting;
         List<ReportGenerator.StepInfo> currentSteps = new List<ReportGenerator.StepInfo>();
 
@@ -66,6 +69,19 @@ namespace OperationRecorderApp
             var resume = new Button { Text = "合成作業を再開…", Name = "resumeComposition", AutoSize = true };
             resume.Click += (s, e) => ResumeMerge();
             top.Controls.AddRange(new Control[] { btnMerge, resume });
+            btnSkillDraft = new Button { Name = "analyzeSkillDraft", Text = "手順案を分析…", AutoSize = true, Enabled = false };
+            btnSkillDraft.Click += (_, _) =>
+            {
+                if (SelectedSession is not { } session) return;
+                if (HasUnsavedSessionEdits)
+                {
+                    ShowInfo("編集中の名前・解説・手順文章を記録へ保存してください。");
+                    return;
+                }
+                try { SkillDraftDialog.Analyze(this, session.Dir); }
+                catch (Exception error) { ShowWarning("手順案の分析を開けませんでした: " + error.Message); }
+            };
+            top.Controls.Add(btnSkillDraft);
 
             var split = new SplitContainer { Dock = DockStyle.Fill, FixedPanel = FixedPanel.Panel1 };
             pageSessions.Controls.Add(split);
@@ -155,15 +171,19 @@ namespace OperationRecorderApp
             lbSteps.SelectedIndexChanged += (s, e) => ShowSelectedStep();
             stepCol.Controls.Add(lbSteps, 0, 1);
 
-            var editor = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2 };
+            var editor = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 3 };
             editor.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             editor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            editor.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             editor.Controls.Add(new Label { Text = "見出し", AutoSize = true, Margin = new Padding(3, 7, 3, 3) }, 0, 0);
             txtStepHeadline = new TextBox { Dock = DockStyle.Fill, Name = "txtStepHeadline" };
             editor.Controls.Add(txtStepHeadline, 1, 0);
             editor.Controls.Add(new Label { Text = "本文", AutoSize = true, Margin = new Padding(3, 7, 3, 3) }, 0, 1);
             txtStepBody = new TextBox { Dock = DockStyle.Fill, Name = "txtStepBody", Multiline = true, Height = 54, ScrollBars = ScrollBars.Vertical, AcceptsReturn = true };
             editor.Controls.Add(txtStepBody, 1, 1);
+            btnRegenerateBody = new Button { Text = "再生成…", AccessibleName = "音声から本文を再生成", AutoSize = true, Anchor = AnchorStyles.Top };
+            btnRegenerateBody.Click += async (_, _) => await RegenerateStepBody();
+            editor.Controls.Add(btnRegenerateBody, 2, 1);
             btnSaveStep = new Button { Text = "この手順の文章を保存", AutoSize = true };
             btnSaveStep.Click += (s, e) => SaveStepText(false);
             btnResetStep = new Button { Text = "自動の文章に戻す", AutoSize = true };
@@ -212,11 +232,15 @@ namespace OperationRecorderApp
             foreach (var c in new Control[] { txtSesCaption, txtSesDescription, btnSaveMeta, btnOutHtml, btnOutMd, btnOutPdf, btnOutDocx, btnOpenSaveFolder, btnDeleteSession })
                 c.Enabled = on;
             btnMerge.Enabled = lvSessions.SelectedItems.Count > 0;
+            btnSkillDraft.Enabled = on;
         }
 
         void EnableStepEditor(bool on)
         {
             foreach (var c in new Control[] { txtStepHeadline, txtStepBody, btnSaveStep, btnResetStep, btnDeleteStep }) c.Enabled = on;
+            btnRegenerateBody.Enabled = on && !regeneratingBody && SelectedSession is { } session &&
+                System.IO.File.Exists(System.IO.Path.Combine(session.Dir, "narration.wav")) &&
+                System.IO.File.Exists(System.IO.Path.Combine(session.Dir, "media.json"));
             if (!on) { txtStepHeadline.Text = txtStepBody.Text = lblStepEdited.Text = ""; }
         }
 

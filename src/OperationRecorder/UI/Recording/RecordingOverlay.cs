@@ -13,35 +13,40 @@ namespace OperationRecorderApp
 {
     // 記録中に画面の上に出す小さなウィンドウ。記録の対象・状態・操作ボタン・使えるキー・直近 10 手のサムネイルを表示する。
     // - ドラッグで好きな場所へ動かせる
-    // - マウスポインタがあるウィンドウに重なると、重ならない画面の隅へ逃げる(操作の邪魔をしない)
+    // - ポインタが近づくと透明になり、下のウィンドウに入力を通す
     // - SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)で、記録の画像には写らない
     // - クリックしてもフォーカスを奪わない(WS_EX_NOACTIVATE)。このウィンドウでの操作は記録されない
     public sealed class RecordingOverlay : Form
     {
         [DllImport("user32.dll")] static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint affinity);
+        [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongW")] static extern int GetWindowLong(IntPtr hWnd, int index);
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongW")] static extern int SetWindowLong(IntPtr hWnd, int index, int value);
         const uint WDA_EXCLUDEFROMCAPTURE = 0x11;
 
         public event Action UndoClicked, RestartClicked, StopClicked, OpenMainClicked;
-        public event Action<Point> MovedByUser;
+        public event Action<Rectangle> BoundsChangedByUser;
+        public event Action HiddenByUser;
 
         sealed class Item { public int Seq; public string Text; public Image Thumb; }
 
-        const int MaxItems = 10, ThumbW = 120, ThumbH = 68, RowH = 76, W = 360;
+        const int MaxItems = 10, ThumbW = 120, ThumbH = 68, RowH = 76, W = 490;
         // 上から: 記録の対象(タイトル) / 状態 / 操作ボタン / 使えるキーの一覧 / 手順の一覧
-        const int TargetY = 6, StatusY = 26, ButtonY = 52, KeysY = 84, KeysH = 52, HeaderH = KeysY + KeysH + 4;
+        const int TargetY = 6, StatusY = 26, ButtonY = 51, KeysY = 96, KeysH = 39, HeaderH = KeysY + KeysH + 27;
         readonly List<Item> items = new List<Item>();
         readonly Label lblStatus = new Label();
         readonly Label lblTarget = new Label();
         readonly Label lblKeys = new Label();
+        readonly Label lblTranscript = new Label();
         readonly Panel list = new DoubleBufferedPanel();
-        readonly Button btnUndo, btnRestart, btnStop, btnOpen;
-        readonly System.Windows.Forms.Timer fleeTimer = new System.Windows.Forms.Timer { Interval = 250 };
-        bool dragging;
+        readonly Button btnUndo, btnRestart, btnStop, btnOpen, btnHide;
+        readonly System.Windows.Forms.Timer proximityTimer = new System.Windows.Forms.Timer { Interval = 50 };
+        readonly OverlayProximity proximity = new OverlayProximity();
+        readonly ToolTip tips = new ToolTip();
+        bool dragging, resizing, clickThrough;
         Point dragOffset;
-        DateTime lastUserMove = DateTime.MinValue;
+        Size resizeStart;
         public bool ExcludedFromCapture { get; private set; }
-        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
-        public bool FleeEnabled { get; set; } = true;   // マウスポインタのあるウィンドウから逃げるか
 
         sealed class DoubleBufferedPanel : Panel { public DoubleBufferedPanel() { DoubleBuffered = true; ResizeRedraw = true; } }
 
@@ -56,12 +61,14 @@ namespace OperationRecorderApp
             ForeColor = Color.White;
             Font = new Font("Yu Gothic UI", 9f);
             Size = new Size(W, HeaderH + RowH * 3);
+            MinimumSize = new Size(W, HeaderH + RowH);
             Padding = new Padding(1);
 
             lblTarget.SetBounds(10, TargetY, W - 50, 18);
             lblTarget.Font = new Font("Yu Gothic UI", 9f, FontStyle.Bold);
             lblTarget.ForeColor = Color.FromArgb(200, 210, 230);
             lblTarget.AutoEllipsis = true;
+            lblTarget.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             Controls.Add(lblTarget);
 
             lblStatus.SetBounds(10, StatusY, W - 20, 22);
@@ -70,32 +77,70 @@ namespace OperationRecorderApp
             Controls.Add(lblStatus);
 
             btnUndo = MakeButton("1 手取消", 10, (s, e) => UndoClicked?.Invoke());
-            btnRestart = MakeButton("取り直し", 95, (s, e) => RestartClicked?.Invoke());
-            btnStop = MakeButton("保存して終了", 180, (s, e) => StopClicked?.Invoke());
-            btnStop.Width = 100;
-            btnOpen = MakeButton("…", W - 40, (s, e) => OpenMainClicked?.Invoke());
-            btnOpen.Width = 30;
-            new ToolTip().SetToolTip(btnOpen, "操作記録ツールの画面を開く");
+            btnRestart = MakeButton("取り直し", 154, (s, e) => RestartClicked?.Invoke());
+            btnStop = MakeButton("保存して終了", 298, (s, e) => StopClicked?.Invoke());
+            btnOpen = MakeButton("…", W - 42, (s, e) => OpenMainClicked?.Invoke());
+            btnOpen.SetBounds(W - 42, ButtonY, 32, 39);
+            btnOpen.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            tips.SetToolTip(btnOpen, "操作記録ツールの画面を開く");
+
+            btnHide = MakeButton("×", W - 38, (_, _) => { HideOverlay(); HiddenByUser?.Invoke(); });
+            btnHide.SetBounds(W - 38, 4, 28, 24);
+            btnHide.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnHide.AccessibleName = "オーバーレイを非表示";
+            tips.SetToolTip(btnHide, btnHide.AccessibleName);
 
             lblKeys.SetBounds(10, KeysY, W - 20, KeysH);
             lblKeys.Font = new Font("Yu Gothic UI", 8.5f);
             lblKeys.ForeColor = Color.FromArgb(185, 192, 205);
+            lblKeys.Text = "近づくと透過します。Ctrl・Shift・Alt・Winを押すと操作できます。\nCtrl+Shiftだけで手動撮影";
+            lblKeys.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             Controls.Add(lblKeys);
+            lblTranscript.SetBounds(10, KeysY + KeysH, W - 20, 23);
+            lblTranscript.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            lblTranscript.AutoEllipsis = true;
+            Controls.Add(lblTranscript);
 
-            list.SetBounds(6, HeaderH, W - 12, Height - HeaderH);
+            list.SetBounds(6, HeaderH, W - 12, Height - HeaderH - 18);
             list.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
             list.BackColor = Color.FromArgb(44, 49, 59);
             list.Paint += PaintList;
             Controls.Add(list);
 
             // ボタン以外の場所をつかんでドラッグできる
-            foreach (Control c in new Control[] { this, lblStatus, lblTarget, lblKeys, list })
+            foreach (Control c in new Control[] { this, lblStatus, lblTarget, lblKeys, lblTranscript, list })
             {
                 c.MouseDown += OnDragStart;
                 c.MouseMove += OnDragMove;
                 c.MouseUp += OnDragEnd;
             }
-            fleeTimer.Tick += (s, e) => FleeFromPointerWindow();
+            var grip = new Label { Text = "◢", ForeColor = Color.Silver, Cursor = Cursors.SizeNWSE,
+                AccessibleName = "サイズ変更", Anchor = AnchorStyles.Right | AnchorStyles.Bottom };
+            grip.SetBounds(Width - 20, Height - 18, 18, 16);
+            grip.MouseDown += (_, e) =>
+            {
+                if (e.Button != MouseButtons.Left) return;
+                resizing = true;
+                grip.Capture = true;
+                dragOffset = Cursor.Position;
+                resizeStart = Size;
+            };
+            grip.MouseMove += (_, _) =>
+            {
+                if (!resizing) return;
+                var now = Cursor.Position;
+                Size = new Size(Math.Max(MinimumSize.Width, resizeStart.Width + now.X - dragOffset.X),
+                    Math.Max(MinimumSize.Height, resizeStart.Height + now.Y - dragOffset.Y));
+            };
+            grip.MouseCaptureChanged += (_, _) =>
+            {
+                if (!resizing || grip.Capture) return;
+                resizing = false;
+                BoundsChangedByUser?.Invoke(Bounds);
+            };
+            grip.MouseUp += (_, e) => { if (e.Button == MouseButtons.Left) grip.Capture = false; };
+            Controls.Add(grip);
+            proximityTimer.Tick += (_, _) => UpdateProximity();
         }
 
         Button MakeButton(string text, int x, EventHandler click)
@@ -103,7 +148,7 @@ namespace OperationRecorderApp
             var b = new Button
             {
                 Text = text, FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = Color.FromArgb(62, 70, 84),
-                Bounds = new Rectangle(x, ButtonY, 80, 26), TabStop = false,
+                Bounds = new Rectangle(x, ButtonY, 138, 39), TabStop = false,
             };
             b.FlatAppearance.BorderColor = Color.FromArgb(90, 100, 120);
             b.Click += click;
@@ -137,20 +182,25 @@ namespace OperationRecorderApp
         }
 
         // 画面の右下(または前回の位置)に出す
-        public void ShowAt(int x, int y)
+        public void ShowAt(int x, int y, int width, int height)
         {
             var wa = Screen.PrimaryScreen.WorkingArea;
+            if (width > 0 && height > 0)
+                Size = new Size(Math.Min(width, wa.Width), Math.Min(height, wa.Height));
             var pos = x == int.MinValue ? new Point(wa.Right - Width - 16, wa.Bottom - Height - 16) : new Point(x, y);
             if (!Screen.AllScreens.Any(s => s.WorkingArea.IntersectsWith(new Rectangle(pos, Size))))
                 pos = new Point(wa.Right - Width - 16, wa.Bottom - Height - 16);
             Location = pos;
             if (!Visible) Show();
-            fleeTimer.Start();
+            proximity.Reset();
+            UpdateProximity();
+            proximityTimer.Start();
         }
 
         public void HideOverlay()
         {
-            fleeTimer.Stop();
+            proximityTimer.Stop();
+            SetClickThrough(false);
             Hide();
         }
 
@@ -161,10 +211,17 @@ namespace OperationRecorderApp
             if (lblTarget.Text != t) lblTarget.Text = t;
         }
 
-        // 使えるキーの一覧(操作キーの設定で変わる)
-        public void SetShortcuts(string text)
+        public void SetShortcuts(HotkeySet keys)
         {
-            if (lblKeys.Text != text) lblKeys.Text = text;
+            btnUndo.Text = "1 手取消\n" + keys.Undo;
+            btnRestart.Text = "取り直し\n" + keys.Restart;
+            btnStop.Text = "保存して終了\n" + keys.Stop;
+        }
+
+        public void SetLiveTranscript(string text)
+        {
+            string display = string.IsNullOrWhiteSpace(text) ? "" : "文字起こし  " + text;
+            if (lblTranscript.Text != display) lblTranscript.Text = display;
         }
 
         public void SetStatus(string text, Color dot, bool recording)
@@ -255,15 +312,6 @@ namespace OperationRecorderApp
             }
         }
 
-        // 一覧の行数に合わせて高さを変える(最大 MaxItems 行)
-        public void FitHeight(int rows)
-        {
-            int h = HeaderH + RowH * Math.Max(3, Math.Min(MaxItems, rows));
-            var wa = Screen.FromControl(this).WorkingArea;
-            h = Math.Min(h, wa.Height - 20);
-            if (Height != h) { Height = h; list.Height = h - HeaderH; }
-        }
-
         // ---------- ドラッグ ----------
 
         void OnDragStart(object sender, MouseEventArgs e)
@@ -283,29 +331,32 @@ namespace OperationRecorderApp
         {
             if (!dragging) return;
             dragging = false;
-            lastUserMove = DateTime.Now;
-            MovedByUser?.Invoke(Location);
+            BoundsChangedByUser?.Invoke(Bounds);
         }
 
-        // ---------- ポインタのあるウィンドウから逃げる ----------
-
-        void FleeFromPointerWindow()
+        void UpdateProximity()
         {
-            if (!Visible || dragging) return;
-            N.POINT cp;
-            if (!N.GetCursorPos(out cp)) return;
-            var cursor = new Point(cp.X, cp.Y);
-            if (!OverlayPlacement.ShouldCheck(FleeEnabled, (DateTime.Now - lastUserMove).TotalSeconds, Bounds, cursor)) return;
-            IntPtr root = WinUtil.Root(N.WindowFromPoint(cp));
-            if (root == IntPtr.Zero || WinUtil.PidOf(root) == (uint)Environment.ProcessId) return;
-            if (TargetRules.IsShellWindow(WinUtil.ClassOf(root))) return;   // デスクトップ・タスクバーからは逃げない
-            var to = OverlayPlacement.Choose(Bounds, WinUtil.GetFrame(root), Screen.AllScreens.Select(sc => sc.WorkingArea));
-            if (to.HasValue) Location = to.Value;
+            if (!Visible) return;
+            bool modifier = Down(0x10) || Down(0x11) || Down(0x12) || Down(0x5b) || Down(0x5c);
+            SetClickThrough(proximity.IsTransparent(Bounds, Cursor.Position, modifier || dragging || resizing));
+        }
+
+        static bool Down(int key) => (GetAsyncKeyState(key) & 0x8000) != 0;
+
+        void SetClickThrough(bool value)
+        {
+            if (value == clickThrough || !IsHandleCreated) return;
+            const int ExtendedStyle = -20, Transparent = 0x20;
+            clickThrough = value;
+            if (value) Opacity = 0;
+            int style = GetWindowLong(Handle, ExtendedStyle);
+            SetWindowLong(Handle, ExtendedStyle, value ? style | Transparent : style & ~Transparent);
+            if (!value) Opacity = 1;
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) { fleeTimer.Dispose(); ClearItems(); }
+            if (disposing) { proximityTimer.Dispose(); tips.Dispose(); ClearItems(); }
             base.Dispose(disposing);
         }
     }

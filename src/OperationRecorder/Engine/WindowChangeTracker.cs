@@ -51,7 +51,7 @@ namespace OpRec
         {
             if (observedTime < actionTime || observedTime - actionTime > AssociationMs) return false;
             if (!sameProcess && !navigation) return false;
-            return kind == "click" || kind == "doubleclick" || kind == "rightclick" || kind == "middleclick" || kind == "key";
+            return kind is "click" or "doubleclick" or "rightclick" or "middleclick" or "mouseback" or "mouseforward" or "key";
         }
 
         public static bool IsNavigationKey(string key)

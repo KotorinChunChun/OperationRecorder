@@ -33,6 +33,7 @@ namespace OperationRecorderApp
         readonly RecordingOverlay overlay = new RecordingOverlay();
         readonly TargetFrame targetFrame = new TargetFrame();
         readonly ClickRipple ripple = new ClickRipple();
+        bool overlayHiddenByUser;
         readonly System.Windows.Forms.Timer frameTimer = new System.Windows.Forms.Timer { Interval = 100 };
         int overlaySteps;                 // オーバーレイに出す手順番号(取消で 1 つ戻す)
         int overlayTitleTick;
@@ -88,7 +89,6 @@ namespace OperationRecorderApp
             {
                 overlaySteps++;
                 overlay.AddStep(line, dir, overlaySteps);
-                overlay.FitHeight(overlaySteps);
                 UpdateOverlayStatus();
             };
             controller.StepRemoved += seq =>
@@ -101,13 +101,19 @@ namespace OperationRecorderApp
             overlay.RestartClicked += () => controller.RequestRestart();
             overlay.StopClicked += () => controller.RequestStop();
             overlay.OpenMainClicked += () => ShowMain();
-            overlay.MovedByUser += p => { settings.OverlayX = p.X; settings.OverlayY = p.Y; };
+            overlay.BoundsChangedByUser += bounds =>
+            {
+                settings.OverlayX = bounds.X;
+                settings.OverlayY = bounds.Y;
+                settings.OverlayWidth = bounds.Width;
+                settings.OverlayHeight = bounds.Height;
+            };
+            overlay.HiddenByUser += () => overlayHiddenByUser = true;
             // 撮影した瞬間に知らせる(枠を光らせ、クリック位置に丸を出す)
             controller.StepCaptured += (kind, pt) =>
             {
-                if (!settings.FlashOnCapture) return;
-                if (targetFrame.Visible) targetFrame.Flash();
-                if (pt != null) ripple.Play(pt.Value, kind);
+                if (settings.FlashOnCapture && targetFrame.Visible) targetFrame.Flash();
+                if (settings.ShowClickRipple && pt != null) ripple.Play(pt.Value, kind);
             };
             // 記録の対象を枠で囲う(前面のウィンドウが変わったり動いたりするので、0.1 秒ごとに追いかける)
             frameTimer.Tick += (s, e) =>
@@ -117,7 +123,10 @@ namespace OperationRecorderApp
                 else targetFrame.SetTarget(null);
                 // オーバーレイのタイトル(記録の対象)。「最初にクリックしたもの」は選ばれた時点で名前に変わる。0.5 秒ごとに見る
                 if (++overlayTitleTick % 5 == 0 && overlay.Visible)
+                {
                     overlay.SetTarget(controller.State == RecState.Recording && rec != null ? rec.TargetDescription() : null);
+                    overlay.SetLiveTranscript(controller.LiveTranscriptionText);
+                }
             };
             frameTimer.Start();
 
@@ -296,20 +305,25 @@ namespace OperationRecorderApp
             if (st == RecState.Recording) Hide();
 
             // 撮影ログのオーバーレイ。新しい記録が始まったら一覧を空にする
-            if (st == RecState.Recording && lastState != RecState.Recording) { overlay.ClearItems(); overlaySteps = 0; overlay.FitHeight(0); }
-            lastState = st;
-            if (settings.ShowOverlay && st != RecState.Idle)
+            if (st == RecState.Recording && lastState != RecState.Recording)
             {
+                overlayHiddenByUser = false;
+                overlay.ClearItems();
+                overlay.SetLiveTranscript(null);
+                overlaySteps = 0;
+            }
+            lastState = st;
+            if (settings.ShowOverlay && !overlayHiddenByUser && st != RecState.Idle)
+            {
+                if (!overlay.Visible) overlay.ShowAt(settings.OverlayX, settings.OverlayY, settings.OverlayWidth, settings.OverlayHeight);
                 UpdateOverlayStatus();
-                overlay.FleeEnabled = settings.OverlayFlee;
-                if (!overlay.Visible) overlay.ShowAt(settings.OverlayX, settings.OverlayY);
             }
             else overlay.HideOverlay();
         }
 
         void UpdateOverlayStatus()
         {
-            overlay.SetShortcuts(UiTexts.OverlayShortcuts(settings.Hotkeys));
+            overlay.SetShortcuts(settings.Hotkeys);
             if (controller.State == RecState.Recording && controller.Current != null) overlay.SetTarget(controller.Current.TargetDescription());
             switch (controller.State)
             {
@@ -346,7 +360,7 @@ namespace OperationRecorderApp
                 [nameof(numRadius)] = numRadius, [nameof(chkMarkPointer)] = chkMarkPointer,
                 [nameof(chkMarkCircle)] = chkMarkCircle, [nameof(chkMarkArrow)] = chkMarkArrow, [nameof(chkMarkFrame)] = chkMarkFrame,
                 [nameof(numBeforeMs)] = numBeforeMs, [nameof(numAfterMs)] = numAfterMs,
-                [nameof(chkOverlay)] = chkOverlay, [nameof(chkOverlayFlee)] = chkOverlayFlee,
+                [nameof(chkOverlay)] = chkOverlay, [nameof(chkRipple)] = chkRipple,
                 [nameof(chkTargetFrame)] = chkTargetFrame, [nameof(chkFlash)] = chkFlash,
                 [nameof(txtRecordsDir)] = txtRecordsDir, [nameof(txtSesCaption)] = txtSesCaption,
                 [nameof(txtSesDescription)] = txtSesDescription, [nameof(txtSesReportDir)] = txtSesReportDir,

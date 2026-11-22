@@ -38,7 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## NAudio.WinMM / NAudio.Core 2.2.1
 
-マイク録音にNAudioを使用しています。両NuGetパッケージのライセンスはMITです。
+マイク録音と文字起こし用WAVの読み書きにNAudioを使用しています。両NuGetパッケージのライセンスはMITです。
 
 ```text
 Copyright (c) Mark Heath 2023
@@ -63,5 +63,7 @@ SOFTWARE.
 ```
 
 ## .NET
+
+Windowsの音声認識には `System.Speech` 10.0.0を使用します。Copyright (c) .NET Foundation and Contributors。MITライセンスの許諾条項と免責条項は上記と同文です。[System.Speechの配布情報](https://www.nuget.org/packages/System.Speech/10.0.0)
 
 正式インストーラーには.NET 10.0.14のランタイムを同梱します。配布元のライセンスと第三者通知は`runtime-licenses/`、メンテナンスプログラムの通知は`maintenance/runtime-licenses/`へ収録します。

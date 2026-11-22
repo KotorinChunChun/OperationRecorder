@@ -19,6 +19,8 @@ namespace OpRec
         public const string LeftClick = "leftClick";       // 左クリック(ダブルクリック・ドラッグを含む)
         public const string RightClick = "rightClick";     // 右クリック(右ドラッグを含む)
         public const string MiddleClick = "middleClick";   // 中クリック
+        public const string MouseBack = "mouseBack";
+        public const string MouseForward = "mouseForward";
         public const string MouseWheel = "mouseWheel";     // マウスホイール(続けて回した分は 1 手順にまとめる)
         public const string WindowChange = "windowChange"; // 対象範囲内のウィンドウ表示・切り替え
         // キーは種類ごとのグループで、まとめて記録する / しないを決める
@@ -33,7 +35,7 @@ namespace OpRec
         public const string WinShiftS = "winShiftS";       // Win+Shift+S(Windows の切り取り。押した瞬間の画面をキャプチャする)
 
         // 表示順と、画面に出す名前
-        public static readonly string[] Order = { LeftClick, RightClick, MiddleClick, MouseWheel,
+        public static readonly string[] Order = { LeftClick, RightClick, MiddleClick, MouseBack, MouseForward, MouseWheel,
             KeyLetters, KeyDigits, KeyFunction, KeyArrows, KeySpecial, Key, TextInput, CtrlShift, WinShiftS, WindowChange };
 
         // キーのグループ(Key と KeyLetters〜KeySpecial)
@@ -57,6 +59,8 @@ namespace OpRec
                 case LeftClick: return "左クリック(ダブルクリック・ドラッグを含む)";
                 case RightClick: return "右クリック";
                 case MiddleClick: return "中クリック(ホイールボタン)";
+                case MouseBack: return "マウスの戻るボタン（ボタン4）";
+                case MouseForward: return "マウスの進むボタン（ボタン5）";
                 case MouseWheel: return "マウスホイール(続けて回した分は 1 手順にまとめ、回して戻した分は差し引く)";
                 case WindowChange: return "ウィンドウの表示・切り替え";
                 case KeyLetters: return "キー: A〜Z(入力欄の中では文字入力として扱う)";

@@ -11,7 +11,7 @@ namespace OpRec
 {
     public sealed partial class Recorder
     {
-        readonly Ev[] openDown = new Ev[3];
+        readonly Ev[] openDown = new Ev[5];
         Ev lastClick;
         bool swallowPickUp;
 
@@ -104,7 +104,11 @@ namespace OpRec
             }
 
             // 撮影ルールで記録しない操作は、ここで捨てる
-            var mrule = Rule(r.Button == 0 ? CaptureRules.LeftClick : r.Button == 1 ? CaptureRules.RightClick : CaptureRules.MiddleClick);
+            var mrule = Rule(r.Button switch
+            {
+                0 => CaptureRules.LeftClick, 1 => CaptureRules.RightClick, 2 => CaptureRules.MiddleClick,
+                3 => CaptureRules.MouseBack, _ => CaptureRules.MouseForward,
+            });
             if (!mrule.Record)
             {
                 openDown[r.Button] = null;
@@ -132,7 +136,10 @@ namespace OpRec
             var ev = NewEv(r.Ts);
             ev.IsMouse = true;
             ev.Button = r.Button;
-            ev.Kind = r.Button == 0 ? "click" : r.Button == 1 ? "rightclick" : "middleclick";
+            ev.Kind = r.Button switch
+            {
+                0 => "click", 1 => "rightclick", 2 => "middleclick", 3 => "mouseback", _ => "mouseforward",
+            };
             ev.X = ev.EndX = r.X;
             ev.Y = ev.EndY = r.Y;
             ev.Root = root;
@@ -160,7 +167,7 @@ namespace OpRec
             {
                 if (ev.Sent) return;
                 int tx = Math.Max(8, N.GetSystemMetrics(68) * 2), ty = Math.Max(8, N.GetSystemMetrics(69) * 2);
-                if (ev.Kind != "doubleclick" && (Math.Abs(r.X - ev.X) > tx || Math.Abs(r.Y - ev.Y) > ty))
+                if (ev.Button < 3 && ev.Kind != "doubleclick" && (Math.Abs(r.X - ev.X) > tx || Math.Abs(r.Y - ev.Y) > ty))
                 {
                     ev.Kind = ev.Button == 1 ? "rightdrag" : "drag";
                     ev.EndX = r.X;

@@ -82,7 +82,7 @@ public sealed class ReplayConfig
             var s = Steps[index]; string label = "手順 " + (index + 1) + ": ";
             if (s == null) { errors.Add(label + "空です。"); continue; }
             if (s.Skip) { if (string.IsNullOrWhiteSpace(s.SkipReason)) errors.Add(label + "skipReasonが必要です。"); continue; }
-            if (!new[] { "click", "rightclick", "middleclick", "doubleclick", "drag", "rightdrag", "wheel", "key", "input", "wait", "launch" }.Contains(s.Kind)) errors.Add(label + "未対応の操作です。補正または明示skipが必要です。");
+            if (!new[] { "click", "rightclick", "middleclick", "doubleclick", "drag", "rightdrag", "wheel", "mouseback", "mouseforward", "key", "input", "wait", "launch" }.Contains(s.Kind)) errors.Add(label + "未対応の操作です。補正または明示skipが必要です。");
             if (s.Target == null || !Targets.ContainsKey(s.Target)) errors.Add(label + "対象bindingがありません。");
             if (s.DelayMs < 0 || s.DelayMs > 600000 || s.TimeoutMs < 0 || s.TimeoutMs > 1800000) errors.Add(label + "待機時間が範囲外です。");
             if (s.PositionMode != "element" && s.PositionMode != "window") errors.Add(label + "positionModeはelement/windowです。");
