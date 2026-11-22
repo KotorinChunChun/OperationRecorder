@@ -17,6 +17,7 @@ if (-not $outputPath.StartsWith($historyRoot + [IO.Path]::DirectorySeparatorChar
 
 # 機能の正本。新しい試験クラスを分類しなければ生成を失敗させ、漏れを残さない。
 $features = @(
+    [ordered]@{ id = 'F-EVIDENCE'; title = '外部操作の保存完了APIと機密保護'; boundary = 'Coreで偽UI/保存障害/実IPC/停止worker/PS7/出力互換/公開画素/鮮度、専用Native fixtureでUIA/PNG/MP4/WGC/窓構造を確認。状態別の未受入は版別報告を参照。実業務アプリは未受入' },
     [ordered]@{ id = 'F-WINDOW'; title = 'ウィンドウの表示・切り替えと操作後の観測'; boundary = 'Coreで重複抑止・関連付け・文章/リプレイ変換、明示した専用fixtureで入力を送らないWinEvent実通知を検証' },
     [ordered]@{ id = 'F-SETTINGS'; title = '設定の既定・移行・保存復元'; boundary = '専用設定JSON、通常設定は変更しない' },
     [ordered]@{ id = 'F-TARGET'; title = '撮影モードと対象ウィンドウ・プロセス・ディスプレイ'; boundary = 'Coreは判断と設定、実OS撮影はDesktopの別ケース' },
@@ -46,6 +47,16 @@ $features = @(
     [ordered]@{ id = 'F-DESKTOP'; title = '別PID fixtureを使った実OS入力・撮影・保存'; boundary = 'Windowsの実Recorder。専用fixtureだけに入力し、環境不足はblocked。実ハードウェア構成の範囲で検証' }
 )
 $classFeature = @{
+    DisclosureGateTests='F-EVIDENCE'; WindowGraphTests='F-EVIDENCE'; WindowGraphNativeTests='F-EVIDENCE'; WgcBackendTests='F-EVIDENCE'
+    GroupEvidenceSessionTests='F-EVIDENCE'; GroupEvidenceValidationTests='F-EVIDENCE'
+    WgcGroupNativeTests='F-EVIDENCE'; SnapshotSessionTests='F-EVIDENCE'; SnapshotDesktopTests='F-EVIDENCE'
+    ApprovedRoiCatalogTests='F-EVIDENCE'; ApprovedRoiGateTests='F-EVIDENCE'; ApprovedRoiDesktopTests='F-EVIDENCE'
+    PasswordEvidenceGateTests='F-EVIDENCE'; PasswordWindowObserverTests='F-EVIDENCE'; PasswordEvidenceDesktopTests='F-EVIDENCE'
+    PasswordLayoutCandidateTests='F-EVIDENCE'; WindowTransitionTests='F-EVIDENCE'; WindowTransitionDesktopTests='F-EVIDENCE'
+    PasswordLayoutBackdropTests='F-EVIDENCE'; PasswordLayoutBackdropDesktopTests='F-EVIDENCE'
+    PasswordLayoutRectangleTests='F-EVIDENCE'; WindowGraphRevisionSourceTests='F-EVIDENCE'
+    ExternalEvidenceSessionTests = 'F-EVIDENCE'; ExternalEvidenceProcessTests = 'F-EVIDENCE'
+    ExternalEvidencePowerShellTests = 'F-EVIDENCE'; ExternalEvidenceCompatibilityTests = 'F-EVIDENCE'; ExternalEvidenceNativeTests = 'F-EVIDENCE'
     WindowChangeTests = 'F-WINDOW'; WindowObservationTests = 'F-WINDOW'
     AppSettingsTests = 'F-SETTINGS'; TargetSettingsTests = 'F-SETTINGS'; TargetRulesTests = 'F-TARGET'
     CaptureRulesTests = 'F-INPUT'; WheelRulesTests = 'F-INPUT'; ImageCompareTests = 'F-INPUT'
@@ -82,12 +93,17 @@ function Get-FeatureId([string]$ClassName, [string]$MethodName) {
         return 'F-AUTOMATION'
     }
     if ($ClassName -eq 'FormSmokeTests') { return $(if ($MethodName -match '合成') { 'F-COMPOSITION-FORM' } else { 'F-TEMPLATE' }) }
-    if ($ClassName -match 'Desktop') { return 'F-DESKTOP' }
+    if ($ClassName -eq 'ReplayRobustnessDesktopTests') { return 'F-REPLAY' }
+    if ($ClassName -match 'Desktop' -and $ClassName -notin @('WindowTransitionDesktopTests', 'PasswordLayoutBackdropDesktopTests')) { return 'F-DESKTOP' }
     if ($classFeature.ContainsKey($ClassName)) { return $classFeature[$ClassName] }
     throw "機能未分類のテストです：$ClassName.$MethodName"
 }
 
 function Get-Layer([string]$ClassName, [string]$MethodName) {
+    if($ClassName -in @('WindowGraphNativeTests','WgcGroupNativeTests','SnapshotDesktopTests','ApprovedRoiDesktopTests','PasswordEvidenceDesktopTests') -or ($ClassName -eq 'WgcBackendTests' -and $MethodName -match '^(専用窓|親WGC)')){return 'desktop'}
+    if ($ClassName -eq 'ExternalEvidenceNativeTests') { return 'desktop' }
+    if ($ClassName -in @('ExternalEvidenceProcessTests','ExternalEvidencePowerShellTests')) { return 'cli' }
+    if ($ClassName -in @('ExternalEvidenceSessionTests','ExternalEvidenceCompatibilityTests')) { return 'api' }
     if ($ClassName -eq 'WindowObservationTests') { return 'desktop' }
     if ($ClassName -eq 'ReplayCommandTests' -and $MethodName -match '実EXE|ps1|不正なconfig') { return 'cli' }
     if ($ClassName -match 'Desktop') { return 'desktop' }
@@ -120,13 +136,20 @@ $cases = foreach ($group in $groups | Sort-Object Name) {
     $featureId = Get-FeatureId $className $methodName
     $feature = $features | Where-Object id -eq $featureId
     $layer = Get-Layer $className $methodName
+    $environment = if ($className -eq 'WindowGraphNativeTests') { 'Windows、専用fixtureのNative構造読取り。OS入力・撮影・前面化なし' }
+        elseif ($className -eq 'PasswordLayoutBackdropDesktopTests') { 'Windows対話desktop、専用WinForms fixture、PowerShell 7.6。OS入力・撮影・前面化なし' }
+        elseif ($className -in @('SnapshotDesktopTests', 'ApprovedRoiDesktopTests','PasswordEvidenceDesktopTests','WindowTransitionDesktopTests')) { 'Windows、WGC取得可能なdesktop/GPU、専用WinForms fixture' }
+        elseif ($layer -eq 'desktop' -and $className -in @('WgcBackendTests','WgcGroupNativeTests')) { 'Windows、WGC取得可能なdesktop/GPU、専用fixtureのみ。OS入力・前面化なし' }
+        elseif ($layer -eq 'desktop') { 'Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture' }
+        else { 'Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離' }
     $id = if ($traitIds.ContainsKey($methodName)) { $traitIds[$methodName] } else {
         'TEST-' + [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($fullName))).Substring(0, 12)
     }
     [pscustomobject][ordered]@{
         id = $id; fullName = $fullName; title = $methodName; featureIds = @($featureId); layer = $layer
-        suite = $(if ($layer -eq 'desktop') { 'Desktop' } else { 'Core' })
-        environment = $(if ($layer -eq 'desktop') { 'Windows対話desktop、前面一致、通常OperationRecorderなし、専用別PIDfixture' } else { 'Windows、.NET 10 SDK/Desktop Runtime、pwsh。通常設定・記録は隔離' })
+        suite = $(if ($className -eq 'ReplayRobustnessDesktopTests') { 'ReplayRobustness' }
+            elseif ($layer -eq 'desktop') { 'Desktop' } else { 'Core' })
+        environment = $environment
         boundary = $feature.boundary; displayNames = @($group.Group | Sort-Object)
     }
 }

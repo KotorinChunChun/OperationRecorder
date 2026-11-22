@@ -58,8 +58,17 @@ internal static class Program
         readonly Label state = new() { Location = new Point(30, 310), AutoSize = true, Text = "操作前" };
         readonly List<Form> covers = new();
         Form? secondary;
+        Panel? snapshotChild;
+        bool snapshotDialogOpen;
+        DialogResult snapshotDialogResult;
         int actions;
         int lastKey;
+        Form? replayWindow;
+        System.Windows.Forms.Timer? replayTimer;
+        string? replayScenario;
+        string? readyTitle;
+        bool replayReady;
+        int earlyActions;
         public FixtureForm(string token)
         {
             Text = "OperationRecorder fixture " + token;
@@ -70,14 +79,81 @@ internal static class Program
             Controls.AddRange(new Control[] { action, input, password, drag, wheel, state });
             Controls.Add(new Label { Text = "通常入力", AutoSize = true, Location = new Point(30, 120) });
             Controls.Add(new Label { Text = "password試験用", AutoSize = true, Location = new Point(30, 185) });
-            action.Click += (_, _) => { actions++; state.Text = "操作後 " + actions; BackColor = actions % 2 == 0 ? Color.LightGoldenrodYellow : Color.LightSteelBlue; };
+            action.Click += (_, _) =>
+            {
+                actions++;
+                if (replayScenario != null && !replayReady) earlyActions++;
+                state.Text = "操作後 " + actions;
+                BackColor = actions % 2 == 0 ? Color.LightGoldenrodYellow : Color.LightSteelBlue;
+            };
             action.KeyDown += (_, e) => lastKey = (int)e.KeyCode;
             action.PreviewKeyDown += (_, e) => { if (e.KeyCode is Keys.Left or Keys.Up or Keys.Right or Keys.Down) e.IsInputKey = true; };
             drag.MouseDown += (_, _) => { drag.Focus(); drag.BackColor = Color.Salmon; };
             drag.MouseUp += (_, _) => drag.BackColor = Color.MediumPurple;
             wheel.MouseEnter += (_, _) => wheel.Focus();
             wheel.MouseWheel += (_, e) => { state.Text = "ホイール " + e.Delta; wheel.BackColor = wheel.BackColor == Color.LightGreen ? Color.Aquamarine : Color.LightGreen; };
-            FormClosed += (_, _) => { foreach (var cover in covers) cover.Dispose(); };
+            FormClosed += (_, _) =>
+            {
+                foreach (var cover in covers) cover.Dispose();
+                replayTimer?.Dispose();
+                replayWindow?.Dispose();
+            };
+        }
+
+        void StageReplay(string scenario)
+        {
+            replayScenario = scenario;
+            readyTitle = Text;
+            switch (scenario)
+            {
+                case "startup": Hide(); break;
+                case "title": Text += " 読み込み中"; break;
+                case "window-disabled": Enabled = false; break;
+                case "minimized": WindowState = FormWindowState.Minimized; break;
+                case "control-disabled": action.Enabled = false; break;
+                case "control-hidden": action.Hide(); break;
+                case "control-offscreen": action.Location = new Point(ClientSize.Width + 100, action.Top); break;
+                case "modal":
+                    replayWindow = new Form { Text = readyTitle + " 読み込み確認", Size = new Size(300, 150) };
+                    replayWindow.Controls.Add(new Label { Text = "準備中", AutoSize = true });
+                    BeginInvoke(new Action(() => replayWindow.ShowDialog(this)));
+                    break;
+                case "duplicate-window":
+                    replayWindow = new Form { Text = readyTitle, Size = new Size(300, 150) };
+                    replayWindow.Controls.Add(DuplicateAction());
+                    replayWindow.Show(this);
+                    Command("front");
+                    break;
+                case "duplicate-control":
+                    Controls.Add(DuplicateAction());
+                    break;
+                default: throw new ArgumentOutOfRangeException(nameof(scenario));
+            }
+        }
+
+        Button DuplicateAction()
+        {
+            var button = new Button { Name = action.Name, Text = action.Text, Location = new Point(30, 110) };
+            button.Click += (_, _) => actions++;
+            return button;
+        }
+
+        void ScheduleReplayReady()
+        {
+            replayTimer = new System.Windows.Forms.Timer { Interval = 220 };
+            replayTimer.Tick += (_, _) =>
+            {
+                replayTimer.Stop();
+                replayWindow?.Close();
+                Enabled = action.Enabled = true;
+                if (replayScenario == "minimized") WindowState = FormWindowState.Normal;
+                Text = readyTitle;
+                action.Location = new Point(30, 40);
+                action.Show();
+                Command("front");
+                replayReady = true;
+            };
+            replayTimer.Start();
         }
 
         object RectangleOf(Control control)
@@ -88,6 +164,8 @@ internal static class Program
 
         public object Command(string command)
         {
+            if (command.StartsWith("replay-stage:", StringComparison.Ordinal)) StageReplay(command["replay-stage:".Length..]);
+            if (command == "replay-ready-later") ScheduleReplayReady();
             if (command == "cover")
             {
                 foreach (var screen in Screen.AllScreens.Where(screen => !screen.Primary))
@@ -122,6 +200,36 @@ internal static class Program
             if (command == "window-main") Activate();
             if (command == "window-secondary") secondary?.Activate();
             if (command == "window-close") { secondary?.Dispose(); secondary = null; }
+            if (command == "snapshot-child-open" && snapshotChild == null)
+            {
+                snapshotChild = new Panel { Name = "fixtureSnapshotChild", BackColor = Color.LimeGreen,
+                    Bounds = new Rectangle(326, 105, 148, 46) };
+                Controls.Add(snapshotChild);
+                snapshotChild.BringToFront();
+                snapshotChild.Refresh();
+            }
+            if (command == "snapshot-password-fill") password.Text = "OPREC_TEST_PASSWORD_0a17f68e";
+            if (command == "snapshot-password-clear") password.Clear();
+            if (command == "snapshot-dialog-open" && !snapshotDialogOpen)
+            {
+                snapshotDialogOpen = true;
+                snapshotDialogResult = DialogResult.None;
+                BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        snapshotDialogResult = MessageBox.Show(this, "これは検証専用の確認です。", "専用システムダイアログ",
+                            MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                    }
+                    finally { snapshotDialogOpen = false; }
+                }));
+            }
+            if (command == "snapshot-paint")
+            {
+                Refresh();
+                secondary?.Refresh();
+                DwmFlush();
+            }
             if (command == "shift-layout")
             {
                 Bounds = new Rectangle(Screen.PrimaryScreen!.WorkingArea.Location + new Size(40, 40), new Size(1000, 720));
@@ -130,8 +238,11 @@ internal static class Program
             if (command == "close") return new { ok = true };
             return new { ok = true, pid = Environment.ProcessId, hwnd = Handle.ToInt64(), title = Text,
                 secondaryHwnd = secondary?.Handle.ToInt64() ?? 0,
+                snapshotChildHwnd = snapshotChild?.Handle.ToInt64() ?? 0, snapshotDialogOpen,
+                snapshotDialogResult = snapshotDialogResult.ToString(),
                 action = RectangleOf(action), input = RectangleOf(input), password = RectangleOf(password),
-                drag = RectangleOf(drag), wheel = RectangleOf(wheel), actions, lastKey, value = input.Text, passwordLength = password.Text.Length };
+                drag = RectangleOf(drag), wheel = RectangleOf(wheel), actions, lastKey, value = input.Text, passwordLength = password.Text.Length,
+                replayReady, earlyActions };
         }
 
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
@@ -140,5 +251,6 @@ internal static class Program
         [DllImport("user32.dll")] static extern bool AttachThreadInput(uint from, uint to, bool attach);
         [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr window);
         [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
+        [DllImport("dwmapi.dll")] static extern int DwmFlush();
     }
 }

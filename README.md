@@ -4,6 +4,14 @@ OperationRecorderは、PCの操作風景を記録し、スクリーンショッ�
 
 Windowsのステップ記録ツール（PSR）は廃止が予定されています。OperationRecorderは、その代わりに操作を記録し、記録を保存したときに共有用の手順書を出力できるように開発しました。
 
+MicrosoftのSkill Recorderは、操作記録からAIエージェント向けの再利用可能なスキルや自動化を作るツールです。OperationRecorderは、スクリーンショット付きの共有用手順書の作成を主な目的としています。関連ツールは [Microsoft公式版](https://github.com/microsoft/skill-recorder) と [KotorinChunChunによる日本語フォーク](https://github.com/KotorinChunChun/skill-recorder-ja) を参照してください。
+
+## 入手と初回の準備
+
+[GitHub Releases](https://github.com/KotorinChunChun/OperationRecorder/releases) から入手できます。画面付きの手順書を作る基本操作は、記録対象と保存先の指定から始めます。動画も残す場合はFFmpegを設定します。
+
+**データの扱い**　記録には画面画像や入力内容が含まれる場合があります。出力フォルダーを他の人やAIに渡す前に、内容を確認してください。
+
 ## 入力と出力
 
 ```mermaid
@@ -74,6 +82,22 @@ flowchart LR
 
 Codex・Claude Codeから操作記録や手順書の再出力を行う場合は、[AIスキルの導入](docs/ai-skill.md)を参照してください。別のPCにも導入できるリポジトリ参照方式のスキルを同梱しています。
 
+開発版の[外部自動操作向け証拠API](docs/external-evidence.md)は、操作前後の保存完了と未確定状態を返します。初版は文字を取得せず画像全体をマスクする保護モードです。実業務アプリとの連携受入は別途必要です。
+
+開発版0.1.9では[WGCとウィンドウ群の拡張](docs/wgc-window-groups.md)を追加しました。公開は事前承認画像との完全一致に限定します。専用fixtureで非アクティブ・背後更新・画面外のWGC取得と親画像からの子領域切出しを確認し、最小化・Hideでは取得不能を観測しました。子fallback全体と実業務アプリの受入は未完了です。
+
+開発版0.1.10では、通常記録と並行して別ツールから対象ウィンドウを[単発取得](docs/wgc-window-groups.md#capture-snapshot)できます。
+
+開発版0.1.11では、変動する領域を黒く保護し、承認済みの[固定領域だけを照合・公開](docs/approved-roi-scenes.md)する方式を追加しました。
+
+開発版0.1.12では、登録済みログイン画面の[パスワード欄だけを保護するローカル証拠](docs/password-only-local-evidence.md)を選択できます。
+
+開発版0.1.13では、登録済みログイン画面が閉じ、同じアプリの既知の別ウィンドウが開いた場合も[同じ工程の操作後証拠を確定](docs/approved-window-transition.md)できます。撮影設定を審査するための読み取り専用コマンドも追加しました。
+
+開発版0.1.14では、[無効な背後窓が同時に表示されるログイン画面](docs/approved-window-transition.md#ログイン窓と無効な背後窓が同時に表示される場合)の構成診断と、確認済み構成の撮影設定候補を取得できます。
+
+開発版0.1.15では、この読み取り専用診断が[UI構造・ルートの有効状態・構成変化の内訳](docs/approved-window-transition.md#構成を確認できない場合の診断項目)を返します。
+
 ## 使用言語とライブラリ
 
 - 使用言語はC#（本体）、Python（ローカル文字起こし）です。
@@ -83,3 +107,9 @@ Codex・Claude Codeから操作記録や手順書の再出力を行う場合は�
 ## ライセンス
 
 OperationRecorderの独自コードと文書には[MITライセンス](LICENSE)が適用されます。依存ライブラリーの条件は[第三者コンポーネント](THIRD-PARTY-NOTICES.md)を参照してください。
+
+## 不具合報告と連絡先
+
+このアプリの不具合や改善要望は [GitHub Issues](https://github.com/KotorinChunChun/OperationRecorder/issues) へお願いします。アプリのバージョン、Windowsのバージョン、再現手順と表示されたエラーを添えてください。ログや画像を添付する前に、ユーザー名、ファイル名、認証情報などが含まれていないか確認してください。
+
+脆弱性は、対象アプリ名を添えて [GitHubの非公開報告](https://github.com/KotorinChunChun/KotorinToys/security/advisories/new) からお知らせください。作者やほかのアプリは [GitHubプロフィール](https://github.com/KotorinChunChun)、一般の連絡や告知は [X](https://x.com/KotorinChunChun) をご覧ください。

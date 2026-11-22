@@ -23,7 +23,7 @@ pwsh -File <出力された隔離ソース>\dev\scripts\build-installers.ps1 -Pr
 
 対象外の子リポジトリが未配置の場合は、親とOperationRecorderの採用コミットだけを同じGit archive方式で抽出し、release-source.jsonへ採用元を記録します。未配置の別製品の復元や作業差分のコピーは行いません。
 
-3. 発行物の`OperationRecorder.runtimeconfig.json`に`Microsoft.NETCore.App`と`Microsoft.WindowsDesktop.App`の10.0.14が含まれ、フレームワーク依存になっていないことを確認します。公開時の公式最新修正版と配布安全ゲートで照合します。
+3. 発行物の`OperationRecorder.runtimeconfig.json`に`Microsoft.NETCore.App`と`Microsoft.WindowsDesktop.App`が含まれ、フレームワーク依存になっていないことを確認します。プロジェクトに固定した版を公開時の公式最新修正版と配布安全ゲートで照合します。
 4. `MANUAL.md`、`operation-recorder/MANUAL.md`、`templates/`、`Assets/app.ico`、`docs/`、`config/shortcuts.json`、`config/replay-example.json`、`config/replay-learning-prompt.md`、`config/replay-learning-response.schema.json`、`scripts/Invoke-OperationReplay.ps1`、`scripts/New-OperationReplayWithCodex.ps1`、Markdigの`THIRD-PARTY-NOTICES.md`、.NETの`runtime-licenses/`、共通`maintenance/`を同梱します。利用者設定・記録・秘密情報を含めません。
 5. インストール後の製品識別・起動・表示・正常停止と、記録・保存・未保存編集時の停止拒否を確認します。
 

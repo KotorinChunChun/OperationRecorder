@@ -12,6 +12,7 @@
    time               操作した日時(yyyy-MM-ddTHH:mm:ss.fff)
    window.title / window.className / window.process(例: EXCEL.exe) / window.hwnd
    window.frame       ウィンドウの画面上の矩形 "[x, y, w, h]"
+   window.dpi / window.isEnabled / window.isMinimized  操作時に観測したDPI・有効状態・最小化状態
    window.program     プログラムの情報。.name / .product / .version / .company / .exe / .path / .commandLine
    uiElements         操作した要素から最上位のウィンドウまでの名前(無ければクラス名)をカンマ区切りで並べたもの
    psrText / timeText Windows のステップ記録ツール形式の 1 行 / 日時(yyyy/MM/dd HH:mm:ss.fff)
@@ -23,6 +24,7 @@
    uia                UI Automation で取った操作対象の要素
      uia.controlType / uia.name / uia.automationId / uia.className / uia.frameworkId
      uia.isEnabled    "true" / "false"
+     uia.isOffscreen  操作時にUI Automationが報告した画面外状態
      uia.boundsInWindow  要素の矩形(ウィンドウ相対)"[x, y, w, h]"
      uia.ancestors    親要素の一覧(外側 → 内側)。各要素に controlType / name / automationId
    win32              Win32 のコントロール情報
@@ -104,6 +106,9 @@ window:
   className: {{q window.className}}
   process: {{q window.process}}
   frameOnScreen: {{window.frame}}
+  dpi: {{window.dpi}}
+  isEnabled: {{window.isEnabled}}
+  isMinimized: {{window.isMinimized}}
   hwnd: {{q window.hwnd}}
 {{#if window.program}}
   program: { name: {{q window.program.name}}, version: {{q window.program.version}}, company: {{q window.program.company}}, exe: {{q window.program.exe}}, commandLine: {{q window.program.commandLine}} }
@@ -128,6 +133,7 @@ target_uia:
   className: {{q uia.className}}
   frameworkId: {{q uia.frameworkId}}
   isEnabled: {{uia.isEnabled}}
+  isOffscreen: {{uia.isOffscreen}}
   boundsInWindow: {{uia.boundsInWindow}}
 {{#if uia.ancestors}}
   ancestors:  # 外側 → 内側

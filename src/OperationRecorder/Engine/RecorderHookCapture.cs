@@ -30,9 +30,9 @@ namespace OpRec
             mouseDel = MouseProc;
             keyDel = KeyProc;
             IntPtr hMod = N.GetModuleHandle(null);
-            mouseHook = N.SetWindowsHookEx(14 /*WH_MOUSE_LL*/, mouseDel, hMod, 0);
+            mouseHook = N.SetWindowsHookEx(N.WH_MOUSE_LL, mouseDel, hMod, 0);
             int e1 = Marshal.GetLastWin32Error();
-            keyHook = N.SetWindowsHookEx(13 /*WH_KEYBOARD_LL*/, keyDel, hMod, 0);
+            keyHook = N.SetWindowsHookEx(N.WH_KEYBOARD_LL, keyDel, hMod, 0);
             int e2 = Marshal.GetLastWin32Error();
             hookTid = N.GetCurrentThreadId();
             if (mouseHook == IntPtr.Zero || keyHook == IntPtr.Zero)
@@ -46,17 +46,19 @@ namespace OpRec
             // フォーカスの移動(テキストボックスのフォーカスイン / アウト)を知るための WinEvent。
             // WINEVENT_OUTOFCONTEXT なので、このスレッドのメッセージループでコールバックが呼ばれる
             focusDel = (h, evt, hwnd, idObject, idChild, thread, time) =>
-                Enqueue(new Raw { Type = 4, Fg = hwnd, Ts = sw.ElapsedMilliseconds });
-            focusHook = N.SetWinEventHook(0x8005 /*EVENT_OBJECT_FOCUS*/, 0x8005, IntPtr.Zero, focusDel, 0, 0, 0x0000 | 0x0002 /*OUTOFCONTEXT|SKIPOWNPROCESS*/);
+                Enqueue(new Raw { Type = RawType.Focus, Fg = hwnd, Ts = sw.ElapsedMilliseconds });
+            focusHook = N.SetWinEventHook(N.EVENT_OBJECT_FOCUS, N.EVENT_OBJECT_FOCUS, IntPtr.Zero, focusDel, 0, 0,
+                N.WINEVENT_OUTOFCONTEXT | N.WINEVENT_SKIPOWNPROCESS);
             if (Rule(CaptureRules.WindowChange).Record)
             {
                 windowDel = (h, evt, hwnd, obj, child, thread, time) =>
                 {
-                    if (evt == 3 || (obj == 0 && child == 0))
-                        Enqueue(new Raw { Type = evt == 3 ? 9 : evt == 0x8001 ? 10 : 8, Fg = hwnd, Ts = sw.ElapsedMilliseconds });
+                    // 前面の変更はウィンドウ単位で届く。表示・破棄は部品の通知も来るので、ウィンドウ自身のものだけを見る
+                    if (evt == N.EVENT_SYSTEM_FOREGROUND || (obj == N.OBJID_WINDOW && child == N.CHILDID_SELF))
+                        Enqueue(new Raw { Type = WindowEventType(evt), Fg = hwnd, Ts = sw.ElapsedMilliseconds });
                 };
-                foregroundHook = N.SetWinEventHook(3, 3, IntPtr.Zero, windowDel, 0, 0, 2);
-                windowObjectHook = N.SetWinEventHook(0x8001, 0x8002, IntPtr.Zero, windowDel, 0, 0, 2);
+                foregroundHook = N.SetWinEventHook(N.EVENT_SYSTEM_FOREGROUND, N.EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, windowDel, 0, 0, N.WINEVENT_SKIPOWNPROCESS);
+                windowObjectHook = N.SetWinEventHook(N.EVENT_OBJECT_DESTROY, N.EVENT_OBJECT_SHOW, IntPtr.Zero, windowDel, 0, 0, N.WINEVENT_SKIPOWNPROCESS);
                 if (foregroundHook == IntPtr.Zero || windowObjectHook == IntPtr.Zero)
                     error = "ウィンドウの表示・切り替えの監視を設定できませんでした。";
             }
@@ -72,35 +74,50 @@ namespace OpRec
             if (windowObjectHook != IntPtr.Zero) N.UnhookWinEvent(windowObjectHook);
         }
 
+        static RawType WindowEventType(uint evt)
+        {
+            if (evt == N.EVENT_SYSTEM_FOREGROUND) return RawType.Foreground;
+            return evt == N.EVENT_OBJECT_DESTROY ? RawType.WindowDestroy : RawType.WindowShow;
+        }
+
+        static RawType MouseMessageType(int message, out int button)
+        {
+            button = RawButton.Left;
+            switch (message)
+            {
+                case N.WM_LBUTTONDOWN: return RawType.MouseDown;
+                case N.WM_LBUTTONUP: return RawType.MouseUp;
+                case N.WM_RBUTTONDOWN: button = RawButton.Right; return RawType.MouseDown;
+                case N.WM_RBUTTONUP: button = RawButton.Right; return RawType.MouseUp;
+                case N.WM_MBUTTONDOWN: button = RawButton.Middle; return RawType.MouseDown;
+                case N.WM_MBUTTONUP: button = RawButton.Middle; return RawType.MouseUp;
+                case N.WM_XBUTTONDOWN: return RawType.MouseDown;
+                case N.WM_XBUTTONUP: return RawType.MouseUp;
+                case N.WM_MOUSEWHEEL: return RawType.Wheel;   // 縦のホイール
+                default: return RawType.None;
+            }
+        }
+
         IntPtr MouseProc(int nCode, IntPtr w, IntPtr l)
         {
             if (nCode >= 0)
             {
-                int type = 0, btn = 0;
-                switch ((int)w)
-                {
-                    case 0x201: type = 1; btn = 0; break;
-                    case 0x202: type = 2; btn = 0; break;
-                    case 0x204: type = 1; btn = 1; break;
-                    case 0x205: type = 2; btn = 1; break;
-                    case 0x207: type = 1; btn = 2; break;
-                    case 0x208: type = 2; btn = 2; break;
-                    case 0x20A: type = 7; break;                 // WM_MOUSEWHEEL(縦のホイール)
-                    case 0x20B: type = 1; btn = 3; break;        // WM_XBUTTONDOWN
-                    case 0x20C: type = 2; btn = 3; break;        // WM_XBUTTONUP
-                }
-                if (type != 0)
+                int btn;
+                int message = (int)w;
+                RawType type = MouseMessageType(message, out btn);
+                if (type != RawType.None)
                 {
                     if (hCtrl || hShift) snapSpoiled = true;   // Ctrl+Shift+クリックはキャプチャではない
                     var s = Marshal.PtrToStructure<N.MSLLHOOKSTRUCT>(l);
-                    if (btn == 3)
+                    if (message is N.WM_XBUTTONDOWN or N.WM_XBUTTONUP)
                     {
-                        uint extendedButton = s.mouseData >> 16;
-                        if (extendedButton is not (1 or 2)) return N.CallNextHookEx(IntPtr.Zero, nCode, w, l);
-                        btn = (int)extendedButton + 2;
+                        uint extended = s.mouseData >> 16;
+                        if (extended is not (N.XBUTTON1 or N.XBUTTON2))
+                            return N.CallNextHookEx(IntPtr.Zero, nCode, w, l);
+                        btn = extended == N.XBUTTON1 ? RawButton.Back : RawButton.Forward;
                     }
                     var raw = new Raw { Type = type, Button = btn, X = s.pt.X, Y = s.pt.Y, Ts = sw.ElapsedMilliseconds };
-                    if (type == 7) raw.Vk = (short)(s.mouseData >> 16);   // ホイールの回転量(正 = 上 / 奥、負 = 下 / 手前。1 ノッチ = 120)
+                    if (type == RawType.Wheel) raw.Vk = (short)(s.mouseData >> 16);   // ホイールの回転量(正 = 上 / 奥、負 = 下 / 手前。1 ノッチ = 120)
                     Enqueue(raw);
                 }
             }
@@ -112,8 +129,8 @@ namespace OpRec
             if (nCode >= 0)
             {
                 int m = (int)w;
-                bool down = m == 0x100 || m == 0x104;
-                bool up = m == 0x101 || m == 0x105;
+                bool down = m == N.WM_KEYDOWN || m == N.WM_SYSKEYDOWN;
+                bool up = m == N.WM_KEYUP || m == N.WM_SYSKEYUP;
                 if (down || up)
                 {
                     var s = Marshal.PtrToStructure<N.KBDLLHOOKSTRUCT>(l);
@@ -121,12 +138,12 @@ namespace OpRec
                     bool wasCtrlOrShift = hCtrl || hShift;
                     switch (vk)
                     {
-                        case 0x10: case 0xA0: case 0xA1: hShift = down; break;
-                        case 0x11: case 0xA2: case 0xA3: hCtrl = down; break;
-                        case 0x12: case 0xA4: case 0xA5: hAlt = down; break;
-                        case 0x5B: case 0x5C: hWin = down; break;
+                        case VK.Shift: case VK.LShift: case VK.RShift: hShift = down; break;
+                        case VK.Control: case VK.LControl: case VK.RControl: hCtrl = down; break;
+                        case VK.Menu: case VK.LMenu: case VK.RMenu: hAlt = down; break;
+                        case VK.LWin: case VK.RWin: hWin = down; break;
                     }
-                    bool isCtrlOrShift = vk == 0x10 || vk == 0x11 || (vk >= 0xA0 && vk <= 0xA3);
+                    bool isCtrlOrShift = vk == VK.Shift || vk == VK.Control || (vk >= VK.LShift && vk <= VK.RControl);
                     if (!wasCtrlOrShift && down) { snapArmed = false; snapSpoiled = false; }
                     if (down && !isCtrlOrShift) snapSpoiled = true;
                     if (down && isCtrlOrShift && hCtrl && hShift && !snapArmed) { snapArmed = true; snapTs = sw.ElapsedMilliseconds; }
@@ -134,14 +151,14 @@ namespace OpRec
                     {
                         // 片方を離した時点で判定する。他のキーもクリックも無ければキャプチャ
                         if (!snapSpoiled && !hAlt && !hWin)
-                            Enqueue(new Raw { Type = 6, Ts = snapTs, Fg = N.GetForegroundWindow() });
+                            Enqueue(new Raw { Type = RawType.Snapshot, Vk = (int)SnapshotTrigger.Manual, Ts = snapTs, Fg = N.GetForegroundWindow() });
                         snapArmed = false;
                         snapSpoiled = true;   // もう片方を離すまで、再度のキャプチャはしない
                     }
                     if (down)
                     {
                         bool repeat = !keysDown.Add(vk);
-                        bool alt = hAlt || (s.flags & 0x20) != 0;
+                        bool alt = hAlt || (s.flags & N.LLKHF_ALTDOWN) != 0;
                         var action = Hotkeys != null ? Hotkeys.ActionOf(vk, hCtrl, hShift, alt, hWin) : null;
                         if (action.HasValue)
                         {
@@ -152,7 +169,7 @@ namespace OpRec
                             //   終了       : 停止・終了
                             if (!repeat)
                             {
-                                if (action == HotkeyAction.Undo) Enqueue(new Raw { Type = 5, Ts = sw.ElapsedMilliseconds });
+                                if (action == HotkeyAction.Undo) Enqueue(new Raw { Type = RawType.Undo, Ts = sw.ElapsedMilliseconds });
                                 else if (action == HotkeyAction.Restart) RestartRequested.Set();
                                 else if (action == HotkeyAction.Stop) StopRequested.Set();
                             }
@@ -162,8 +179,8 @@ namespace OpRec
                             IntPtr fg = N.GetForegroundWindow();
                             Enqueue(new Raw
                             {
-                                Type = 3, Vk = vk, Scan = (int)s.scanCode, Extended = (s.flags & 1) != 0,
-                                Ctrl = hCtrl, Shift = hShift, Alt = hAlt || (s.flags & 0x20) != 0, Win = hWin,
+                                Type = RawType.KeyDown, Vk = vk, Scan = (int)s.scanCode, Extended = (s.flags & N.LLKHF_EXTENDED) != 0,
+                                Ctrl = hCtrl, Shift = hShift, Alt = alt, Win = hWin,
                                 Repeat = repeat, Ts = sw.ElapsedMilliseconds, Fg = fg, Focus = WinUtil.FocusOf(fg)
                             });
                         }

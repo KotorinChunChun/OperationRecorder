@@ -16,6 +16,26 @@ namespace OperationRecorderApp.Tests
 
         static string TemplateDir => Path.Combine(AppContext.BaseDirectory, "templates");
 
+        [Fact]
+        public void AI手順書に操作時の画面と要素の状態を出力する()
+        {
+            string path = Path.Combine(s.Dir, "events.jsonl");
+            var lines = File.ReadAllLines(path);
+            var first = JsonNode.Parse(lines[0]);
+            first["window"]["dpi"] = 144;
+            first["window"]["isEnabled"] = false;
+            first["window"]["isMinimized"] = true;
+            first["uia"]["isOffscreen"] = true;
+            lines[0] = first.ToJsonString();
+            File.WriteAllLines(path, lines);
+
+            var step = TestSession.Steps(Export("ai").Md)[1];
+            Assert.Contains("dpi: 144", step);
+            Assert.Contains("isEnabled: false", step);
+            Assert.Contains("isMinimized: true", step);
+            Assert.Contains("isOffscreen: true", step);
+        }
+
         [Theory]
         [InlineData("click", "クリック")]
         [InlineData("doubleclick", "ダブルクリック")]

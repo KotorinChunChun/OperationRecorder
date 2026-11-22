@@ -7,12 +7,14 @@ param(
     [switch]$List
 )
 
-# 画面操作ツールを使わない一括試験。実入力は明示指定のDesktopだけで行う。
+# 実入力はDesktopまたはReplayRobustnessで専用fixtureに送る。
 $ErrorActionPreference = 'Stop'
 # nativeの非0はTRXと合わせて分類する。呼出元の設定で先に例外へ変換しない。
 $PSNativeCommandUseErrorActionPreference = $false
-if ($Suite -notin @('Core', 'Desktop', 'WindowEvents', 'All') -or $Configuration -notin @('Debug', 'Release')) {
-    [Console]::Error.WriteLine('SuiteはCore/Desktop/WindowEvents/All、ConfigurationはDebug/Releaseを指定してください。')
+$suites = @('Core', 'Desktop', 'ReplayRobustness', 'WindowEvents', 'Wgc', 'WindowGraph', 'Snapshot', 'ApprovedRoi', 'PasswordEvidence', 'WindowTransition', 'PasswordLayoutBackdrop', 'All')
+$inputSuites = @('Desktop', 'ReplayRobustness')
+if ($Suite -notin $suites -or $Configuration -notin @('Debug', 'Release')) {
+    [Console]::Error.WriteLine("Suiteは$($suites -join '/')、ConfigurationはDebug/Releaseを指定してください。")
     exit 2
 }
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -36,17 +38,17 @@ function Invoke-Dotnet([string[]]$Arguments, [string]$LogName) {
 
 function Invoke-Suite([string]$Name) {
     $entry = [ordered]@{ name = $Name; status = 'failed'; total = 0; passed = 0; failed = 0; skipped = 0; trx = $null; reason = $null }
-    if ($Name -in @('Desktop', 'WindowEvents')) {
+    if ($Name -in ($inputSuites + @('WindowEvents', 'Snapshot', 'ApprovedRoi', 'PasswordEvidence', 'WindowTransition', 'PasswordLayoutBackdrop'))) {
         if (-not $IsWindows -or -not [Environment]::UserInteractive) {
             $entry.status = 'blocked'; $entry.reason = 'DESKTOP_BLOCKED: 対話可能なWindowsデスクトップが必要です。'; return $entry
         }
         $existing = @(Get-Process -Name OperationRecorder -ErrorAction SilentlyContinue)
-        if ($Name -eq 'Desktop' -and $existing.Count -gt 0) {
+        if ($Name -in $inputSuites -and $existing.Count -gt 0) {
             $entry.status = 'blocked'; $entry.reason = 'DESKTOP_BLOCKED: 起動中のOperationRecorderがあります。既存アプリへの入力と撮影を避けるため実行しません。'; return $entry
         }
         if (-not (Test-Path -LiteralPath $fixture -PathType Leaf)) { throw '専用fixtureが未ビルドです。-NoBuildを外して実行してください。' }
-        # WindowEventsは専用PIDへのパイプ命令だけ。OS入力のあるDesktopの既存アプリ検査は維持する。
-        $env:OPREC_DESKTOP_TESTS = if ($Name -eq 'Desktop') { '1' } else { '0' }
+        # WindowEvents/Snapshotは専用fixtureだけ。OS入力のあるDesktopの起動中アプリ検査は維持する。
+        $env:OPREC_DESKTOP_TESTS = if ($Name -in $inputSuites) { '1' } else { '0' }
         $env:OPREC_PASSIVE_WINDOW_TESTS = '1'
         $env:OPREC_FIXTURE_EXE = $fixture
         $env:OPREC_RECORDING_ARTIFACTS = Join-Path $runRoot 'recording'
@@ -55,7 +57,15 @@ function Invoke-Suite([string]$Name) {
     $resultDir = Join-Path $runRoot $Name.ToLowerInvariant()
     [void][IO.Directory]::CreateDirectory($resultDir)
     $entry.trx = Join-Path $resultDir 'tests.trx'
-    $filter = if ($Name -eq 'Desktop') { 'Category=Desktop' }
+    $filter = if ($Name -eq 'Desktop') { 'Category=Desktop&Depth!=ReplayRobustness' }
+        elseif ($Name -eq 'ReplayRobustness') { 'Category=Desktop&Depth=ReplayRobustness' }
+        elseif ($Name -eq 'Snapshot') { 'FullyQualifiedName~SnapshotDesktopTests' }
+        elseif ($Name -eq 'ApprovedRoi') { 'FullyQualifiedName~ApprovedRoiDesktopTests' }
+        elseif ($Name -eq 'PasswordEvidence') { 'FullyQualifiedName~PasswordEvidenceDesktopTests' }
+        elseif ($Name -eq 'WindowTransition') { 'FullyQualifiedName~WindowTransitionDesktopTests' }
+        elseif ($Name -eq 'PasswordLayoutBackdrop') { 'FullyQualifiedName~PasswordLayoutBackdropDesktopTests' }
+        elseif ($Name -eq 'Wgc') { 'FullyQualifiedName~WgcBackendTests|FullyQualifiedName~WgcGroupNativeTests' }
+        elseif ($Name -eq 'WindowGraph') { 'FullyQualifiedName~WindowGraphTests|FullyQualifiedName~WindowGraphNativeTests' }
         elseif ($Name -eq 'WindowEvents') { 'FullyQualifiedName~WindowChangeTests|FullyQualifiedName~WindowObservationTests' }
         else { 'Category!=Desktop' }
     $testExit = Invoke-Dotnet @('test', $testProject, '-c', $Configuration, '--artifacts-path', $artifacts,
@@ -66,8 +76,9 @@ function Invoke-Suite([string]$Name) {
     $entry.total = [int]$counters.total; $entry.passed = [int]$counters.passed; $entry.failed = [int]$counters.failed; $entry.skipped = [int]$counters.notExecuted
     $failedResults = @($trx.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' })
     $blockedResults = @($failedResults | Where-Object { $_.Output.ErrorInfo.Message -like '*DESKTOP_BLOCKED:*' })
-    if ($Name -eq 'Desktop' -and $blockedResults.Count -gt 0 -and $failedResults.Count -eq $blockedResults.Count -and $entry.skipped -eq 0) {
-        $entry.status = 'blocked'; $entry.reason = 'DESKTOP_BLOCKED: デスクトップ条件を満たさない試験があります。詳細はTRXを参照してください。'
+    if ($Name -eq 'Wgc') { $blockedResults = @($failedResults | Where-Object { $_.Output.ErrorInfo.Message -like '*WGC_BLOCKED:*' }) }
+    if ($Name -in ($inputSuites + @('Wgc','Snapshot','ApprovedRoi','PasswordEvidence','WindowTransition','PasswordLayoutBackdrop')) -and $blockedResults.Count -gt 0 -and $failedResults.Count -eq $blockedResults.Count -and $entry.skipped -eq 0) {
+        $entry.status = 'blocked'; $entry.reason = $(if($Name -eq 'Wgc'){'WGC_BLOCKED: 入力デスクトップ/取得条件を満たさず実フレームの受入は未完了。'}else{'DESKTOP_BLOCKED: デスクトップ条件を満たさない試験があります。詳細はTRXを参照してください。'})
     }
     elseif ($testExit -eq 0 -and $entry.total -gt 0 -and $entry.total -eq $entry.passed -and $entry.skipped -eq 0) { $entry.status = 'passed' }
     else { $entry.reason = "失敗・未実行またはテスト未検出があります（終了コード $testExit）。" }

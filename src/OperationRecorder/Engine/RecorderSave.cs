@@ -76,12 +76,9 @@ namespace OpRec
                     rec["tMs"] = ev.Ts;
                     if (ev.IsMouse)
                     {
-                        if (ev.Button >= 0) rec["button"] = ev.Button switch
-                        {
-                            0 => "left", 1 => "right", 2 => "middle", 3 => "x1", _ => "x2",
-                        };
+                        if (ev.Button >= 0) rec["button"] = RawButton.Name(ev.Button);
                         rec["screen"] = WinUtil.Pt(ev.X, ev.Y);
-                        if (ev.Kind.EndsWith("drag"))
+                        if (EventKinds.IsDrag(ev.Kind))
                         {
                             rec["dragEnd"] = WinUtil.Pt(ev.EndX, ev.EndY);
                             rec["dragEndInWindow"] = WinUtil.Pt(ev.EndX - ev.WinFrame.X, ev.EndY - ev.WinFrame.Y);
@@ -107,8 +104,7 @@ namespace OpRec
                 catch (Exception ex) { Log("保存エラー #" + ev.Seq + ": " + ex.Message); }
                 finally
                 {
-                    if (ev.Before != null) Unpin(ev.Before);
-                    if (ev.After != null) Unpin(ev.After);
+                    ReleaseFrames(ev);
                     saverBusy = false;
                 }
             }

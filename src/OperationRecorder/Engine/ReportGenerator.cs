@@ -609,6 +609,7 @@ namespace OpRec
                     {
                         { "controlType", Str(uia["controlType"]) }, { "localizedControlType", Str(uia["localizedControlType"]) }, { "name", Str(uia["name"]) }, { "automationId", Str(uia["automationId"]) },
                         { "className", Str(uia["className"]) }, { "frameworkId", Str(uia["frameworkId"]) }, { "isEnabled", Tf(uia["isEnabled"]) },
+                        { "isOffscreen", Tf(uia["isOffscreen"]) },
                         { "boundsInWindow", Xywh(uia["boundsInWindow"]) }, { "ancestors", anc },
                     };
                 }
@@ -652,7 +653,9 @@ namespace OpRec
                     { "seq", Value(e["seq"]) }, { "kind", Str(e["kind"]) }, { "button", Str(e["button"]) }, { "key", Str(e["key"]) }, { "time", Str(e["time"]) },
                     { "window", win == null ? null : new Dictionary<string, object> {
                         { "title", Str(win["title"]) }, { "className", Str(win["className"]) }, { "process", Str(win["processName"]) + ".exe" },
-                        { "frame", Xywh(win["frame"]) }, { "hwnd", Str(win["hwnd"]) }, { "program", ProgramModel(win["program"] as JsonObject) } } },
+                        { "frame", Xywh(win["frame"]) }, { "dpi", Value(win["dpi"]) },
+                        { "isEnabled", Tf(win["isEnabled"]) }, { "isMinimized", Tf(win["isMinimized"]) },
+                        { "hwnd", Str(win["hwnd"]) }, { "program", ProgramModel(win["program"] as JsonObject) } } },
                     { "point", e["screen"] is JsonObject ? new Dictionary<string, object> {
                         { "window", Xy(e["pointInWindow"]) }, { "client", Xy(e["pointInClient"]) }, { "screen", Xy(e["screen"]) } } : null },
                     { "dragEnd", e["dragEnd"] is JsonObject ? new Dictionary<string, object> {

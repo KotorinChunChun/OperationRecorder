@@ -22,7 +22,8 @@ namespace OperationRecorderApp
         [
             ("config.json", "b55496ac7940a7ae47d2c01eab40edfd8701feec1229d9cce3b40014383fb828"),
             ("model.bin", "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671"),
-            ("tokenizer.json", "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab"),
+            ("tokenizer.json",
+                "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab"),
             ("vocabulary.txt", "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913"),
         ];
 
@@ -32,7 +33,8 @@ namespace OperationRecorderApp
             ("encoder.onnx", "8e34e59e7a2dff1dbda2d91c4ba1d9673f976da74db25597883a185088300757"),
             ("decoder.onnx", "2947cb5512699cbba753fe45fe221428aadaa9856597debbb7aabe19cc253622"),
             ("joiner.onnx", "8a68320e750890ff9e944a794b41ae1c42c6f439ac4c273503458a6b42adc12d"),
-            ("tokens.txt", "ec78b13c5d9f156cf0d5fdbd6b5aec5785680f319c92630c11d5d11b14b83a84"),
+            ("tokens.txt",
+                "ec78b13c5d9f156cf0d5fdbd6b5aec5785680f319c92630c11d5d11b14b83a84"),
             ("LICENSE", "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"),
             ("NOTICE", "238ea54072bae4fb3e2da605a71ddf0b879a7e5575365b00b4761b3edd205204"),
         ];

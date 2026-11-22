@@ -28,7 +28,7 @@ namespace OpRec
             {
                 if (!first) return null;
                 shown[window] = time;
-                return eligible ? "open" : null;
+                return eligible ? WindowChangeKinds.Open : null;
             }
             long previous = foreground; foreground = window;
             if (previous == window || !eligible) return null;
@@ -38,7 +38,7 @@ namespace OpRec
                 shown.Remove(window);
                 if (time >= showTime && time - showTime <= 750) return null;
             }
-            return first ? "open" : "switch";
+            return first ? WindowChangeKinds.Open : WindowChangeKinds.Switch;
         }
 
         public void Forget(long window)
@@ -51,7 +51,9 @@ namespace OpRec
         {
             if (observedTime < actionTime || observedTime - actionTime > AssociationMs) return false;
             if (!sameProcess && !navigation) return false;
-            return kind is "click" or "doubleclick" or "rightclick" or "middleclick" or "mouseback" or "mouseforward" or "key";
+            return kind == EventKinds.Click || kind == EventKinds.DoubleClick || kind == EventKinds.RightClick
+                || kind == EventKinds.MiddleClick || kind == EventKinds.MouseBack || kind == EventKinds.MouseForward
+                || kind == EventKinds.Key;
         }
 
         public static bool IsNavigationKey(string key)

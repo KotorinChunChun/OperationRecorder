@@ -20,10 +20,26 @@ namespace OpRec
         public bool Evicted, Disposed;
     }
 
+    // フックから振り分けスレッドへ渡す入力の種類
+    internal enum RawType
+    {
+        None = 0,
+        MouseDown = 1,
+        MouseUp = 2,
+        KeyDown = 3,
+        Focus = 4,          // フォーカス移動(テキストボックスのフォーカスイン / アウト)
+        Undo = 5,           // 直前 1 手の取消
+        Snapshot = 6,       // 手動キャプチャ。Vk に SnapshotTrigger を入れる
+        Wheel = 7,          // Vk にホイールの回転量を入れる
+        WindowShow = 8,
+        Foreground = 9,
+        WindowDestroy = 10,
+    }
+
     internal sealed class Raw
     {
-        public int Type;            // 1=マウス押下 2=マウス解放 3=キー押下 4=フォーカス移動 5=取消 6=撮影 7=ホイール 8=画面表示 9=前面変更 10=破棄
-        public int Button;          // 0=左 1=右 2=中
+        public RawType Type;
+        public int Button;          // RawButton の値
         public int X, Y, Vk, Scan;
         public bool Extended, Ctrl, Shift, Alt, Win, Repeat;
         public long Ts;
@@ -128,7 +144,7 @@ namespace OpRec
         public static Rectangle GetFrame(IntPtr h)
         {
             N.RECT r;
-            if (N.DwmGetWindowAttribute(h, 9, out r, Marshal.SizeOf<N.RECT>()) != 0)
+            if (N.DwmGetWindowAttribute(h, N.DWMWA_EXTENDED_FRAME_BOUNDS, out r, Marshal.SizeOf<N.RECT>()) != 0)
             {
                 if (!N.GetWindowRect(h, out r)) return Rectangle.Empty;
                 r.Left += 12; r.Top += 12; r.Right -= 12; r.Bottom -= 12;
@@ -138,7 +154,8 @@ namespace OpRec
 
         public static Rectangle VirtualScreen()
         {
-            return new Rectangle(N.GetSystemMetrics(76), N.GetSystemMetrics(77), N.GetSystemMetrics(78), N.GetSystemMetrics(79));
+            return new Rectangle(N.GetSystemMetrics(N.SM_XVIRTUALSCREEN), N.GetSystemMetrics(N.SM_YVIRTUALSCREEN),
+                N.GetSystemMetrics(N.SM_CXVIRTUALSCREEN), N.GetSystemMetrics(N.SM_CYVIRTUALSCREEN));
         }
 
         // 画面上に実際に表示されているトップレベルウィンドウを、手前から奥の順で返す
@@ -149,7 +166,7 @@ namespace OpRec
             {
                 if (!N.IsWindowVisible(h) || N.IsIconic(h)) return true;
                 int cloaked;
-                if (N.DwmGetWindowAttribute(h, 14, out cloaked, 4) == 0 && cloaked != 0) return true;
+                if (N.DwmGetWindowAttribute(h, N.DWMWA_CLOAKED, out cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
                 Rectangle r = GetFrame(h);
                 if (r.Width <= 0 || r.Height <= 0) return true;
                 list.Add(new WinEntry { H = h, R = r, Pid = PidOf(h) });
