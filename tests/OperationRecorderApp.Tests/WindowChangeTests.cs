@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using OpRec;
 using OperationRecorderApp.Replay;
@@ -10,6 +11,61 @@ namespace OperationRecorderApp.Tests
 {
     public class WindowChangeTests
     {
+        [Fact]
+        public void 入力直前の状態と状態変化からの経過と前入力からの経過を区別する()
+        {
+            var tracker = new OperationContextTracker();
+            var root = new IntPtr(10);
+            var control = new IntPtr(11);
+            var disabled = new OperationTargetState(false, true, false, true, false);
+            var enabled = disabled with { Enabled = true };
+            OperationTargetSample At(IntPtr handle, long ms, OperationTargetState state, uint pid = 100) => new(root, handle, pid, ms, state);
+            tracker.MarkInput(20);
+            tracker.Observe(At(control, 50, disabled));
+            tracker.Observe(At(control, 150, enabled));
+            tracker.Observe(At(control, 170, enabled));
+            var before = new OperationInputSample(At(root, 279, enabled), At(control, 280, enabled));
+            var result = JsonSerializer.SerializeToNode(tracker.RecordInput(280, before, root, 100));
+            Assert.Equal(260, result["sincePreviousInputMs"].GetValue<long>());
+            Assert.True(result["control"]["isEnabled"].GetValue<bool>());
+            Assert.Equal(280, result["control"]["observedMs"].GetValue<long>());
+            var transition = Assert.Single(result["controlChanges"].AsArray());
+            Assert.Equal(150, transition["observedMs"].GetValue<long>());
+            Assert.Equal(130, transition["elapsedToInputMs"].GetValue<long>());
+            Assert.False(transition["from"]["isEnabled"].GetValue<bool>());
+            Assert.True(transition["to"]["isEnabled"].GetValue<bool>());
+
+            using var session = new TestSession();
+            var path = Path.Combine(session.Dir, "events.jsonl");
+            var events = File.ReadAllLines(path);
+            var inputEvent = JsonNode.Parse(events[0]);
+            inputEvent["operationContext"] = result;
+            events[0] = inputEvent.ToJsonString();
+            File.WriteAllLines(path, events);
+            var reports = ReportGenerator.Render(new ReportGenerator.Options { SessionDir = session.Dir,
+                Templates = new[] { "user", "ai" }, TemplateDir = Path.Combine(AppContext.BaseDirectory, "templates") });
+            Assert.Contains(reports, report => report.Value.Contains("無効→有効を観測してから 130 ms") && report.Value.Contains("前の対象内入力から 260 ms"));
+            Assert.Contains(reports, report => report.Value.Contains("operationContext:") && report.Value.Contains("\"elapsedToInputMs\":130"));
+        }
+
+        [Fact]
+        public void 未観測と将来のサンプルと破棄後の履歴から待ち時間を推定しない()
+        {
+            var tracker = new OperationContextTracker();
+            var hwnd = new IntPtr(10);
+            var state = new OperationTargetState(true, true, false, true, false);
+            OperationTargetSample At(long ms, bool enabled) => new(hwnd, hwnd, 100, ms, state with { Enabled = enabled });
+            tracker.Observe(At(90, false));
+            tracker.Observe(At(160, true));
+            var before = new OperationInputSample(At(150, true), null);
+            var result = tracker.RecordInput(150, before, hwnd, 100);
+            Assert.False(result.ContainsKey("windowChanges"));
+            Assert.False(result.ContainsKey("sincePreviousInputMs"));
+            tracker.Forget(hwnd);
+            Assert.False(tracker.RecordInput(200, new(At(200, true), null), hwnd, 100).ContainsKey("windowChanges"));
+            Assert.False(tracker.RecordInput(210, before, new IntPtr(20), 100).ContainsKey("window"));
+        }
+
         [Theory]
         [InlineData("editor.editor", "editor.editor", true)]
         [InlineData("editor.editor.exe", "EDITOR.EDITOR", true)]

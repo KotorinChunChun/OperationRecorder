@@ -19,6 +19,34 @@ namespace OperationRecorderApp.Tests
     [Trait("Category", "Desktop")]
     public sealed class RecordingDesktopTests
     {
+        [Fact]
+        public void 専用ボタンが有効になってから実クリックまでの時間を保存する()
+        {
+            using var test = new DesktopCase("observed-input-timing");
+            var recorder = test.Start(CaptureMode.Window);
+            test.Input.Click(test.Fixture.Rect("action"));
+            test.Wait(() => recorder.SavedCount == 1, "先行入力の保存");
+            test.Fixture.Command("replay-stage:control-disabled");
+            Thread.Sleep(350);
+            test.Fixture.Command("replay-ready-later");
+            Thread.Sleep(650);
+            test.Input.Click(test.Fixture.Rect("action"));
+            test.Wait(() => recorder.SavedCount == 2, "状態変化後の入力の保存");
+            test.Stop();
+            var second = ReadEvents(recorder.SessionDir)[1];
+            var context = second.GetProperty("operationContext");
+            Assert.True(context.GetProperty("window").GetProperty("isForeground").GetBoolean());
+            Assert.True(context.GetProperty("control").GetProperty("isEnabled").GetBoolean());
+            var becameEnabled = Assert.Single(context.GetProperty("controlChanges").EnumerateArray(), change =>
+                !change.GetProperty("from").GetProperty("isEnabled").GetBoolean() &&
+                change.GetProperty("to").GetProperty("isEnabled").GetBoolean());
+            long elapsed = becameEnabled.GetProperty("elapsedToInputMs").GetInt64();
+            Assert.Equal(context.GetProperty("inputMs").GetInt64() - becameEnabled.GetProperty("observedMs").GetInt64(), elapsed);
+            Assert.InRange(elapsed, 200, 5000);
+            Assert.True(context.GetProperty("sincePreviousInputMs").GetInt64() > elapsed);
+            test.Complete();
+        }
+
         [Theory]
         [InlineData(CaptureMode.Window)]
         [InlineData(CaptureMode.App)]

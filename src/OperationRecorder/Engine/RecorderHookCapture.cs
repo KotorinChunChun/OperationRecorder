@@ -49,19 +49,18 @@ namespace OpRec
                 Enqueue(new Raw { Type = RawType.Focus, Fg = hwnd, Ts = sw.ElapsedMilliseconds });
             focusHook = N.SetWinEventHook(N.EVENT_OBJECT_FOCUS, N.EVENT_OBJECT_FOCUS, IntPtr.Zero, focusDel, 0, 0,
                 N.WINEVENT_OUTOFCONTEXT | N.WINEVENT_SKIPOWNPROCESS);
-            if (Rule(CaptureRules.WindowChange).Record)
+            windowDel = (h, evt, hwnd, obj, child, thread, time) =>
             {
-                windowDel = (h, evt, hwnd, obj, child, thread, time) =>
-                {
-                    // 前面の変更はウィンドウ単位で届く。表示・破棄は部品の通知も来るので、ウィンドウ自身のものだけを見る
-                    if (evt == N.EVENT_SYSTEM_FOREGROUND || (obj == N.OBJID_WINDOW && child == N.CHILDID_SELF))
-                        Enqueue(new Raw { Type = WindowEventType(evt), Fg = hwnd, Ts = sw.ElapsedMilliseconds });
-                };
-                foregroundHook = N.SetWinEventHook(N.EVENT_SYSTEM_FOREGROUND, N.EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, windowDel, 0, 0, N.WINEVENT_SKIPOWNPROCESS);
-                windowObjectHook = N.SetWinEventHook(N.EVENT_OBJECT_DESTROY, N.EVENT_OBJECT_SHOW, IntPtr.Zero, windowDel, 0, 0, N.WINEVENT_SKIPOWNPROCESS);
-                if (foregroundHook == IntPtr.Zero || windowObjectHook == IntPtr.Zero)
-                    error = "ウィンドウの表示・切り替えの監視を設定できませんでした。";
-            }
+                if (evt == N.EVENT_SYSTEM_FOREGROUND || child == N.CHILDID_SELF &&
+                    (obj == N.OBJID_WINDOW && evt is N.EVENT_OBJECT_SHOW or N.EVENT_OBJECT_DESTROY ||
+                     (obj == N.OBJID_WINDOW || obj == N.OBJID_CLIENT) &&
+                     evt is N.EVENT_OBJECT_HIDE or N.EVENT_OBJECT_STATECHANGE && rawQ.Count < 1024))
+                    Enqueue(new Raw { Type = WindowEventType(evt), Fg = hwnd, Ts = sw.ElapsedMilliseconds });
+            };
+            foregroundHook = N.SetWinEventHook(N.EVENT_SYSTEM_FOREGROUND, N.EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, windowDel, 0, 0, N.WINEVENT_SKIPOWNPROCESS);
+            windowObjectHook = N.SetWinEventHook(N.EVENT_OBJECT_DESTROY, N.EVENT_OBJECT_STATECHANGE, IntPtr.Zero, windowDel, 0, 0, N.WINEVENT_SKIPOWNPROCESS);
+            if (Rule(CaptureRules.WindowChange).Record && (foregroundHook == IntPtr.Zero || windowObjectHook == IntPtr.Zero))
+                error = "ウィンドウの表示・切り替えの監視を設定できませんでした。";
             ready.Set();
 
             N.MSG msg;
@@ -77,7 +76,12 @@ namespace OpRec
         static RawType WindowEventType(uint evt)
         {
             if (evt == N.EVENT_SYSTEM_FOREGROUND) return RawType.Foreground;
-            return evt == N.EVENT_OBJECT_DESTROY ? RawType.WindowDestroy : RawType.WindowShow;
+            return evt switch
+            {
+                N.EVENT_OBJECT_DESTROY => RawType.WindowDestroy,
+                N.EVENT_OBJECT_SHOW => RawType.WindowShow,
+                _ => RawType.TargetState
+            };
         }
 
         static RawType MouseMessageType(int message, out int button)
@@ -118,6 +122,11 @@ namespace OpRec
                     }
                     var raw = new Raw { Type = type, Button = btn, X = s.pt.X, Y = s.pt.Y, Ts = sw.ElapsedMilliseconds };
                     if (type == RawType.Wheel) raw.Vk = (short)(s.mouseData >> 16);   // ホイールの回転量(正 = 上 / 奥、負 = 下 / 手前。1 ノッチ = 120)
+                    if (type != RawType.MouseUp && TargetReady.WaitOne(0))
+                    {
+                        raw.InputState = CaptureInputState(N.WindowFromPoint(s.pt), new Point(s.pt.X, s.pt.Y));
+                        raw.Ts = sw.ElapsedMilliseconds;
+                    }
                     Enqueue(raw);
                 }
             }
@@ -177,11 +186,13 @@ namespace OpRec
                         else
                         {
                             IntPtr fg = N.GetForegroundWindow();
+                            IntPtr focus = WinUtil.FocusOf(fg);
+                            var inputState = TargetReady.WaitOne(0) && !KeyClassifier.IsModifier(vk) ? CaptureInputState(focus == IntPtr.Zero ? fg : focus) : null;
                             Enqueue(new Raw
                             {
                                 Type = RawType.KeyDown, Vk = vk, Scan = (int)s.scanCode, Extended = (s.flags & N.LLKHF_EXTENDED) != 0,
                                 Ctrl = hCtrl, Shift = hShift, Alt = alt, Win = hWin,
-                                Repeat = repeat, Ts = sw.ElapsedMilliseconds, Fg = fg, Focus = WinUtil.FocusOf(fg)
+                                Repeat = repeat, Ts = sw.ElapsedMilliseconds, Fg = fg, Focus = focus, InputState = inputState
                             });
                         }
                     }

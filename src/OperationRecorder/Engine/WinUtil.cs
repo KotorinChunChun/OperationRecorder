@@ -34,6 +34,7 @@ namespace OpRec
         WindowShow = 8,
         Foreground = 9,
         WindowDestroy = 10,
+        TargetState = 11,
     }
 
     internal sealed class Raw
@@ -44,6 +45,7 @@ namespace OpRec
         public bool Extended, Ctrl, Shift, Alt, Win, Repeat;
         public long Ts;
         public IntPtr Fg, Focus;
+        public OperationInputSample InputState;
     }
 
     internal sealed class Ev
@@ -80,6 +82,7 @@ namespace OpRec
         public Frame Before;                     // フォーカスインの時点の画面
         public bool Typed;
         public Dictionary<string, object> ValueIn, LastValue, Uia, Win32, Window;
+        public Dictionary<string, object> OperationContext;
         public Rectangle WinFrame;
         public Rectangle? MarkRect;
     }

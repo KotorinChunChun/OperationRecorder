@@ -25,7 +25,13 @@ namespace OpRec
                 if (endComposition) composing = false;
                 // 記録開始時から既にフォーカスがあった入力欄など、フォーカスインを見ていない場合はここで追跡を始める
                 if (focusCand == null && Rule(CaptureRules.TextInput).Record) TryStartCandidate(root, r.Ts);
-                if (focusCand != null) { focusCand.Typed = true; focusCand.LastTypeTs = r.Ts; }
+                if (focusCand != null)
+                {
+                    if (focusCand.Root == root && focusCand.OperationContext == null)
+                        focusCand.OperationContext = RecordOperationContext(r, root, r.Focus);
+                    else contextTracker.MarkInput(r.Ts);
+                    focusCand.Typed = true; focusCand.LastTypeTs = r.Ts;
+                }
                 return;
             }
             if (r.Repeat) return;   // 押しっぱなしの自動リピートは1回目だけ撮る
@@ -42,6 +48,7 @@ namespace OpRec
             var ev = NewEv(r.Ts);
             ev.Kind = EventKinds.Key;
             ev.Root = root;
+            ev.Rec["operationContext"] = RecordOperationContext(r, root, r.Focus);
             HoldForWindowChange(ev);
             ev.Before = krule.Before ? PickBefore(r.Ts) : null;
             ScheduleAfter(ev, krule.After, r.Ts);

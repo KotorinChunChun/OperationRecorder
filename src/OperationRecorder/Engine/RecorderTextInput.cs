@@ -100,6 +100,7 @@ namespace OpRec
             ev.Rec["uia"] = c.Uia;
             ev.Rec["win32"] = c.Win32;
             ev.Rec["input"] = v;
+            if (c.OperationContext != null) ev.Rec["operationContext"] = c.OperationContext;
             RaiseCaptured(EventKinds.Input, null);
             AddPendingAndSend(ev);
         }

@@ -565,6 +565,59 @@ namespace OpRec
             return ScreenName(e["window"] as JsonObject) + "の" + headline;
         }
 
+        static string OperationContextText(JsonObject context)
+        {
+            if (context == null) return null;
+            var notes = new List<string>();
+            AddState("window", "ウィンドウ");
+            AddState("control", "コントロール");
+            if (Value(context["sincePreviousInputMs"]) is long gap && gap >= 0)
+                notes.Add($"前の対象内入力から {gap} ms");
+            return notes.Count == 0 ? null : "操作時の観測　" + string.Join("。", notes) + "。";
+
+            void AddState(string key, string label)
+            {
+                if (context[key] is not JsonObject state) return;
+                var labels = new List<string>();
+                AddFlag("isEnabled", "有効", "無効");
+                AddFlag("isVisible", "表示", "非表示");
+                if (key == "window")
+                {
+                    AddFlag("isForeground", "前面", "非前面");
+                    if (Bool(state["isMinimized"])) labels.Add("最小化");
+                }
+                else AddFlag("hasFocus", "フォーカスあり", "フォーカスなし");
+                if (labels.Count == 0) return;
+                string text = label + "は" + string.Join("・", labels);
+                if (context[key + "Changes"] is JsonArray changes && changes.Count > 0 &&
+                    changes[^1] is JsonObject latest && Value(latest["elapsedToInputMs"]) is long elapsed && elapsed >= 0)
+                {
+                    var from = latest["from"] as JsonObject;
+                    var to = latest["to"] as JsonObject;
+                    var differences = new List<string>();
+                    AddDifference("isEnabled", "有効", "無効");
+                    AddDifference("isVisible", "表示", "非表示");
+                    AddDifference("isForeground", "前面", "非前面");
+                    AddDifference("hasFocus", "フォーカスあり", "フォーカスなし");
+                    AddDifference("isMinimized", "最小化", "非最小化");
+                    string description = differences.Count == 0 ? "状態変化" : string.Join("・", differences);
+                    text += $"（{description}を観測してから {elapsed} ms）";
+
+                    void AddDifference(string name, string yes, string no)
+                    {
+                        if (Value(from?[name]) is bool before && Value(to?[name]) is bool after && before != after)
+                            differences.Add((before ? yes : no) + "→" + (after ? yes : no));
+                    }
+                }
+                notes.Add(text);
+
+                void AddFlag(string name, string yes, string no)
+                {
+                    if (Value(state[name]) is bool flag) labels.Add(flag ? yes : no);
+                }
+            }
+        }
+
         static Dictionary<string, object> BuildModel(JsonObject session, List<JsonObject> events, string sessionDir, string outDir, Options o)
         {
             var steps = new List<object>();
@@ -592,6 +645,7 @@ namespace OpRec
                 var uia = e["uia"] as JsonObject;
                 var w32 = e["win32"] as JsonObject;
                 var inp = e["input"] as JsonObject;
+                var operationContext = e["operationContext"] as JsonObject;
 
                 object uiaModel = null;
                 if (uia != null)
@@ -609,7 +663,7 @@ namespace OpRec
                     {
                         { "controlType", Str(uia["controlType"]) }, { "localizedControlType", Str(uia["localizedControlType"]) }, { "name", Str(uia["name"]) }, { "automationId", Str(uia["automationId"]) },
                         { "className", Str(uia["className"]) }, { "frameworkId", Str(uia["frameworkId"]) }, { "isEnabled", Tf(uia["isEnabled"]) },
-                        { "isOffscreen", Tf(uia["isOffscreen"]) },
+                        { "isOffscreen", Tf(uia["isOffscreen"]) }, { "observedMs", Value(uia["observedMs"]) },
                         { "boundsInWindow", Xywh(uia["boundsInWindow"]) }, { "ancestors", anc },
                     };
                 }
@@ -630,6 +684,8 @@ namespace OpRec
                     { "screenHeadline", ScreenHeadline(e, headline, edited && ed["headline"] != null) },
                     { "actionSentence", action }, { "inputText", inputText }, { "body", body },
                     { "bodyWithoutNarration", bodyWithoutNarration }, { "startMs", Math.Max(0L, (long)Num(e["tMs"])) },
+                    { "operationContextText", OperationContextText(operationContext) },
+                    { "operationContextJson", operationContext?.ToJsonString() },
                     { "narration", spoken }, { "editedBody", Str(ed?["body"]) },
                     { "originalHeadline", originalHeadline }, { "originalBody", originalBody }, { "edited", edited },
                     { "uiElements", UiElements(uia) }, { "psrText", PsrText(e, inputLines0(e)) }, { "timeText", TimeText(Str(e["time"])) },

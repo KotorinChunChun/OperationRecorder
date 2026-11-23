@@ -88,8 +88,9 @@ namespace OpRec
 
         // WinEvent
         public const uint EVENT_SYSTEM_FOREGROUND = 0x0003, EVENT_OBJECT_DESTROY = 0x8001, EVENT_OBJECT_SHOW = 0x8002, EVENT_OBJECT_FOCUS = 0x8005;
+        public const uint EVENT_OBJECT_HIDE = 0x8003, EVENT_OBJECT_STATECHANGE = 0x800A;
         public const uint WINEVENT_OUTOFCONTEXT = 0x0000, WINEVENT_SKIPOWNPROCESS = 0x0002;
-        public const int OBJID_WINDOW = 0, CHILDID_SELF = 0;
+        public const int OBJID_WINDOW = 0, OBJID_CLIENT = -4, CHILDID_SELF = 0;
 
         // GetSystemMetrics
         public const int SM_CXDOUBLECLK = 36, SM_CYDOUBLECLK = 37, SM_CXDRAG = 68, SM_CYDRAG = 69;

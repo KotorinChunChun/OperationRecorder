@@ -27,6 +27,10 @@
 **画面:** {{windowTitle}}
 
 {{#endif}}
+{{#if operationContextText}}
+{{operationContextText}}
+
+{{#endif}}
 {{#if images.before}}
 {{images.before}}
 

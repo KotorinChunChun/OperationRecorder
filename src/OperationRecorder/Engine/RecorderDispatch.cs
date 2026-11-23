@@ -42,13 +42,17 @@ namespace OpRec
                 case RawType.MouseDown: OnMouseDown(r); break;
                 case RawType.MouseUp: OnMouseUp(r); break;
                 case RawType.KeyDown: OnKeyDown(r); break;
-                case RawType.Focus: OnFocus(r); break;
+                case RawType.Focus: ObserveContextState(r); OnFocus(r); break;
                 case RawType.Undo: FlushWindowChanges(r.Ts, true); UndoLast(); break;
                 case RawType.Snapshot: OnSnapshot(r); break;
                 case RawType.Wheel: OnWheel(r); break;
                 case RawType.WindowShow:
                 case RawType.Foreground:
-                case RawType.WindowDestroy: OnWindowChange(r); break;
+                case RawType.WindowDestroy:
+                    ObserveContextState(r);
+                    if (Rule(CaptureRules.WindowChange).Record) OnWindowChange(r);
+                    break;
+                case RawType.TargetState: ObserveContextState(r); break;
             }
         }
 

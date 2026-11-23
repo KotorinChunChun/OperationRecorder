@@ -100,6 +100,9 @@ button: {{button}}
 key: {{q key}}
 {{#endif}}
 time: {{q time}}
+{{#if operationContextJson}}
+operationContext: {{operationContextJson}}
+{{#endif}}
 {{#if window}}
 window:
   title: {{q window.title}}
@@ -134,6 +137,9 @@ target_uia:
   frameworkId: {{q uia.frameworkId}}
   isEnabled: {{uia.isEnabled}}
   isOffscreen: {{uia.isOffscreen}}
+{{#if uia.observedMs}}
+  observedMs: {{uia.observedMs}}
+{{#endif}}
   boundsInWindow: {{uia.boundsInWindow}}
 {{#if uia.ancestors}}
   ancestors:  # 外側 → 内側

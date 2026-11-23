@@ -26,6 +26,7 @@ namespace OpRec
             N.EnumWindows((h, l) => { if (N.IsWindowVisible(h)) windows.Add(h.ToInt64()); return true; }, IntPtr.Zero);
             observedForeground = selected ?? WinUtil.Root(N.GetForegroundWindow());
             windowChanges.Prime(windows, observedForeground.ToInt64());
+            ObserveContextState(new Raw { Type = RawType.Foreground, Fg = observedForeground });
         }
 
         void HoldForWindowChange(Ev ev)

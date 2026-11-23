@@ -55,7 +55,7 @@ namespace OpRec
         }
 
         // ev.MarkRect に部品の画面上の位置を入れる(出力するときに印を描く位置)
-        static Dictionary<string, object> UiaInfo(AutomationElement el, IntPtr root, Rectangle rf, Ev ev)
+        Dictionary<string, object> UiaInfo(AutomationElement el, IntPtr root, Rectangle rf, Ev ev)
         {
             var d = new Dictionary<string, object>();
             var c = el.Current;
@@ -68,6 +68,7 @@ namespace OpRec
             d["isEnabled"] = c.IsEnabled;
             d["isOffscreen"] = c.IsOffscreen;
             d["isPassword"] = c.IsPassword;
+            d["observedMs"] = sw.ElapsedMilliseconds;
             var b = c.BoundingRectangle;
             if (!b.IsEmpty && !double.IsInfinity(b.X))
             {

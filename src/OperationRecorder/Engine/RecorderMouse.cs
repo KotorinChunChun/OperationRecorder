@@ -51,7 +51,7 @@ namespace OpRec
                 return;
             }
 
-            if (TryMergeDoubleClick(r, root)) return;
+            if (TryMergeDoubleClick(r, root)) { contextTracker.MarkInput(r.Ts); return; }
 
             var ev = NewEv(r.Ts);
             ev.IsMouse = true;
@@ -60,6 +60,7 @@ namespace OpRec
             ev.X = ev.EndX = r.X;
             ev.Y = ev.EndY = r.Y;
             ev.Root = root;
+            ev.Rec["operationContext"] = RecordOperationContext(r, root, hwnd);
             HoldForWindowChange(ev);
             ev.Before = mrule.Before ? PickBefore(r.Ts) : null;
             ev.WantAfter = mrule.After;   // 操作後の撮影は、ボタンを離したときに予約する
@@ -146,6 +147,7 @@ namespace OpRec
                     }
                 }
                 ev.UpTs = r.Ts;
+                contextTracker.MarkInput(r.Ts);
                 DropAfter(ev);
                 if (ev.WantAfter) ev.AfterDue = r.Ts + AfterMs;
                 else { ev.AfterMissing = true; TrySendLocked(ev); }   // 「操作後を撮る」が切られている
@@ -170,6 +172,7 @@ namespace OpRec
                 {
                     w.WheelNet += delta;
                     w.WheelLastTs = r.Ts;
+                    contextTracker.MarkInput(r.Ts);
                     w.Rec["wheel"] = WheelRules.Info(w.WheelNet);
                     DropAfter(w);
                     if (w.WantAfter) w.AfterDue = r.Ts + AfterMs;
@@ -183,6 +186,7 @@ namespace OpRec
             ev.X = ev.EndX = r.X;
             ev.Y = ev.EndY = r.Y;
             ev.Root = root;
+            ev.Rec["operationContext"] = RecordOperationContext(r, root, hwnd);
             ev.WheelNet = delta;
             ev.WheelLastTs = r.Ts;
             ev.Before = rule.Before ? PickBefore(r.Ts) : null;

@@ -6,6 +6,8 @@
 
 再構成した履歴では 0.1.6 の統合から開発版 0.1.17 へ進む。中間版の文書は当時の開発・検証記録として参照できる。
 
+- [0.1.18 要求](history/v0.1.18/v0.1.18-req.md)・[計画と報告](history/v0.1.18/v0.1.18-imp.md)・[ケース一覧](history/v0.1.18/test-cases.json) 操作直前の状態と観測から入力までの時間。
+
 - [0.1.17 要求](history/v0.1.17/v0.1.17-req.md)・[計画と報告](history/v0.1.17/v0.1.17-imp.md)・[ケース一覧](history/v0.1.17/test-cases.json) 構成診断のWinEvent集計と不完全理由。
 
 - [0.1.16 要求](history/v0.1.16/v0.1.16-req.md)・[計画と報告](history/v0.1.16/v0.1.16-imp.md)・[ケース一覧](history/v0.1.16/test-cases.json) 再生の追加試験と公開配布。
