@@ -17,7 +17,7 @@ namespace OpRec
     public enum SnapshotTrigger { Manual, WindowsSnip }
 
     // 記録の全体構成(スレッドは4本):
-    //   フック   : マウス・キーボードの低レベルフック。コールバックは Raw を積むだけで即 return する
+    //   フック   : マウス・キー入力時のWin32状態を取得し、入力とWinEvent通知をRawとしてキューに積む
     //              (重い処理をすると LowLevelHooksTimeout を超えて Windows にフックを外される)
     //   撮影     : IntervalMs ごとに対象範囲を撮り、直近 RetainMs 分をリングに保持する。
     //              「0.2秒前」はこのリングから選ぶ。「0.5秒後」の画像もこのスレッドが割り当てる
