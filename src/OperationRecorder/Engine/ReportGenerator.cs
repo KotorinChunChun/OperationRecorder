@@ -588,33 +588,35 @@ namespace OpRec
                 }
                 else AddFlag("hasFocus", "フォーカスあり", "フォーカスなし");
                 if (labels.Count == 0) return;
-                string text = label + "は" + string.Join("・", labels);
-                if (context[key + "Changes"] is JsonArray changes && changes.Count > 0 &&
-                    changes[^1] is JsonObject latest && Value(latest["elapsedToInputMs"]) is long elapsed && elapsed >= 0)
-                {
-                    var from = latest["from"] as JsonObject;
-                    var to = latest["to"] as JsonObject;
-                    var differences = new List<string>();
-                    AddDifference("isEnabled", "有効", "無効");
-                    AddDifference("isVisible", "表示", "非表示");
-                    AddDifference("isForeground", "前面", "非前面");
-                    AddDifference("hasFocus", "フォーカスあり", "フォーカスなし");
-                    AddDifference("isMinimized", "最小化", "非最小化");
-                    string description = differences.Count == 0 ? "状態変化" : string.Join("・", differences);
-                    text += $"（{description}を観測してから {elapsed} ms）";
-
-                    void AddDifference(string name, string yes, string no)
-                    {
-                        if (Value(from?[name]) is bool before && Value(to?[name]) is bool after && before != after)
-                            differences.Add((before ? yes : no) + "→" + (after ? yes : no));
-                    }
-                }
-                notes.Add(text);
+                notes.Add(label + "は" + string.Join("・", labels) + LatestChangeText(context[key + "Changes"] as JsonArray));
 
                 void AddFlag(string name, string yes, string no)
                 {
                     if (Value(state[name]) is bool flag) labels.Add(flag ? yes : no);
                 }
+            }
+        }
+
+        static string LatestChangeText(JsonArray changes)
+        {
+            if (changes == null || changes.Count == 0 || changes[^1] is not JsonObject latest ||
+                Value(latest["elapsedToInputMs"]) is not long elapsed || elapsed < 0) return "";
+
+            var from = latest["from"] as JsonObject;
+            var to = latest["to"] as JsonObject;
+            var differences = new List<string>();
+            AddDifference("isEnabled", "有効", "無効");
+            AddDifference("isVisible", "表示", "非表示");
+            AddDifference("isForeground", "前面", "非前面");
+            AddDifference("hasFocus", "フォーカスあり", "フォーカスなし");
+            AddDifference("isMinimized", "最小化", "非最小化");
+            string description = differences.Count == 0 ? "状態変化" : string.Join("・", differences);
+            return $"（{description}を観測してから {elapsed} ms）";
+
+            void AddDifference(string name, string yes, string no)
+            {
+                if (Value(from?[name]) is bool before && Value(to?[name]) is bool after && before != after)
+                    differences.Add((before ? yes : no) + "→" + (after ? yes : no));
             }
         }
 

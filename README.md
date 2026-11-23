@@ -71,6 +71,7 @@ flowchart LR
 - [操作記録マニュアル](docs/USERS_GUIDE.md)
 - [手順の見出し表記](docs/step-headings.md)
 - [ウィンドウの表示・切り替えの記録](docs/window-events.md)
+- [開発版 0.1.18 で記録する操作直前の状態と待ち時間](docs/window-events.md#操作直前の状態と時間)
 - [KotorinToysとの連携・保存先](docs/kotorintoys-integration.md)
 - [リプレイの設定と実行](docs/replay.md)
 - [複数記録からの再生条件作成](docs/replay-learning.md)

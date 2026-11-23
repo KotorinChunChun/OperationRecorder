@@ -76,6 +76,9 @@ pwsh -NoProfile -File .\dev\scripts\Build-OperationRecorder.ps1 -SkipTests
 | `MainForm.HotkeysTab.cs` | 「ショートカットキー」タブ(操作キーの変更。判定は記録エンジンの `HotkeySet.Validate`) |
 | `MainForm*.cs` | 画面(記録する / 記録一覧・md 出力 / 使い方 / 設定)とタスクトレイ |
 | `RecordingController.cs` | 記録 1 件の開始〜保存(ホットキー待ち・保存・md 出力・取り直し) |
+| [RecorderOperationContext.cs](../src/OperationRecorder/Engine/RecorderOperationContext.cs) | 入力フックとWinEventの処理から呼ばれ、記録範囲とプロセスを確認してWin32の状態を取得する |
+| [OperationContextTracker.cs](../src/OperationRecorder/Engine/OperationContextTracker.cs) | 観測履歴を保持し、対象・状態・時刻が合う変化を入力に結び付けて `operationContext` を作る |
+| [ReportGenerator.cs](../src/OperationRecorder/Engine/ReportGenerator.cs) | 保存済みの操作からテンプレート用のデータを作る。操作直前の状態と対象ごとの直近の変化をユーザー向けに整形する |
 | `RecordingRuntime.cs` / `AppInteraction.cs` | 記録OS境界と確認・ファイル選択・外部起動等の差替え。自動試験から通常環境を変更しない |
 | `AutomationCommand.cs` / `BasicAutomation.cs` / `CompositionAutomation.cs` | 実EXEからJSONシナリオを実行し、共通サービスと編集セッションの結果・終了コードを返す |
 | `CompositionEditingSession.cs` | GUIとCLI共通の合成命令、入力中文章、Undo/Redo、途中保存と閉じる判断 |

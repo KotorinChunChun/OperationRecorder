@@ -45,12 +45,15 @@
 
 0.1.18以降の手動記録では、クリック、ドラッグ、ホイール、キー、文字入力の手順に、取得できた状態と経過を `operationContext` として保存する。操作直前に対象と一致した Win32 のウィンドウとコントロールについて、有効・表示・最小化・前面・フォーカスと観測時刻を記録する。値が変わったことを確認した観測は、対象ごとに直近8件まで含める。文字入力をまとめた手順では、確認できた最初の打鍵を基準にする。
 
-| フィールド | 内容 |
+| `events.jsonl` の各操作内のフィールド | 内容 |
 |---|---|
-| `inputMs` | 記録開始から入力直前までの経過 |
-| `sincePreviousInputMs` | 前に観測した対象内入力から今回の入力までの時間 |
-| `windowChanges` / `controlChanges` | 変化を確認した時刻 `observedMs`、直前までの `elapsedToInputMs`、変化前後の状態 |
+| `operationContext.inputMs` | 記録開始から入力直前までの経過（ms） |
+| `operationContext.sincePreviousInputMs` | 前に観測した対象内入力から今回の入力までの時間（ms）。最初の入力では省略 |
+| `operationContext.window` / `operationContext.control` | 入力直前に確認した状態と、その観測時刻 `observedMs` |
+| `operationContext.windowChanges` / `operationContext.controlChanges` | 各変化の観測時刻 `observedMs`、入力までの時間 `elapsedToInputMs`、変化前後の状態 `from` と `to`。古い順に並ぶ |
 | `uia.observedMs` | 既存のUI Automation要素の状態を読んだ時刻。入力の後になることがある |
+
+例えば記録開始から1812 msでボタンの有効化を観測し、2322 msでクリックした場合、その変化の `elapsedToInputMs` は510となる。変化を観測した時刻と入力時刻が同じミリ秒なら値は0。変化の履歴を確認できなければ配列ごと省略する。
 
 前の入力からの時間には、利用者が操作しなかった時間も含まれる。変化からの時間は観測時刻を起点とし、アプリが準備完了した時刻までは特定できない。対象や時刻を確認できなければ該当項目を省略する。専用のWin32ウィンドウハンドルを持たない要素は、UI Automationでの観測時点の情報を使う。ユーザー向け手順書に状態と時間の要約、AI向け手順書に詳細を出力する。
 
